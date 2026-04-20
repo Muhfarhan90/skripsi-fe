@@ -113,6 +113,7 @@ Avoid reducing enrollment to just a button without access logic.
 ### Required stack direction (project standard)
 
 - shadcn/ui
+- Poppins (global app font)
 - TanStack Query
 - Zustand
 - React Hook Form
@@ -188,6 +189,7 @@ npx tsc --noEmit
 
 - Use shadcn/ui as base primitives
 - Keep business logic out of primitive UI components
+- Auth forms should use shadcn primitives, including DatePicker (Calendar + Popover)
 
 ## 11. Feature Priority
 
