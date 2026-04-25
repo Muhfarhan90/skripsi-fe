@@ -22,18 +22,13 @@ export default function RootPage() {
       <div className="mx-auto flex w-full max-w-6xl items-center justify-end px-6 pt-6">
         {isLoggedIn ? (
           <Popover>
-            <PopoverTrigger>
-              <button
-                type="button"
-                className="flex items-center gap-2 rounded-full border border-zinc-200 bg-white/90 px-3 py-2 shadow-sm backdrop-blur transition hover:bg-white"
-              >
-                <div className="size-8 rounded-full bg-[#0F7A5A]/10 text-center text-xs leading-8 font-semibold text-[#0F7A5A]">
-                  {user?.fullname?.trim().charAt(0).toUpperCase() || "U"}
-                </div>
-                <p className="max-w-40 truncate text-sm font-medium text-zinc-800" title={user?.fullname ?? "User"}>
-                  {user?.fullname ?? "User"}
-                </p>
-              </button>
+            <PopoverTrigger className="flex items-center gap-2 rounded-full border border-zinc-200 bg-white/90 px-3 py-2 shadow-sm backdrop-blur transition hover:bg-white">
+              <div className="size-8 rounded-full bg-[#0F7A5A]/10 text-center text-xs leading-8 font-semibold text-[#0F7A5A]">
+                {user?.fullname?.trim().charAt(0).toUpperCase() || "U"}
+              </div>
+              <p className="max-w-40 truncate text-sm font-medium text-zinc-800" title={user?.fullname ?? "User"}>
+                {user?.fullname ?? "User"}
+              </p>
             </PopoverTrigger>
 
             <PopoverContent align="end" sideOffset={8} className="w-56 p-2">

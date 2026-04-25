@@ -497,6 +497,14 @@ Preferred modules:
 - hardcode endpoint URLs inside random files
 - mix UI rendering with raw request logic when abstraction is needed
 
+### Admin Management Rules
+
+- For admin CRUD modules (users, categories, courses, vouchers, and related master entities), use real API integration.
+- Do not ship admin CRUD pages with hardcoded mock rows as the primary data source.
+- Use internal Next.js API proxy routes (`/api/admin/*`) for authenticated admin requests so bearer token handling stays centralized.
+- For admin CRUD list screens, keep create/edit form in a modal popup or dedicated page. Do not place full form inline in the table list layout.
+- For admin UI controls and forms, avoid overly rounded corners; prefer rigid radius (`rounded-md` / `rounded-lg`) and avoid `rounded-full` for standard controls (except avatar or elements that are intentionally circular).
+
 ---
 
 ## UI / UX Rules
@@ -573,6 +581,7 @@ All non-trivial code MUST include meaningful comments.
 - mapping/transformation logic
 - edge cases
 - workaround logic
+- important functions (especially exported/public functions and non-trivial helpers) with short intent-focused comments
 
 ### Avoid
 
@@ -666,7 +675,13 @@ Every completed feature or any code/config change MUST be accompanied by a markd
 
 ### Required Location
 
-- `docs/changes/YYYY-MM-DD-short-topic.md`
+- `temp/YYYY-MM-DD-short-topic.md`
+
+### File Reuse Rule
+
+- If the new changes are still within the same context/topic, do not create a new markdown file.
+- Update the existing markdown file for that context in `temp` and append a clear "update lanjutan" section.
+- Create a new markdown file only when the context/topic is materially different.
 
 ### Minimum Content
 
@@ -696,4 +711,4 @@ then update:
 
 - `README.md`
 - `AGENTS.md`
-- `docs/changes/*.md`
+- `temp/*.md`
