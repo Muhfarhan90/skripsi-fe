@@ -1,29 +1,37 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { AuthShell } from "@/components/shared/auth-shell";
 import { FieldError } from "@/components/shared/field-error";
-import { login } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { loginSchema, type LoginSchema } from "@/lib/schemas/auth";
-import { useAuthStore } from "@/stores/auth-store";
+import { login } from "@/features/auth/api/auth-api";
+import { useAuthStore } from "@/features/auth/store/auth-store";
+import {
+  getDefaultPathByRole,
+  getSafeInternalRedirectPath,
+} from "@/features/auth/lib/roles";
 import { AuthInput } from "@/features/auth/components/auth-input";
 import { SubmitButton } from "@/features/auth/components/submit-button";
 import { applyApiFieldErrors } from "@/features/auth/utils/apply-api-field-errors";
 
 export function LoginClient() {
   const router = useRouter();
-  const setToken = useAuthStore((state) => state.setToken);
+  const searchParams = useSearchParams();
   const setUser = useAuthStore((state) => state.setUser);
-  const hydrated = useAuthStore((state) => state.hydrated);
-  const token = useAuthStore((state) => state.token);
+  const sessionChecked = useAuthStore((state) => state.sessionChecked);
+  const setSessionChecked = useAuthStore((state) => state.setSessionChecked);
   const user = useAuthStore((state) => state.user);
+  const redirectTarget = useMemo(
+    () => getSafeInternalRedirectPath(searchParams.get("redirect")),
+    [searchParams],
+  );
 
   const {
     register: registerField,
@@ -39,18 +47,18 @@ export function LoginClient() {
   });
 
   useEffect(() => {
-    if (!hydrated || !token || !user) return;
-    // Redirect only when the session is fully restored (token + user).
-    router.replace("/");
-  }, [hydrated, router, token, user]);
+    if (!sessionChecked || !user) return;
+    // Redirect only when session check completed and user is authenticated.
+    router.replace(redirectTarget ?? getDefaultPathByRole(user.role_id));
+  }, [redirectTarget, router, sessionChecked, user]);
 
   const loginMutation = useMutation({
     mutationFn: login,
     onSuccess: (data) => {
-      setToken(data.token);
       setUser(data.user);
+      setSessionChecked(true);
       toast.success("Login berhasil");
-      router.replace("/");
+      router.replace(redirectTarget ?? getDefaultPathByRole(data.user.role_id));
     },
     onError: (error) => {
       applyApiFieldErrors<LoginSchema>(error, setError);

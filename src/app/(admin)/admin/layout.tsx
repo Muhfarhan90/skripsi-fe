@@ -1,24 +1,35 @@
 import Link from "next/link";
-import { RoleGuard } from "@/components/shared/role-guard";
+import { redirect } from "next/navigation";
+import { getServerCurrentUser } from "@/features/auth/lib/server";
+import { getRoleBoundary } from "@/features/auth/lib/roles";
 
-export default function AdminLayout({
+export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const user = await getServerCurrentUser();
+  const boundary = getRoleBoundary(user?.role_id);
+
+  if (!user) {
+    redirect("/login?redirect=/admin");
+  }
+
+  if (boundary !== "admin") {
+    redirect(boundary === "student" ? "/student" : "/login");
+  }
+
   return (
-    <RoleGuard allowed={["admin"]}>
-      <div className="min-h-screen bg-zinc-50">
-        <header className="border-b border-zinc-200 bg-white">
-          <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
-            <p className="text-sm font-semibold text-[#0F7A5A]">Admin Area (includes instructor capabilities)</p>
-            <Link href="/login" className="text-sm text-zinc-600 hover:text-zinc-900">
-              Kembali ke login
-            </Link>
-          </div>
-        </header>
-        <div className="mx-auto max-w-5xl px-4 py-8">{children}</div>
-      </div>
-    </RoleGuard>
+    <div className="min-h-screen bg-zinc-50">
+      <header className="border-b border-zinc-200 bg-white">
+        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
+          <p className="text-sm font-semibold text-[#0F7A5A]">Admin Area (includes instructor capabilities)</p>
+          <Link href="/login" className="text-sm text-zinc-600 hover:text-zinc-900">
+            Kembali ke login
+          </Link>
+        </div>
+      </header>
+      <div className="mx-auto max-w-5xl px-4 py-8">{children}</div>
+    </div>
   );
 }

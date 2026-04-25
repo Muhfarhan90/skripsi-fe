@@ -2,25 +2,27 @@
 
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getCurrentUser } from "@/lib/api/auth";
+import { getCurrentUser } from "@/features/auth/api/auth-api";
 import { ApiError } from "@/lib/api/client";
-import { useAuthStore } from "@/stores/auth-store";
+import { useAuthStore } from "@/features/auth/store/auth-store";
 
 export function AuthBootstrap() {
-  const token = useAuthStore((state) => state.token);
-  const hydrated = useAuthStore((state) => state.hydrated);
+  const sessionChecked = useAuthStore((state) => state.sessionChecked);
   const setUser = useAuthStore((state) => state.setUser);
+  const setSessionChecked = useAuthStore((state) => state.setSessionChecked);
   const clearAuth = useAuthStore((state) => state.clearAuth);
 
   const currentUserQuery = useQuery({
-    queryKey: ["auth", "me", token],
-    queryFn: async () => {
-      if (!token) return null;
-      return getCurrentUser(token);
-    },
-    enabled: hydrated && Boolean(token),
+    queryKey: ["auth", "me"],
+    queryFn: getCurrentUser,
+    enabled: !sessionChecked,
+    retry: 2,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 4000),
     staleTime: 60_000,
   });
+  const isUnauthorized =
+    currentUserQuery.error instanceof ApiError &&
+    (currentUserQuery.error.status === 401 || currentUserQuery.error.status === 403);
 
   useEffect(() => {
     if (currentUserQuery.data) {
@@ -30,11 +32,16 @@ export function AuthBootstrap() {
 
   useEffect(() => {
     // Clear auth state only when token is actually unauthorized.
-    const error = currentUserQuery.error;
-    if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+    if (isUnauthorized) {
       clearAuth();
     }
-  }, [clearAuth, currentUserQuery.error]);
+  }, [clearAuth, isUnauthorized]);
+
+  useEffect(() => {
+    if (sessionChecked) return;
+    if (!currentUserQuery.isSuccess && !isUnauthorized) return;
+    setSessionChecked(true);
+  }, [currentUserQuery.isSuccess, isUnauthorized, sessionChecked, setSessionChecked]);
 
   return null;
 }

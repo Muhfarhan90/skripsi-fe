@@ -1,42 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useMutation } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { logout } from "@/lib/api/auth";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { useAuthStore } from "@/stores/auth-store";
+import { useAuthStore } from "@/features/auth/store/auth-store";
+import { getDefaultPathByRole } from "@/features/auth/lib/roles";
+import { useLogoutAction } from "@/features/auth/hooks/use-logout-action";
 
 export default function RootPage() {
-  const router = useRouter();
-  const token = useAuthStore((state) => state.token);
   const user = useAuthStore((state) => state.user);
-  const clearAuth = useAuthStore((state) => state.clearAuth);
-  const roleBoundary = useAuthStore((state) => state.roleBoundary);
+  const logoutMutation = useLogoutAction();
 
-  const logoutMutation = useMutation({
-    mutationFn: async () => {
-      if (!token) return;
-      await logout(token);
-    },
-    onSuccess: () => {
-      clearAuth();
-      toast.success("Logout berhasil");
-      router.replace("/login");
-    },
-    onError: () => {
-      clearAuth();
-      router.replace("/login");
-    },
-  });
-
-  const isLoggedIn = Boolean(token && user);
-  const dashboardHref = roleBoundary() === "admin" ? "/admin" : "/student";
+  const isLoggedIn = Boolean(user);
+  const dashboardHref = getDefaultPathByRole(user?.role_id);
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-[#f3faf7] via-white to-[#fff8dd]">

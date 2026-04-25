@@ -5,7 +5,10 @@ import { useMutation } from "@tanstack/react-query";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AuthShell } from "@/components/shared/auth-shell";
-import { verifyEmailWithAbsoluteUrl, verifyEmailWithParams } from "@/lib/api/auth";
+import {
+  verifyEmailWithAbsoluteUrl,
+  verifyEmailWithParams,
+} from "@/features/auth/api/auth-api";
 import { SubmitButton } from "@/features/auth/components/submit-button";
 
 export function VerifyEmailClient() {

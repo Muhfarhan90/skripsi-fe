@@ -7,8 +7,8 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { AuthShell } from "@/components/shared/auth-shell";
 import { FieldError } from "@/components/shared/field-error";
-import { resendVerificationEmail } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
+import { resendVerificationEmail } from "@/features/auth/api/auth-api";
 import {
   resendVerificationSchema,
   type ResendVerificationSchema,

@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { register as registerApi } from "@/lib/api/auth";
+import { register as registerApi } from "@/features/auth/api/auth-api";
 import { ApiError } from "@/lib/api/client";
 import { registerSchema, type RegisterSchema } from "@/lib/schemas/auth";
 import { AuthInput } from "@/features/auth/components/auth-input";

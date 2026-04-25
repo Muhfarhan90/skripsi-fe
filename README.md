@@ -49,6 +49,11 @@ src/
 
 	features/
 		auth/
+			api/
+			components/
+			hooks/
+			lib/
+			store/
 		course/
 		enrollment/
 		lesson/
@@ -70,13 +75,11 @@ src/
 		constants/
 		schemas/
 
-	stores/
 	providers/
-	hooks/
 	types/
 ```
 
-Current repository is still in early bootstrap layout and can be refactored incrementally toward this structure.
+Auth module has been aligned to this structure already, while other domains can follow incrementally.
 
 ## 4. Hard Constraints
 

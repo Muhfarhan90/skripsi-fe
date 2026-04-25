@@ -660,6 +660,26 @@ Build in this order unless task requirements say otherwise:
 
 ---
 
+## Change Report Rules
+
+Every completed feature or any code/config change MUST be accompanied by a markdown report file.
+
+### Required Location
+
+- `docs/changes/YYYY-MM-DD-short-topic.md`
+
+### Minimum Content
+
+- short summary of what changed
+- list of files added/modified/deleted with one-line purpose per file
+- impact notes (architecture, auth, routing, data flow, or UI behavior)
+
+### Completion Rule
+
+Work is not considered complete until the change report markdown file is created or updated.
+
+---
+
 ## Maintenance Note
 
 If changes affect:
@@ -676,3 +696,4 @@ then update:
 
 - `README.md`
 - `AGENTS.md`
+- `docs/changes/*.md`

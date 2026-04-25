@@ -1,32 +1,11 @@
 "use client";
 
-import { useMutation } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { logout } from "@/lib/api/auth";
-import { useAuthStore } from "@/stores/auth-store";
+import { useLogoutAction } from "@/features/auth/hooks/use-logout-action";
+import { useAuthStore } from "@/features/auth/store/auth-store";
 
 export default function StudentPage() {
-  const router = useRouter();
-  const token = useAuthStore((state) => state.token);
   const user = useAuthStore((state) => state.user);
-  const clearAuth = useAuthStore((state) => state.clearAuth);
-
-  const logoutMutation = useMutation({
-    mutationFn: async () => {
-      if (!token) return;
-      await logout(token);
-    },
-    onSuccess: () => {
-      clearAuth();
-      toast.success("Logout berhasil");
-      router.replace("/login");
-    },
-    onError: () => {
-      clearAuth();
-      router.replace("/login");
-    },
-  });
+  const logoutMutation = useLogoutAction();
 
   return (
     <section className="space-y-4">

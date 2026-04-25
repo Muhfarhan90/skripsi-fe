@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { AuthShell } from "@/components/shared/auth-shell";
 import { FieldError } from "@/components/shared/field-error";
-import { forgotPassword } from "@/lib/api/auth";
+import { forgotPassword } from "@/features/auth/api/auth-api";
 import { ApiError } from "@/lib/api/client";
 import { forgotPasswordSchema, type ForgotPasswordSchema } from "@/lib/schemas/auth";
 import { AuthInput } from "@/features/auth/components/auth-input";

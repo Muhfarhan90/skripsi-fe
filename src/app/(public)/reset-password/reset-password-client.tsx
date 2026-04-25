@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { AuthShell } from "@/components/shared/auth-shell";
 import { FieldError } from "@/components/shared/field-error";
-import { resetPassword } from "@/lib/api/auth";
+import { resetPassword } from "@/features/auth/api/auth-api";
 import { ApiError } from "@/lib/api/client";
 import { resetPasswordSchema, type ResetPasswordSchema } from "@/lib/schemas/auth";
 import { AuthInput } from "@/features/auth/components/auth-input";
