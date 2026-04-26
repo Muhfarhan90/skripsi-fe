@@ -170,6 +170,13 @@ src/
 - React Hook Form
 - Zod
 
+### Form Validation Rules
+
+- Untuk semua form non-trivial (auth, admin CRUD, payment, enrollment, profile), validasi frontend wajib berbasis schema Zod.
+- Hindari validasi ad-hoc berbasis `if` berulang sebagai sumber validasi utama.
+- Gunakan satu schema sebagai source of truth agar mapping error field konsisten dan mudah dijelaskan.
+- Validasi manual hanya boleh sebagai fallback kecil (contoh: guard navigasi/konfirmasi), bukan menggantikan schema Zod.
+
 ### Helpers
 
 - Sonner
@@ -562,6 +569,39 @@ Important pages must include:
 - empty state
 - error state
 - success feedback where relevant
+
+---
+
+## LMS UI Reference Benchmarks
+
+Gunakan referensi berikut sebagai benchmark wajib untuk pola UX LMS/admin dashboard:
+
+- [Udemy Business - Learning Platform](https://business.udemy.com/learning-and-development/)
+- [LinkedIn Learning - Platform Overview](https://learning.linkedin.com/)
+- [LinkedIn Learning - Compare Plans/Capabilities](https://learning.linkedin.com/compare-plans)
+- [KelasFullstack](https://www.kelasfullstack.id/)
+- [Universitas Terbuka - Elearning](https://elearning.ut.ac.id/)
+- [UT Tarakan - Portal layanan pembelajaran](https://tarakan.ut.ac.id/)
+- [Ruangguru - ruangbelajar](https://www.ruangguru.com/ruangbelajar)
+- [Open edX - Course Dashboard](https://docs.openedx.org/en/latest/learners/concepts/open_edx_platform/what_is_course_dashboard.html)
+- [Open edX Aspects - At-Risk Dashboard](https://docs.openedx.org/projects/openedx-aspects/en/latest/reference/learner_groups_dashboard.html)
+- [Moodle - Dashboard](https://docs.moodle.org/en/My_home)
+- [Canvas - Student Dashboard Guide](https://community.canvaslms.com/t5/Canvas-Basics-Guide/How-do-I-use-the-Dashboard-as-a-student/ta-p/618762)
+- [Canvas - Admin Analytics Overview](https://community.canvaslms.com/t5/Admin-Guide/How-do-I-view-the-Admin-Analytics-Overview-Dashboard/ta-p/562117)
+- [Coursera for Business - Skills Dashboard](https://www.coursera.org/business/products/skillsdashboard)
+
+### How To Use References
+
+- Ambil pola UX dan information hierarchy (dashboard cards, to-do/deadline visibility, analytics snapshots, course progress, quick actions), bukan menyalin komponen 1:1.
+- Prioritaskan `efficiency-first` untuk admin: data padat namun tetap terbaca (`dense-but-readable tables`), quick filters, shortcut CTA, dan navigasi cepat antar modul.
+- Form panjang/kompleks harus dipecah menjadi section yang jelas dengan aksi simpan/batal yang mudah dijangkau (sticky action jika perlu).
+- Selalu pertahankan brand palette skripsi (green/yellow) pada level token/theme, bukan hardcode warna per komponen.
+
+### Form Complexity Split (Admin CRUD)
+
+- Form kompleks/panjang wajib halaman terpisah: `Users`, `Courses`.
+- Form sederhana/pendek boleh tetap modal: `Categories`, `Vouchers`.
+- Jika kompleksitas naik (field bertambah, validasi bertingkat, dependensi data tinggi), migrasikan dari modal ke halaman terpisah.
 
 ---
 

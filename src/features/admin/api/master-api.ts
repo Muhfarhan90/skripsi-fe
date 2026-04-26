@@ -29,6 +29,44 @@ export interface AdminCourse {
   created_at: string;
 }
 
+export interface AdminCourseCurriculumLesson {
+  id: number;
+  section_id: number;
+  title: string;
+  description: string | null;
+  type: "video" | "file" | "quiz";
+  lesson_url: string | null;
+  duration: number;
+  sort_order: number;
+  is_preview: boolean;
+}
+
+export interface AdminCourseCurriculumSection {
+  id: number;
+  course_id: number;
+  title: string;
+  sort_order: number;
+  lessons: AdminCourseCurriculumLesson[];
+}
+
+export interface AdminCourseCurriculum {
+  id: number;
+  title: string;
+  slug: string;
+  description: string | null;
+  category_id: number;
+  instructor_id: number;
+  price: string | number;
+  discount_price: string | number | null;
+  thumbnail: string | null;
+  status: "draft" | "published" | "archived";
+  requirements: string | null;
+  outcomes: string | null;
+  sections: AdminCourseCurriculumSection[];
+  created_at: string | null;
+  updated_at: string | null;
+}
+
 export interface AdminVoucher {
   id: number;
   code: string;
@@ -89,6 +127,29 @@ export interface VoucherPayload {
   expired_at?: string | null;
 }
 
+export interface CourseCurriculumLessonPayload {
+  id?: number;
+  title: string;
+  description?: string | null;
+  type: "video" | "file" | "quiz";
+  lesson_url?: string | null;
+  duration?: number;
+  sort_order?: number;
+  is_preview?: boolean;
+}
+
+export interface CourseCurriculumSectionPayload {
+  id?: number;
+  title: string;
+  sort_order?: number;
+  lessons?: CourseCurriculumLessonPayload[];
+}
+
+export interface CourseCurriculumPayload {
+  course?: Partial<CoursePayload>;
+  sections?: CourseCurriculumSectionPayload[];
+}
+
 export interface UserPayload {
   role_id: number;
   fullname: string;
@@ -129,6 +190,12 @@ export function getAdminRoles() {
 
 export function getAdminUsers() {
   return apiRequest<AdminUser[]>("/api/admin/users", {
+    method: "GET",
+  });
+}
+
+export function getAdminUserById(id: number) {
+  return apiRequest<AdminUser>(`/api/admin/users/${id}`, {
     method: "GET",
   });
 }
@@ -185,6 +252,18 @@ export function getAdminCourses() {
   });
 }
 
+export function getAdminCourseById(id: number) {
+  return apiRequest<AdminCourse>(`/api/admin/courses/${id}`, {
+    method: "GET",
+  });
+}
+
+export function getAdminCourseCurriculum(id: number) {
+  return apiRequest<AdminCourseCurriculum>(`/api/admin/courses/${id}/curriculum`, {
+    method: "GET",
+  });
+}
+
 export function createAdminCourse(payload: CoursePayload) {
   return apiRequest<AdminCourse>("/api/admin/courses", {
     method: "POST",
@@ -196,6 +275,13 @@ export function updateAdminCourse(id: number, payload: CoursePayload) {
   return apiRequest<AdminCourse>(`/api/admin/courses/${id}`, {
     method: "PUT",
     body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function upsertAdminCourseCurriculum(id: number, payload: CourseCurriculumPayload) {
+  return apiRequest<AdminCourseCurriculum>(`/api/admin/courses/${id}/curriculum`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
   });
 }
 

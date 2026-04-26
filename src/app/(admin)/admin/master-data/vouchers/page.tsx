@@ -9,6 +9,8 @@ import { AdminModal } from "@/features/admin/components/admin-modal";
 import { StatusBadge } from "@/features/admin/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -408,21 +410,23 @@ export default function AdminVouchersPage() {
 
             <div className="space-y-1.5 md:col-span-2">
               <Label htmlFor="voucher-expired-at">Tanggal Expired</Label>
-              <Input
-                id="voucher-expired-at"
-                type="date"
+              <DatePicker
                 value={form.expired_at}
-                onChange={(event) => setForm((prev) => ({ ...prev, expired_at: event.target.value }))}
+                onChange={(value) => setForm((prev) => ({ ...prev, expired_at: value }))}
+                placeholder="Pilih tanggal expired"
                 className="border-[var(--admin-border)] bg-[var(--admin-surface)]"
               />
             </div>
           </div>
 
-          <label className="inline-flex items-center gap-2 rounded-md border border-[var(--admin-border)] bg-[var(--admin-surface-soft)] px-3 py-2 text-sm text-[var(--admin-foreground)]">
-            <input
-              type="checkbox"
+          <label
+            htmlFor="voucher-is-active"
+            className="inline-flex items-center gap-2 rounded-md border border-[var(--admin-border)] bg-[var(--admin-surface-soft)] px-3 py-2 text-sm text-[var(--admin-foreground)]"
+          >
+            <Checkbox
+              id="voucher-is-active"
               checked={form.is_active}
-              onChange={(event) => setForm((prev) => ({ ...prev, is_active: event.target.checked }))}
+              onCheckedChange={(checked) => setForm((prev) => ({ ...prev, is_active: checked }))}
             />
             Voucher aktif
           </label>

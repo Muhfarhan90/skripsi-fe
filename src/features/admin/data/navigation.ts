@@ -35,6 +35,15 @@ export interface AdminBreadcrumb {
   href?: string;
 }
 
+export interface AdminQuickNavigationItem {
+  label: string;
+  href: string;
+  description: string;
+  keywords: string[];
+}
+
+type AdminMasterEntity = "users" | "categories" | "courses" | "vouchers";
+
 const ADMIN_ICON_MAP: Record<AdminNavIcon, LucideIcon> = {
   dashboard: LayoutDashboard,
   users: Shapes,
@@ -43,6 +52,28 @@ const ADMIN_ICON_MAP: Record<AdminNavIcon, LucideIcon> = {
   vouchers: TicketPercent,
   transactions: ReceiptText,
 };
+
+const ADMIN_ENTITY_LABEL: Record<AdminMasterEntity, string> = {
+  users: "User",
+  categories: "Category",
+  courses: "Course",
+  vouchers: "Voucher",
+};
+
+const ADMIN_QUICK_ACTIONS: AdminQuickNavigationItem[] = [
+  {
+    label: "Buat User",
+    href: "/admin/master-data/users/new",
+    description: "Tambah akun user baru",
+    keywords: ["create", "user", "tambah", "akun"],
+  },
+  {
+    label: "Buat Course",
+    href: "/admin/master-data/courses/new",
+    description: "Tambah course baru",
+    keywords: ["create", "course", "kursus", "tambah"],
+  },
+];
 
 export const ADMIN_NAVIGATION: AdminNavigationGroup[] = [
   {
@@ -107,12 +138,29 @@ export const ADMIN_NAVIGATION: AdminNavigationGroup[] = [
   },
 ];
 
+interface AdminDynamicRouteMeta {
+  entityHref: string;
+  entityLabel: string;
+  title: string;
+}
+
 export function resolveAdminIcon(icon: AdminNavIcon): LucideIcon {
   return ADMIN_ICON_MAP[icon];
 }
 
 export function flattenAdminNavigationItems(): AdminNavigationItem[] {
   return ADMIN_NAVIGATION.flatMap((group) => group.items);
+}
+
+export function getAdminQuickNavigationItems(): AdminQuickNavigationItem[] {
+  const baseItems = flattenAdminNavigationItems().map<AdminQuickNavigationItem>((item) => ({
+    label: item.label,
+    href: item.href,
+    description: item.description,
+    keywords: [item.label, item.description, item.key],
+  }));
+
+  return [...baseItems, ...ADMIN_QUICK_ACTIONS];
 }
 
 export function isAdminItemActive(pathname: string, href: string): boolean {
@@ -139,10 +187,55 @@ function getAdminRouteLabel(path: string): string | undefined {
   return flattenAdminNavigationItems().find((item) => item.href === path)?.label;
 }
 
+function isNumericIdSegment(segment: string): boolean {
+  return /^\d+$/.test(segment);
+}
+
+// Normalize dynamic admin forms so title/breadcrumb stays human-readable.
+function resolveAdminDynamicRoute(pathname: string): AdminDynamicRouteMeta | undefined {
+  const segments = pathname.replace(/^\/admin\/?/, "").split("/").filter(Boolean);
+
+  if (segments.length < 3 || segments[0] !== "master-data") {
+    return undefined;
+  }
+
+  const entity = segments[1] as AdminMasterEntity;
+  const entityLabel = ADMIN_ENTITY_LABEL[entity];
+  if (!entityLabel) {
+    return undefined;
+  }
+
+  const entityHref = `/admin/master-data/${entity}`;
+  const entityNavLabel = getAdminRouteLabel(entityHref) ?? fallbackSegmentLabel(entity);
+
+  if (segments.length === 3 && segments[2] === "new") {
+    return {
+      entityHref,
+      entityLabel: entityNavLabel,
+      title: `Buat ${entityLabel}`,
+    };
+  }
+
+  if (segments.length === 4 && isNumericIdSegment(segments[2]) && segments[3] === "edit") {
+    return {
+      entityHref,
+      entityLabel: entityNavLabel,
+      title: `Edit ${entityLabel}`,
+    };
+  }
+
+  return undefined;
+}
+
 export function getAdminPageTitle(pathname: string): string {
   const routeLabel = getAdminRouteLabel(pathname);
   if (routeLabel) {
     return routeLabel;
+  }
+
+  const dynamicRoute = resolveAdminDynamicRoute(pathname);
+  if (dynamicRoute) {
+    return dynamicRoute.title;
   }
 
   const segments = pathname.replace(/^\/admin\/?/, "").split("/").filter(Boolean);
@@ -156,6 +249,15 @@ export function getAdminPageTitle(pathname: string): string {
 export function getAdminBreadcrumbs(pathname: string): AdminBreadcrumb[] {
   if (pathname === "/admin") {
     return [{ label: "Dashboard" }];
+  }
+
+  const dynamicRoute = resolveAdminDynamicRoute(pathname);
+  if (dynamicRoute) {
+    return [
+      { label: "Dashboard", href: "/admin" },
+      { label: dynamicRoute.entityLabel, href: dynamicRoute.entityHref },
+      { label: dynamicRoute.title },
+    ];
   }
 
   const breadcrumbs: AdminBreadcrumb[] = [{ label: "Dashboard", href: "/admin" }];

@@ -18,20 +18,25 @@ function resolveTargetPath(pathSegments: string[] | undefined): string | null {
     return null;
   }
 
-  const [resource, maybeId] = pathSegments;
+  const [resource, maybeId, action] = pathSegments;
   if (!ALLOWED_ADMIN_RESOURCES.has(resource)) {
     return null;
   }
 
-  if (pathSegments.length > 2) {
-    return null;
-  }
-
-  if (!maybeId) {
+  if (pathSegments.length === 1) {
     return `/admin/${resource}`;
   }
 
-  return `/admin/${resource}/${maybeId}`;
+  if (pathSegments.length === 2 && maybeId) {
+    return `/admin/${resource}/${maybeId}`;
+  }
+
+  // Allow selected nested actions for admin resources (strictly scoped).
+  if (resource === "courses" && pathSegments.length === 3 && maybeId && action === "curriculum") {
+    return `/admin/courses/${maybeId}/curriculum`;
+  }
+
+  return null;
 }
 
 async function proxyAdminRequest(
