@@ -45,18 +45,18 @@ export function DataTableCard({ data }: DataTableCardProps) {
   }, [data.columns, data.rows, data.statusKey, searchKeyword, selectedStatus]);
 
   return (
-    <Card className="border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-sm">
-      <CardHeader className="space-y-3 border-b border-[var(--admin-border)] pb-4">
+    <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
+      <CardHeader className="space-y-3 border-b border-[var(--border)] pb-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <CardTitle className="text-base font-semibold text-[var(--admin-foreground)]">{data.title}</CardTitle>
-            <p className="text-sm text-[var(--admin-muted-foreground)]">{data.subtitle}</p>
+            <CardTitle className="text-base font-semibold text-[var(--foreground)]">{data.title}</CardTitle>
+            <p className="text-sm text-[var(--muted-foreground)]">{data.subtitle}</p>
           </div>
 
           {data.actionLabel ? (
             <button
               type="button"
-              className="inline-flex h-9 items-center gap-1.5 rounded-md bg-[var(--admin-brand)] px-3 text-sm font-medium text-white transition hover:opacity-90"
+              className="inline-flex h-9 items-center gap-1.5 rounded-md bg-[var(--primary)] px-3 text-sm font-medium text-[var(--primary-foreground)] transition hover:brightness-95"
             >
               <Plus className="size-4" />
               {data.actionLabel}
@@ -66,12 +66,12 @@ export function DataTableCard({ data }: DataTableCardProps) {
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_220px]">
           <div className="relative">
-            <Search className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-[var(--admin-muted-foreground)]" />
+            <Search className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-[var(--muted-foreground)]" />
             <Input
               value={searchKeyword}
               onChange={(event) => setSearchKeyword(event.target.value)}
               placeholder={data.searchPlaceholder}
-              className="h-9 border-[var(--admin-border)] bg-[var(--admin-surface-soft)] pl-9 text-[var(--admin-foreground)] placeholder:text-[var(--admin-muted-foreground)]"
+              className="h-9 border-[var(--border)] bg-[var(--surface-soft)] pl-9 text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]"
             />
           </div>
 
@@ -80,7 +80,7 @@ export function DataTableCard({ data }: DataTableCardProps) {
               value={selectedStatus}
               onValueChange={(value) => setSelectedStatus(value ?? "all")}
             >
-              <SelectTrigger className="h-9 w-full border-[var(--admin-border)] bg-[var(--admin-surface-soft)] text-[var(--admin-foreground)]">
+              <SelectTrigger className="h-9 w-full border-[var(--border)] bg-[var(--surface-soft)] text-[var(--foreground)]">
                 <SelectValue placeholder="Filter status" />
               </SelectTrigger>
               <SelectContent>
@@ -97,26 +97,26 @@ export function DataTableCard({ data }: DataTableCardProps) {
       </CardHeader>
 
       <CardContent className="pt-4">
-        <div className="overflow-x-auto rounded-lg border border-[var(--admin-border)]">
-          <table className="min-w-full divide-y divide-[var(--admin-border)]">
-            <thead className="bg-[var(--admin-surface-soft)]">
+        <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
+          <table className="min-w-full divide-y divide-[var(--border)]">
+            <thead className="bg-[var(--muted)]">
               <tr>
                 {data.columns.map((column) => (
                   <th
                     key={column.key}
-                    className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--admin-muted-foreground)] uppercase"
+                    className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase"
                   >
                     {column.label}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-[var(--admin-border)] bg-[var(--admin-surface)]">
+            <tbody className="divide-y divide-[var(--border)] bg-[var(--card)]">
               {filteredRows.length > 0 ? (
                 filteredRows.map((row) => (
-                  <tr key={row.id} className="hover:bg-[var(--admin-surface-soft)]">
+                  <tr key={row.id} className="hover:bg-[var(--surface-hover)]">
                     {data.columns.map((column) => (
-                      <td key={`${row.id}-${column.key}`} className="px-4 py-3 text-sm text-[var(--admin-foreground)]">
+                      <td key={`${row.id}-${column.key}`} className="px-4 py-3 text-sm text-[var(--foreground)]">
                         {column.key === data.statusKey ? <StatusBadge value={row[column.key]} /> : row[column.key]}
                       </td>
                     ))}
@@ -124,7 +124,7 @@ export function DataTableCard({ data }: DataTableCardProps) {
                 ))
               ) : (
                 <tr>
-                  <td className="px-4 py-6 text-center text-sm text-[var(--admin-muted-foreground)]" colSpan={data.columns.length}>
+                  <td className="px-4 py-6 text-center text-sm text-[var(--muted-foreground)]" colSpan={data.columns.length}>
                     Data tidak ditemukan berdasarkan filter saat ini.
                   </td>
                 </tr>
@@ -136,3 +136,4 @@ export function DataTableCard({ data }: DataTableCardProps) {
     </Card>
   );
 }
+

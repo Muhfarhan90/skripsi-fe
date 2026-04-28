@@ -245,8 +245,8 @@ export function AdminUserFormPage({ mode, userId }: AdminUserFormPageProps) {
     return (
       <section className="space-y-5">
         <AdminPageHeader title="Edit User" description="Memuat detail user..." />
-        <Card className="border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-sm">
-          <CardContent className="flex items-center gap-2 p-5 text-sm text-[var(--admin-muted-foreground)]">
+        <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
+          <CardContent className="flex items-center gap-2 p-5 text-sm text-[var(--muted-foreground)]">
             <Loader2 className="size-4 animate-spin" />
             Memuat data user...
           </CardContent>
@@ -262,9 +262,9 @@ export function AdminUserFormPage({ mode, userId }: AdminUserFormPageProps) {
           title="Edit User"
           description="Data user tidak dapat dimuat. Coba kembali ke daftar user."
         />
-        <Card className="border border-red-200 bg-red-50 shadow-sm">
+        <Card className="border border-[var(--danger-soft-border)] bg-[var(--danger-soft-bg)] shadow-sm">
           <CardContent className="space-y-3 p-5">
-            <p className="text-sm text-red-700">Gagal memuat data user untuk proses edit.</p>
+            <p className="text-sm text-[var(--danger-soft-foreground)]">Gagal memuat data user untuk proses edit.</p>
             <Button type="button" variant="outline" onClick={() => router.push("/admin/master-data/users")}>
               <ArrowLeft className="size-4" />
               <span>Kembali ke daftar user</span>
@@ -282,14 +282,14 @@ export function AdminUserFormPage({ mode, userId }: AdminUserFormPageProps) {
         description="Form terpisah untuk mempercepat input data user dalam jumlah besar."
       />
 
-      <Card className="border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-sm">
-        <CardHeader className="border-b border-[var(--admin-border)] p-5">
+      <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
+        <CardHeader className="border-b border-[var(--border)] p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <CardTitle className="text-base font-semibold text-[var(--admin-foreground)]">
+              <CardTitle className="text-base font-semibold text-[var(--foreground)]">
                 {isEditing ? "Perbarui Data User" : "Tambah Data User Baru"}
               </CardTitle>
-              <p className="mt-1 text-sm text-[var(--admin-muted-foreground)]">
+              <p className="mt-1 text-sm text-[var(--muted-foreground)]">
                 Lengkapi data akun, profil, dan status akses user.
               </p>
             </div>
@@ -303,23 +303,23 @@ export function AdminUserFormPage({ mode, userId }: AdminUserFormPageProps) {
 
         <CardContent className="space-y-6 p-5">
           {formErrors.form ? (
-            <div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <div className="flex items-start gap-2 rounded-md border border-[var(--danger-soft-border)] bg-[var(--danger-soft-bg)] px-3 py-2 text-sm text-[var(--danger-soft-foreground)]">
               <AlertTriangle className="mt-0.5 size-4 shrink-0" />
               <span>{formErrors.form}</span>
             </div>
           ) : null}
 
-          <section className="space-y-4 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface-soft)] p-4">
-            <h3 className="text-sm font-semibold text-[var(--admin-foreground)]">Akses & Identitas</h3>
+          <section className="space-y-4 rounded-lg border border-[var(--border)] bg-[var(--muted)] p-4">
+            <h3 className="text-sm font-semibold text-[var(--foreground)]">Akses & Identitas</h3>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>Role</Label>
                 <Select
-                  value={form.role_id || undefined}
+                  value={form.role_id}
                   onValueChange={(value) => setForm((prev) => ({ ...prev, role_id: value ?? "" }))}
                 >
-                  <SelectTrigger className="h-9 w-full border-[var(--admin-border)] bg-[var(--admin-surface)]">
+                  <SelectTrigger className="h-9 w-full border-[var(--border)] bg-[var(--card)]">
                     <SelectValue placeholder="Pilih role">{selectedRoleLabel}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
@@ -339,7 +339,7 @@ export function AdminUserFormPage({ mode, userId }: AdminUserFormPageProps) {
                   id="user-fullname"
                   value={form.fullname}
                   onChange={(event) => setForm((prev) => ({ ...prev, fullname: event.target.value }))}
-                  className="border-[var(--admin-border)] bg-[var(--admin-surface)]"
+                  className="border-[var(--border)] bg-[var(--card)]"
                 />
                 {formErrors.fullname ? <p className="text-xs text-red-600">{formErrors.fullname}</p> : null}
               </div>
@@ -351,7 +351,7 @@ export function AdminUserFormPage({ mode, userId }: AdminUserFormPageProps) {
                   type="email"
                   value={form.email}
                   onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
-                  className="border-[var(--admin-border)] bg-[var(--admin-surface)]"
+                  className="border-[var(--border)] bg-[var(--card)]"
                 />
                 {formErrors.email ? <p className="text-xs text-red-600">{formErrors.email}</p> : null}
               </div>
@@ -362,7 +362,7 @@ export function AdminUserFormPage({ mode, userId }: AdminUserFormPageProps) {
                   id="user-nisn"
                   value={form.nisn}
                   onChange={(event) => setForm((prev) => ({ ...prev, nisn: event.target.value }))}
-                  className="border-[var(--admin-border)] bg-[var(--admin-surface)]"
+                  className="border-[var(--border)] bg-[var(--card)]"
                 />
               </div>
 
@@ -373,7 +373,7 @@ export function AdminUserFormPage({ mode, userId }: AdminUserFormPageProps) {
                   type="password"
                   value={form.password}
                   onChange={(event) => setForm((prev) => ({ ...prev, password: event.target.value }))}
-                  className="border-[var(--admin-border)] bg-[var(--admin-surface)]"
+                  className="border-[var(--border)] bg-[var(--card)]"
                 />
                 {formErrors.password ? <p className="text-xs text-red-600">{formErrors.password}</p> : null}
               </div>
@@ -385,7 +385,7 @@ export function AdminUserFormPage({ mode, userId }: AdminUserFormPageProps) {
                   type="password"
                   value={form.password_confirmation}
                   onChange={(event) => setForm((prev) => ({ ...prev, password_confirmation: event.target.value }))}
-                  className="border-[var(--admin-border)] bg-[var(--admin-surface)]"
+                  className="border-[var(--border)] bg-[var(--card)]"
                 />
                 {formErrors.password_confirmation ? (
                   <p className="text-xs text-red-600">{formErrors.password_confirmation}</p>
@@ -394,8 +394,8 @@ export function AdminUserFormPage({ mode, userId }: AdminUserFormPageProps) {
             </div>
           </section>
 
-          <section className="space-y-4 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface-soft)] p-4">
-            <h3 className="text-sm font-semibold text-[var(--admin-foreground)]">Profil Akademik</h3>
+          <section className="space-y-4 rounded-lg border border-[var(--border)] bg-[var(--muted)] p-4">
+            <h3 className="text-sm font-semibold text-[var(--foreground)]">Profil Akademik</h3>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-1.5">
@@ -404,7 +404,7 @@ export function AdminUserFormPage({ mode, userId }: AdminUserFormPageProps) {
                   id="user-phone"
                   value={form.phone}
                   onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))}
-                  className="border-[var(--admin-border)] bg-[var(--admin-surface)]"
+                  className="border-[var(--border)] bg-[var(--card)]"
                 />
               </div>
 
@@ -414,7 +414,7 @@ export function AdminUserFormPage({ mode, userId }: AdminUserFormPageProps) {
                   id="user-school"
                   value={form.school_origin}
                   onChange={(event) => setForm((prev) => ({ ...prev, school_origin: event.target.value }))}
-                  className="border-[var(--admin-border)] bg-[var(--admin-surface)]"
+                  className="border-[var(--border)] bg-[var(--card)]"
                 />
               </div>
 
@@ -429,7 +429,7 @@ export function AdminUserFormPage({ mode, userId }: AdminUserFormPageProps) {
                     }))
                   }
                 >
-                  <SelectTrigger className="h-9 w-full border-[var(--admin-border)] bg-[var(--admin-surface)]">
+                  <SelectTrigger className="h-9 w-full border-[var(--border)] bg-[var(--card)]">
                     <SelectValue placeholder="Pilih gender" />
                   </SelectTrigger>
                   <SelectContent>
@@ -446,7 +446,7 @@ export function AdminUserFormPage({ mode, userId }: AdminUserFormPageProps) {
                   value={form.date_of_birth}
                   onChange={(value) => setForm((prev) => ({ ...prev, date_of_birth: value }))}
                   placeholder="Pilih tanggal lahir"
-                  className="border-[var(--admin-border)] bg-[var(--admin-surface)]"
+                  className="border-[var(--border)] bg-[var(--card)]"
                 />
               </div>
 
@@ -456,7 +456,7 @@ export function AdminUserFormPage({ mode, userId }: AdminUserFormPageProps) {
                   id="user-address"
                   value={form.address}
                   onChange={(event) => setForm((prev) => ({ ...prev, address: event.target.value }))}
-                  className="border-[var(--admin-border)] bg-[var(--admin-surface)]"
+                  className="border-[var(--border)] bg-[var(--card)]"
                 />
               </div>
 
@@ -467,7 +467,7 @@ export function AdminUserFormPage({ mode, userId }: AdminUserFormPageProps) {
                   rows={3}
                   value={form.bio}
                   onChange={(event) => setForm((prev) => ({ ...prev, bio: event.target.value }))}
-                  className="border-[var(--admin-border)] bg-[var(--admin-surface)]"
+                  className="border-[var(--border)] bg-[var(--card)]"
                 />
               </div>
             </div>
@@ -475,7 +475,7 @@ export function AdminUserFormPage({ mode, userId }: AdminUserFormPageProps) {
 
           <label
             htmlFor="user-is-active"
-            className="inline-flex items-center gap-2 rounded-md border border-[var(--admin-border)] bg-[var(--admin-surface-soft)] px-3 py-2 text-sm text-[var(--admin-foreground)]"
+            className="inline-flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--muted)] px-3 py-2 text-sm text-[var(--foreground)]"
           >
             <Checkbox
               id="user-is-active"
@@ -488,7 +488,7 @@ export function AdminUserFormPage({ mode, userId }: AdminUserFormPageProps) {
       </Card>
 
       <div className="sticky bottom-4 z-20">
-        <div className="flex items-center justify-end gap-2 rounded-md border border-[var(--admin-border)] bg-[var(--admin-surface)] p-3 shadow-lg">
+        <div className="flex items-center justify-end gap-2 rounded-md border border-[var(--border)] bg-[var(--card)] p-3 shadow-lg">
           <Button type="button" variant="outline" onClick={handleCancel} disabled={saveMutation.isPending}>
             Batal
           </Button>
@@ -496,7 +496,7 @@ export function AdminUserFormPage({ mode, userId }: AdminUserFormPageProps) {
             type="button"
             onClick={handleSave}
             disabled={saveMutation.isPending}
-            className="bg-[var(--admin-brand)] text-white hover:opacity-90"
+            className="bg-[var(--primary)] text-[var(--primary-foreground)] hover:brightness-95"
           >
             {saveMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
             <span>{isEditing ? "Simpan Perubahan" : "Simpan User"}</span>
@@ -506,3 +506,4 @@ export function AdminUserFormPage({ mode, userId }: AdminUserFormPageProps) {
     </section>
   );
 }
+

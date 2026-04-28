@@ -26,20 +26,20 @@ interface SidebarMenuProps {
 function SidebarMenu({ pathname, collapsed, isMobile, onNavigate }: SidebarMenuProps) {
   return (
     <div className="flex h-full flex-col">
-      <header className={cn("flex h-[74px] items-center border-b border-[var(--admin-sidebar-border)]", collapsed ? "justify-center px-2" : "justify-between px-4")}>
+      <header className={cn("flex h-[74px] items-center border-b border-[var(--border)]", collapsed ? "justify-center px-2" : "justify-between px-4")}>
         <Link
           href="/admin"
           onClick={onNavigate}
           className={cn("flex items-center gap-3", collapsed && !isMobile ? "justify-center" : "justify-start")}
           title={collapsed && !isMobile ? "Dashboard Admin" : undefined}
         >
-          <span className="inline-flex size-9 items-center justify-center rounded-lg bg-[var(--admin-brand)] text-sm font-bold text-white shadow-sm">
+          <span className="inline-flex size-9 items-center justify-center rounded-lg bg-[var(--secondary)] text-sm font-bold text-[var(--secondary-foreground)] shadow-sm">
             LMS
           </span>
           {collapsed && !isMobile ? null : (
             <span className="space-y-0.5">
-              <span className="block text-sm font-semibold text-[var(--admin-sidebar-heading)]">Admin Panel</span>
-              <span className="block text-xs text-[var(--admin-sidebar-muted)]">Skripsi LMS</span>
+              <span className="block text-sm font-semibold text-[var(--primary-foreground)]">Admin Panel</span>
+              <span className="block text-xs text-[var(--primary-foreground)]">Skripsi LMS</span>
             </span>
           )}
         </Link>
@@ -48,7 +48,7 @@ function SidebarMenu({ pathname, collapsed, isMobile, onNavigate }: SidebarMenuP
           <button
             type="button"
             onClick={onNavigate}
-            className="inline-flex size-9 items-center justify-center rounded-md text-[var(--admin-sidebar-muted)] transition hover:bg-white/10 hover:text-[var(--admin-sidebar-heading)]"
+            className="inline-flex size-9 items-center justify-center rounded-md text-[var(--primary-foreground)] transition hover:bg-[var(--sidebar-hover)]"
             aria-label="Tutup sidebar"
           >
             <X className="size-4" />
@@ -60,9 +60,9 @@ function SidebarMenu({ pathname, collapsed, isMobile, onNavigate }: SidebarMenuP
         {ADMIN_NAVIGATION.map((group) => (
           <section key={group.key} className="mb-5">
             {collapsed && !isMobile ? (
-              <div className="my-3 border-t border-[var(--admin-sidebar-border)]" />
+              <div className="my-3 border-t border-[var(--border)]" />
             ) : (
-              <p className="mb-2 px-2 text-[11px] font-semibold tracking-[0.08em] text-[var(--admin-sidebar-muted)] uppercase">
+              <p className="mb-2 px-2 text-[11px] font-semibold tracking-[0.08em] text-[var(--primary-foreground)] uppercase">
                 {group.title}
               </p>
             )}
@@ -83,8 +83,8 @@ function SidebarMenu({ pathname, collapsed, isMobile, onNavigate }: SidebarMenuP
                       "group relative flex items-center rounded-lg transition",
                       collapsed && !isMobile ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-2.5",
                       isActive
-                        ? "bg-[var(--admin-sidebar-active-bg)] text-[var(--admin-sidebar-active-text)] shadow-sm"
-                        : "text-[var(--admin-sidebar-foreground)] hover:bg-white/10 hover:text-[var(--admin-sidebar-heading)]",
+                        ? "bg-[var(--secondary)] text-[var(--secondary-foreground)] shadow-sm"
+                        : "text-[var(--primary-foreground)] hover:bg-[var(--sidebar-hover)]",
                     )}
                   >
                     <Icon className={cn("shrink-0", collapsed && !isMobile ? "size-5" : "size-4")} />
@@ -92,7 +92,14 @@ function SidebarMenu({ pathname, collapsed, isMobile, onNavigate }: SidebarMenuP
                     {collapsed && !isMobile ? null : (
                       <span className="min-w-0">
                         <span className="block truncate text-sm font-medium">{item.label}</span>
-                        <span className={cn("block truncate text-xs", isActive ? "text-white/80" : "text-[var(--admin-sidebar-muted)]")}>
+                        <span
+                          className={cn(
+                            "block truncate text-xs",
+                            isActive
+                              ? "text-[var(--secondary-foreground)] opacity-80"
+                              : "text-[var(--sidebar-muted-foreground)] group-hover:text-[var(--primary-foreground)]",
+                          )}
+                        >
                           {item.description}
                         </span>
                       </span>
@@ -118,7 +125,7 @@ export function AdminSidebar({
     <>
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 hidden border-r border-[var(--admin-sidebar-border)] bg-[var(--admin-sidebar-bg)] text-[var(--admin-sidebar-foreground)] transition-all duration-300 lg:block",
+          "fixed inset-y-0 left-0 z-40 hidden border-r border-[var(--border)] bg-[var(--primary)] text-[var(--primary-foreground)] transition-all duration-300 lg:block",
           collapsed ? "w-[92px]" : "w-[280px]",
         )}
       >
@@ -135,7 +142,7 @@ export function AdminSidebar({
       />
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-[60] w-[280px] border-r border-[var(--admin-sidebar-border)] bg-[var(--admin-sidebar-bg)] text-[var(--admin-sidebar-foreground)] transition-transform duration-300 lg:hidden",
+          "fixed inset-y-0 left-0 z-[60] w-[280px] border-r border-[var(--border)] bg-[var(--primary)] text-[var(--primary-foreground)] transition-transform duration-300 lg:hidden",
           mobileOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
@@ -149,3 +156,4 @@ export function AdminSidebar({
     </>
   );
 }
+

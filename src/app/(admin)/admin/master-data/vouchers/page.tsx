@@ -194,17 +194,17 @@ export default function AdminVouchersPage() {
         description="Atur voucher promo untuk skenario diskon pada proses transaksi."
       />
 
-      <Card className="border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-sm">
-        <CardHeader className="space-y-4 border-b border-[var(--admin-border)] p-5">
+      <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
+        <CardHeader className="space-y-4 border-b border-[var(--border)] p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <CardTitle className="text-base font-semibold text-[var(--admin-foreground)]">
+              <CardTitle className="text-base font-semibold text-[var(--foreground)]">
                 Daftar Vouchers
               </CardTitle>
-              <p className="mt-1 text-sm text-[var(--admin-muted-foreground)]">
+              <p className="mt-1 text-sm text-[var(--muted-foreground)]">
                 Kelola voucher aktif/nonaktif beserta parameter diskon.
               </p>
-              <span className="mt-2 inline-flex rounded-md border border-[var(--admin-border)] bg-[var(--admin-surface-soft)] px-2 py-0.5 text-xs font-medium text-[var(--admin-muted-foreground)]">
+              <span className="mt-2 inline-flex rounded-md border border-[var(--border)] bg-[var(--muted)] px-2 py-0.5 text-xs font-medium text-[var(--muted-foreground)]">
                 {filteredVouchers.length} data
               </span>
             </div>
@@ -213,7 +213,7 @@ export default function AdminVouchersPage() {
               type="button"
               onClick={openCreateModal}
               size="lg"
-              className="h-10 bg-[var(--admin-brand)] px-4 text-white hover:opacity-90"
+              className="h-10 bg-[var(--primary)] px-4 text-[var(--primary-foreground)] hover:brightness-95"
             >
               <Plus className="size-4" />
               <span>Buat Voucher</span>
@@ -221,41 +221,41 @@ export default function AdminVouchersPage() {
           </div>
 
           <div className="relative w-full sm:max-w-xs">
-            <Search className="pointer-events-none absolute top-2.5 left-3 size-4 text-[var(--admin-muted-foreground)]" />
+            <Search className="pointer-events-none absolute top-2.5 left-3 size-4 text-[var(--muted-foreground)]" />
             <Input
               value={searchKeyword}
               onChange={(event) => setSearchKeyword(event.target.value)}
               placeholder="Cari voucher..."
-              className="h-9 border-[var(--admin-border)] bg-[var(--admin-surface-soft)] pl-9 text-[var(--admin-foreground)]"
+              className="h-9 border-[var(--border)] bg-[var(--surface-soft)] pl-9 text-[var(--foreground)]"
             />
           </div>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto rounded-b-2xl">
-            <table className="min-w-full divide-y divide-[var(--admin-border)]">
-              <thead className="bg-[var(--admin-surface-soft)]">
+            <table className="min-w-full divide-y divide-[var(--border)]">
+              <thead className="bg-[var(--muted)]">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--admin-muted-foreground)] uppercase">
+                  <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
                     Kode
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--admin-muted-foreground)] uppercase">
+                  <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
                     Diskon
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--admin-muted-foreground)] uppercase">
+                  <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
                     Batas Pakai
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--admin-muted-foreground)] uppercase">
+                  <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
                     Status
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold tracking-wide text-[var(--admin-muted-foreground)] uppercase">
+                  <th className="px-4 py-3 text-right text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
                     Aksi
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[var(--admin-border)]">
+              <tbody className="divide-y divide-[var(--border)]">
                 {voucherQuery.isLoading ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-6 text-center text-sm text-[var(--admin-muted-foreground)]">
+                    <td colSpan={5} className="px-4 py-6 text-center text-sm text-[var(--muted-foreground)]">
                       Memuat vouchers...
                     </td>
                   </tr>
@@ -267,12 +267,12 @@ export default function AdminVouchersPage() {
                   </tr>
                 ) : filteredVouchers.length > 0 ? (
                   filteredVouchers.map((voucher) => (
-                    <tr key={voucher.id} className="hover:bg-[var(--admin-surface-soft)]">
-                      <td className="px-4 py-3 text-sm font-medium text-[var(--admin-foreground)]">{voucher.code}</td>
-                      <td className="px-4 py-3 text-sm text-[var(--admin-muted-foreground)]">
+                    <tr key={voucher.id} className="hover:bg-[var(--surface-hover)]">
+                      <td className="px-4 py-3 text-sm font-medium text-[var(--foreground)]">{voucher.code}</td>
+                      <td className="px-4 py-3 text-sm text-[var(--muted-foreground)]">
                         {formatDiscount(voucher)}
                       </td>
-                      <td className="px-4 py-3 text-sm text-[var(--admin-muted-foreground)]">
+                      <td className="px-4 py-3 text-sm text-[var(--muted-foreground)]">
                         {voucher.usage_limit ?? "-"}
                       </td>
                       <td className="px-4 py-3 text-sm">
@@ -285,7 +285,7 @@ export default function AdminVouchersPage() {
                             variant="outline"
                             size="icon-sm"
                             onClick={() => onEdit(voucher)}
-                            className="border-[var(--admin-border)] bg-[var(--admin-surface)] text-[var(--admin-foreground)]"
+                            className="border-[var(--border)] bg-[var(--card)] text-[var(--foreground)]"
                             aria-label={`Edit ${voucher.code}`}
                           >
                             <Pencil className="size-4" />
@@ -299,7 +299,7 @@ export default function AdminVouchersPage() {
                                 deleteMutation.mutate(voucher.id);
                               }
                             }}
-                            className="border border-red-200 bg-red-50 text-red-600 hover:bg-red-100"
+                            className="border-[var(--danger-soft-border)] bg-[var(--danger-soft-bg)] text-[var(--danger-soft-foreground)] hover:opacity-90"
                             aria-label={`Hapus ${voucher.code}`}
                           >
                             <Trash2 className="size-4" />
@@ -310,7 +310,7 @@ export default function AdminVouchersPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={5} className="px-4 py-6 text-center text-sm text-[var(--admin-muted-foreground)]">
+                    <td colSpan={5} className="px-4 py-6 text-center text-sm text-[var(--muted-foreground)]">
                       Belum ada data vouchers.
                     </td>
                   </tr>
@@ -328,14 +328,14 @@ export default function AdminVouchersPage() {
         description="Atur parameter diskon dan status voucher."
       >
         <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface-soft)] p-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 rounded-lg border border-[var(--border)] bg-[var(--muted)] p-4 md:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="voucher-code">Kode</Label>
               <Input
                 id="voucher-code"
                 value={form.code}
                 onChange={(event) => setForm((prev) => ({ ...prev, code: event.target.value.toUpperCase() }))}
-                className="border-[var(--admin-border)] bg-[var(--admin-surface)]"
+                className="border-[var(--border)] bg-[var(--card)]"
               />
             </div>
 
@@ -350,7 +350,7 @@ export default function AdminVouchersPage() {
                   }))
                 }
               >
-                <SelectTrigger className="h-9 w-full border-[var(--admin-border)] bg-[var(--admin-surface)]">
+                <SelectTrigger className="h-9 w-full border-[var(--border)] bg-[var(--card)]">
                   <SelectValue placeholder="Pilih tipe diskon" />
                 </SelectTrigger>
                 <SelectContent>
@@ -368,7 +368,7 @@ export default function AdminVouchersPage() {
                 min={0}
                 value={form.discount_amount}
                 onChange={(event) => setForm((prev) => ({ ...prev, discount_amount: event.target.value }))}
-                className="border-[var(--admin-border)] bg-[var(--admin-surface)]"
+                className="border-[var(--border)] bg-[var(--card)]"
               />
             </div>
 
@@ -380,7 +380,7 @@ export default function AdminVouchersPage() {
                 min={0}
                 value={form.min_purchase}
                 onChange={(event) => setForm((prev) => ({ ...prev, min_purchase: event.target.value }))}
-                className="border-[var(--admin-border)] bg-[var(--admin-surface)]"
+                className="border-[var(--border)] bg-[var(--card)]"
               />
             </div>
 
@@ -392,7 +392,7 @@ export default function AdminVouchersPage() {
                 min={0}
                 value={form.max_discount}
                 onChange={(event) => setForm((prev) => ({ ...prev, max_discount: event.target.value }))}
-                className="border-[var(--admin-border)] bg-[var(--admin-surface)]"
+                className="border-[var(--border)] bg-[var(--card)]"
               />
             </div>
 
@@ -404,7 +404,7 @@ export default function AdminVouchersPage() {
                 min={1}
                 value={form.usage_limit}
                 onChange={(event) => setForm((prev) => ({ ...prev, usage_limit: event.target.value }))}
-                className="border-[var(--admin-border)] bg-[var(--admin-surface)]"
+                className="border-[var(--border)] bg-[var(--card)]"
               />
             </div>
 
@@ -414,14 +414,14 @@ export default function AdminVouchersPage() {
                 value={form.expired_at}
                 onChange={(value) => setForm((prev) => ({ ...prev, expired_at: value }))}
                 placeholder="Pilih tanggal expired"
-                className="border-[var(--admin-border)] bg-[var(--admin-surface)]"
+                className="border-[var(--border)] bg-[var(--card)]"
               />
             </div>
           </div>
 
           <label
             htmlFor="voucher-is-active"
-            className="inline-flex items-center gap-2 rounded-md border border-[var(--admin-border)] bg-[var(--admin-surface-soft)] px-3 py-2 text-sm text-[var(--admin-foreground)]"
+            className="inline-flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--muted)] px-3 py-2 text-sm text-[var(--foreground)]"
           >
             <Checkbox
               id="voucher-is-active"
@@ -431,7 +431,7 @@ export default function AdminVouchersPage() {
             Voucher aktif
           </label>
 
-          <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--admin-border)] pt-3">
+          <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--border)] pt-3">
             <Button type="button" variant="outline" onClick={closeModal} disabled={saveMutation.isPending}>
               Batal
             </Button>
@@ -439,7 +439,7 @@ export default function AdminVouchersPage() {
               type="button"
               onClick={() => saveMutation.mutate()}
               disabled={saveMutation.isPending}
-              className="bg-[var(--admin-brand)] text-white hover:opacity-90"
+              className="bg-[var(--primary)] text-[var(--primary-foreground)] hover:brightness-95"
             >
               {saveMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
               <span>{editingId ? "Simpan Perubahan" : "Simpan Voucher"}</span>
@@ -450,4 +450,5 @@ export default function AdminVouchersPage() {
     </section>
   );
 }
+
 

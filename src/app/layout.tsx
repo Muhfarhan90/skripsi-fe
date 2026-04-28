@@ -21,7 +21,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id" className={poppins.variable}>
+    <html lang="id" className={poppins.variable} suppressHydrationWarning>
       <body className="min-h-screen">
         <AppProviders>
           <AuthBootstrap />

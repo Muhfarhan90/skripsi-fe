@@ -14,7 +14,7 @@ function resolveStatusClass(value: string): string {
     normalized.includes("dibatalkan") ||
     normalized.includes("archived")
   ) {
-    return "border-red-200 bg-red-100 text-red-700";
+    return "border-red-200 bg-red-100 text-red-700 dark:border-red-500/40 dark:bg-red-500/20 dark:text-red-200";
   }
 
   if (
@@ -23,7 +23,7 @@ function resolveStatusClass(value: string): string {
     normalized.includes("published") ||
     normalized.includes("selesai")
   ) {
-    return "border-emerald-200 bg-emerald-100 text-emerald-700";
+    return "border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-500/20 dark:text-emerald-200";
   }
 
   if (
@@ -31,10 +31,10 @@ function resolveStatusClass(value: string): string {
     normalized.includes("waiting") ||
     normalized.includes("draft")
   ) {
-    return "border-amber-200 bg-amber-100 text-amber-700";
+    return "border-amber-200 bg-amber-100 text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/20 dark:text-amber-200";
   }
 
-  return "border-red-200 bg-red-100 text-red-700";
+  return "border-red-200 bg-red-100 text-red-700 dark:border-red-500/40 dark:bg-red-500/20 dark:text-red-200";
 }
 
 export function StatusBadge({ value }: StatusBadgeProps) {

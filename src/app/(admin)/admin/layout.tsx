@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getServerCurrentUser } from "@/features/auth/lib/server";
 import { getRoleBoundary } from "@/features/auth/lib/roles";
-import { AdminShell } from "@/features/admin/components/admin-shell";
+import { AdminLayoutClient } from "@/features/admin/components/admin-layout-client";
 
 export default async function AdminLayout({
   children,
@@ -19,5 +19,9 @@ export default async function AdminLayout({
     redirect(boundary === "student" ? "/student" : "/login");
   }
 
-  return <AdminShell fullName={user.fullname} email={user.email}>{children}</AdminShell>;
+  return (
+    <AdminLayoutClient fullName={user.fullname} email={user.email}>
+      {children}
+    </AdminLayoutClient>
+  );
 }

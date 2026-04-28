@@ -588,9 +588,9 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
     return (
       <section className="space-y-5">
         <AdminPageHeader title="Edit Course" description="ID course tidak valid." />
-        <Card className="border border-red-200 bg-red-50 shadow-sm">
+        <Card className="border border-[var(--danger-soft-border)] bg-[var(--danger-soft-bg)] shadow-sm">
           <CardContent className="space-y-3 p-5">
-            <p className="text-sm text-red-700">ID course tidak valid untuk proses edit.</p>
+            <p className="text-sm text-[var(--danger-soft-foreground)]">ID course tidak valid untuk proses edit.</p>
             <Button type="button" variant="outline" onClick={handleCancel}>
               <ArrowLeft className="size-4" />
               <span>Kembali ke daftar course</span>
@@ -605,8 +605,8 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
     return (
       <section className="space-y-5">
         <AdminPageHeader title="Edit Course" description="Memuat detail course dan kurikulum..." />
-        <Card className="border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-sm">
-          <CardContent className="flex items-center gap-2 p-5 text-sm text-[var(--admin-muted-foreground)]">
+        <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
+          <CardContent className="flex items-center gap-2 p-5 text-sm text-[var(--muted-foreground)]">
             <Loader2 className="size-4 animate-spin" />
             Memuat data course...
           </CardContent>
@@ -622,9 +622,9 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
           title="Edit Course"
           description="Data course tidak dapat dimuat. Coba kembali ke daftar course."
         />
-        <Card className="border border-red-200 bg-red-50 shadow-sm">
+        <Card className="border border-[var(--danger-soft-border)] bg-[var(--danger-soft-bg)] shadow-sm">
           <CardContent className="space-y-3 p-5">
-            <p className="text-sm text-red-700">Gagal memuat data course untuk proses edit.</p>
+            <p className="text-sm text-[var(--danger-soft-foreground)]">Gagal memuat data course untuk proses edit.</p>
             <Button type="button" variant="outline" onClick={handleCancel}>
               <ArrowLeft className="size-4" />
               <span>Kembali ke daftar course</span>
@@ -645,14 +645,14 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
         description="Isi data utama course sekaligus struktur section dan lesson dalam satu alur."
       />
 
-      <Card className="border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-sm">
-        <CardHeader className="border-b border-[var(--admin-border)] p-5">
+      <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
+        <CardHeader className="border-b border-[var(--border)] p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <CardTitle className="text-base font-semibold text-[var(--admin-foreground)]">
+              <CardTitle className="text-base font-semibold text-[var(--foreground)]">
                 {isEditing ? "Perbarui Course & Kurikulum" : "Tambah Course & Kurikulum"}
               </CardTitle>
-              <p className="mt-1 text-sm text-[var(--admin-muted-foreground)]">
+              <p className="mt-1 text-sm text-[var(--muted-foreground)]">
                 Satu halaman untuk metadata course, section, dan lesson.
               </p>
             </div>
@@ -666,24 +666,24 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
 
         <CardContent className="space-y-6 p-5">
           {getFieldError(FORM_ERROR_KEY) ? (
-            <div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <div className="flex items-start gap-2 rounded-md border border-[var(--danger-soft-border)] bg-[var(--danger-soft-bg)] px-3 py-2 text-sm text-[var(--danger-soft-foreground)]">
               <AlertTriangle className="mt-0.5 size-4 shrink-0" />
               <span>{getFieldError(FORM_ERROR_KEY)}</span>
             </div>
           ) : null}
 
-          <section className="space-y-4 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface-soft)] p-4">
-            <h3 className="text-sm font-semibold text-[var(--admin-foreground)]">Informasi Utama Course</h3>
+          <section className="space-y-4 rounded-lg border border-[var(--border)] bg-[var(--muted)] p-4">
+            <h3 className="text-sm font-semibold text-[var(--foreground)]">Informasi Utama Course</h3>
 
             {isReferenceLoading ? (
-              <div className="flex items-center gap-2 rounded-md border border-[var(--admin-border)] bg-[var(--admin-surface)] px-3 py-2 text-xs text-[var(--admin-muted-foreground)]">
+              <div className="flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-xs text-[var(--muted-foreground)]">
                 <Loader2 className="size-3.5 animate-spin" />
                 Memuat data kategori dan instructor...
               </div>
             ) : null}
 
             {isReferenceError ? (
-              <div className="flex items-center justify-between gap-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+              <div className="flex items-center justify-between gap-3 rounded-md border border-[var(--danger-soft-border)] bg-[var(--danger-soft-bg)] px-3 py-2 text-xs text-[var(--danger-soft-foreground)]">
                 <span className="inline-flex items-center gap-1.5">
                   <AlertTriangle className="size-3.5" />
                   Gagal memuat referensi kategori/instructor.
@@ -702,7 +702,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
                   id="course-title"
                   value={form.title}
                   onChange={(event) => updateField("title", event.target.value)}
-                  className="border-[var(--admin-border)] bg-[var(--admin-surface)]"
+                  className="border-[var(--border)] bg-[var(--card)]"
                 />
                 {getFieldError("title") ? <p className="text-xs text-red-600">{getFieldError("title")}</p> : null}
               </div>
@@ -710,11 +710,11 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
               <div className="space-y-1.5">
                 <Label>Kategori</Label>
                 <Select
-                  value={form.category_id || undefined}
+                  value={form.category_id}
                   onValueChange={(value) => updateField("category_id", value ?? "")}
                   disabled={isReferenceLoading || isReferenceError}
                 >
-                  <SelectTrigger className="h-9 w-full border-[var(--admin-border)] bg-[var(--admin-surface)]">
+                  <SelectTrigger className="h-9 w-full border-[var(--border)] bg-[var(--card)]">
                     <SelectValue placeholder="Pilih kategori">{selectedCategoryLabel}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
@@ -733,11 +733,11 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
               <div className="space-y-1.5">
                 <Label>Instructor</Label>
                 <Select
-                  value={form.instructor_id || undefined}
+                  value={form.instructor_id}
                   onValueChange={(value) => updateField("instructor_id", value ?? "")}
                   disabled={isReferenceLoading || isReferenceError}
                 >
-                  <SelectTrigger className="h-9 w-full border-[var(--admin-border)] bg-[var(--admin-surface)]">
+                  <SelectTrigger className="h-9 w-full border-[var(--border)] bg-[var(--card)]">
                     <SelectValue placeholder="Pilih instructor">{selectedInstructorLabel}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
@@ -761,7 +761,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
                   min={0}
                   value={form.price}
                   onChange={(event) => updateField("price", event.target.value)}
-                  className="border-[var(--admin-border)] bg-[var(--admin-surface)]"
+                  className="border-[var(--border)] bg-[var(--card)]"
                 />
                 {getFieldError("price") ? <p className="text-xs text-red-600">{getFieldError("price")}</p> : null}
               </div>
@@ -774,7 +774,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
                   min={0}
                   value={form.discount_price}
                   onChange={(event) => updateField("discount_price", event.target.value)}
-                  className="border-[var(--admin-border)] bg-[var(--admin-surface)]"
+                  className="border-[var(--border)] bg-[var(--card)]"
                 />
                 {getFieldError("discount_price") ? (
                   <p className="text-xs text-red-600">{getFieldError("discount_price")}</p>
@@ -784,7 +784,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
               <div className="space-y-1.5">
                 <Label>Status Publish</Label>
                 <Select value={form.status} onValueChange={(value) => updateField("status", value as CourseFormState["status"])}>
-                  <SelectTrigger className="h-9 w-full border-[var(--admin-border)] bg-[var(--admin-surface)]">
+                  <SelectTrigger className="h-9 w-full border-[var(--border)] bg-[var(--card)]">
                     <SelectValue placeholder="Pilih status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -802,7 +802,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
                   rows={3}
                   value={form.description}
                   onChange={(event) => updateField("description", event.target.value)}
-                  className="border-[var(--admin-border)] bg-[var(--admin-surface)]"
+                  className="border-[var(--border)] bg-[var(--card)]"
                 />
               </div>
 
@@ -813,7 +813,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
                   rows={3}
                   value={form.requirements}
                   onChange={(event) => updateField("requirements", event.target.value)}
-                  className="border-[var(--admin-border)] bg-[var(--admin-surface)]"
+                  className="border-[var(--border)] bg-[var(--card)]"
                 />
               </div>
 
@@ -824,41 +824,41 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
                   rows={3}
                   value={form.outcomes}
                   onChange={(event) => updateField("outcomes", event.target.value)}
-                  className="border-[var(--admin-border)] bg-[var(--admin-surface)]"
+                  className="border-[var(--border)] bg-[var(--card)]"
                 />
               </div>
             </div>
           </section>
 
-          <section className="space-y-4 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface-soft)] p-4">
+          <section className="space-y-4 rounded-lg border border-[var(--border)] bg-[var(--muted)] p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h3 className="text-sm font-semibold text-[var(--admin-foreground)]">Struktur Materi (Section & Lesson)</h3>
-              <Button type="button" onClick={addSection} className="bg-[var(--admin-brand)] text-white hover:opacity-90">
+              <h3 className="text-sm font-semibold text-[var(--foreground)]">Struktur Materi (Section & Lesson)</h3>
+              <Button type="button" onClick={addSection} className="bg-[var(--primary)] text-[var(--primary-foreground)] hover:brightness-95">
                 <Plus className="size-4" />
                 <span>Tambah Section</span>
               </Button>
             </div>
 
-            <p className="text-xs text-[var(--admin-muted-foreground)]">
+            <p className="text-xs text-[var(--muted-foreground)]">
               Urutan section dan lesson mengikuti posisi daftar dari atas ke bawah.
             </p>
 
             {form.sections.length === 0 ? (
-              <div className="rounded-md border border-dashed border-[var(--admin-border)] bg-[var(--admin-surface)] px-4 py-5 text-center text-sm text-[var(--admin-muted-foreground)]">
+              <div className="rounded-md border border-dashed border-[var(--border)] bg-[var(--card)] px-4 py-5 text-center text-sm text-[var(--muted-foreground)]">
                 Belum ada section. Klik <span className="font-medium">Tambah Section</span> untuk mulai menyusun materi.
               </div>
             ) : null}
 
             <div className="space-y-4">
               {form.sections.map((section, sectionIndex) => (
-                <div key={section.client_id} className="space-y-3 rounded-md border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4">
+                <div key={section.client_id} className="space-y-3 rounded-md border border-[var(--border)] bg-[var(--card)] p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-sm font-semibold text-[var(--admin-foreground)]">Section {sectionIndex + 1}</p>
+                    <p className="text-sm font-semibold text-[var(--foreground)]">Section {sectionIndex + 1}</p>
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="border-red-200 text-red-600 hover:bg-red-50"
+                      className="border-[var(--danger-soft-border)] bg-[var(--danger-soft-bg)] text-[var(--danger-soft-foreground)] hover:opacity-90"
                       onClick={() => removeSection(sectionIndex)}
                     >
                       <Trash2 className="size-4" />
@@ -872,16 +872,16 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
                       id={`section-title-${section.client_id}`}
                       value={section.title}
                       onChange={(event) => updateSectionTitle(sectionIndex, event.target.value)}
-                      className="border-[var(--admin-border)] bg-[var(--admin-surface)]"
+                      className="border-[var(--border)] bg-[var(--card)]"
                     />
                     {getFieldError(`sections.${sectionIndex}.title`) ? (
                       <p className="text-xs text-red-600">{getFieldError(`sections.${sectionIndex}.title`)}</p>
                     ) : null}
                   </div>
 
-                  <div className="space-y-3 rounded-md border border-[var(--admin-border)] bg-[var(--admin-surface-soft)] p-3">
+                  <div className="space-y-3 rounded-md border border-[var(--border)] bg-[var(--muted)] p-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-xs font-semibold tracking-wide text-[var(--admin-muted-foreground)] uppercase">
+                      <p className="text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
                         Lessons
                       </p>
                       <Button type="button" variant="outline" size="sm" onClick={() => addLesson(sectionIndex)}>
@@ -891,18 +891,18 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
                     </div>
 
                     {section.lessons.length === 0 ? (
-                      <p className="text-xs text-[var(--admin-muted-foreground)]">Belum ada lesson di section ini.</p>
+                      <p className="text-xs text-[var(--muted-foreground)]">Belum ada lesson di section ini.</p>
                     ) : null}
 
                     {section.lessons.map((lesson, lessonIndex) => (
-                      <div key={lesson.client_id} className="space-y-3 rounded-md border border-[var(--admin-border)] bg-[var(--admin-surface)] p-3">
+                      <div key={lesson.client_id} className="space-y-3 rounded-md border border-[var(--border)] bg-[var(--card)] p-3">
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                          <p className="text-sm font-medium text-[var(--admin-foreground)]">Lesson {lessonIndex + 1}</p>
+                          <p className="text-sm font-medium text-[var(--foreground)]">Lesson {lessonIndex + 1}</p>
                           <Button
                             type="button"
                             variant="outline"
                             size="sm"
-                            className="border-red-200 text-red-600 hover:bg-red-50"
+                            className="border-[var(--danger-soft-border)] bg-[var(--danger-soft-bg)] text-[var(--danger-soft-foreground)] hover:opacity-90"
                             onClick={() => removeLesson(sectionIndex, lessonIndex)}
                           >
                             <Trash2 className="size-4" />
@@ -917,7 +917,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
                               id={`lesson-title-${lesson.client_id}`}
                               value={lesson.title}
                               onChange={(event) => updateLessonField(sectionIndex, lessonIndex, "title", event.target.value)}
-                              className="border-[var(--admin-border)] bg-[var(--admin-surface)]"
+                              className="border-[var(--border)] bg-[var(--card)]"
                             />
                             {getFieldError(`sections.${sectionIndex}.lessons.${lessonIndex}.title`) ? (
                               <p className="text-xs text-red-600">
@@ -934,7 +934,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
                                 updateLessonField(sectionIndex, lessonIndex, "type", value as LessonType)
                               }
                             >
-                              <SelectTrigger className="h-9 w-full border-[var(--admin-border)] bg-[var(--admin-surface)]">
+                              <SelectTrigger className="h-9 w-full border-[var(--border)] bg-[var(--card)]">
                                 <SelectValue placeholder="Pilih tipe" />
                               </SelectTrigger>
                               <SelectContent>
@@ -958,7 +958,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
                               min={0}
                               value={lesson.duration}
                               onChange={(event) => updateLessonField(sectionIndex, lessonIndex, "duration", event.target.value)}
-                              className="border-[var(--admin-border)] bg-[var(--admin-surface)]"
+                              className="border-[var(--border)] bg-[var(--card)]"
                             />
                             {getFieldError(`sections.${sectionIndex}.lessons.${lessonIndex}.duration`) ? (
                               <p className="text-xs text-red-600">
@@ -976,7 +976,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
                                 updateLessonField(sectionIndex, lessonIndex, "lesson_url", event.target.value)
                               }
                               placeholder={lesson.type === "quiz" ? "Opsional untuk quiz" : "https://..."}
-                              className="border-[var(--admin-border)] bg-[var(--admin-surface)]"
+                              className="border-[var(--border)] bg-[var(--card)]"
                             />
                             {getFieldError(`sections.${sectionIndex}.lessons.${lessonIndex}.lesson_url`) ? (
                               <p className="text-xs text-red-600">
@@ -994,13 +994,13 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
                               onChange={(event) =>
                                 updateLessonField(sectionIndex, lessonIndex, "description", event.target.value)
                               }
-                              className="border-[var(--admin-border)] bg-[var(--admin-surface)]"
+                              className="border-[var(--border)] bg-[var(--card)]"
                             />
                           </div>
 
                           <label
                             htmlFor={`lesson-preview-${lesson.client_id}`}
-                            className="inline-flex items-center gap-2 rounded-md border border-[var(--admin-border)] bg-[var(--admin-surface-soft)] px-3 py-2 text-sm text-[var(--admin-foreground)] md:col-span-2"
+                            className="inline-flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--muted)] px-3 py-2 text-sm text-[var(--foreground)] md:col-span-2"
                           >
                             <Checkbox
                               id={`lesson-preview-${lesson.client_id}`}
@@ -1023,7 +1023,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
       </Card>
 
       <div className="sticky bottom-4 z-20">
-        <div className="flex items-center justify-end gap-2 rounded-md border border-[var(--admin-border)] bg-[var(--admin-surface)] p-3 shadow-lg">
+        <div className="flex items-center justify-end gap-2 rounded-md border border-[var(--border)] bg-[var(--card)] p-3 shadow-lg">
           <Button type="button" variant="outline" onClick={handleCancel} disabled={saveMutation.isPending}>
             Batal
           </Button>
@@ -1031,7 +1031,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
             type="button"
             onClick={handleSave}
             disabled={saveMutation.isPending}
-            className="bg-[var(--admin-brand)] text-white hover:opacity-90"
+            className="bg-[var(--primary)] text-[var(--primary-foreground)] hover:brightness-95"
           >
             {saveMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
             <span>{isEditing ? "Simpan Perubahan" : "Simpan Course"}</span>
@@ -1041,3 +1041,4 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
     </section>
   );
 }
+

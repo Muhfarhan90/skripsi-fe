@@ -18,13 +18,13 @@ export default function AdminTransactionsPage() {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {transactionHighlightCards.map((card) => (
-          <Card key={card.title} className="border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-sm">
+          <Card key={card.title} className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-[var(--admin-muted-foreground)]">{card.title}</CardTitle>
+              <CardTitle className="text-sm font-medium text-[var(--muted-foreground)]">{card.title}</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-semibold text-[var(--admin-foreground)]">{card.value}</p>
-              <p className="text-xs text-[var(--admin-muted-foreground)]">{card.note}</p>
+              <p className="text-2xl font-semibold text-[var(--foreground)]">{card.value}</p>
+              <p className="text-xs text-[var(--muted-foreground)]">{card.note}</p>
             </CardContent>
           </Card>
         ))}
@@ -36,3 +36,4 @@ export default function AdminTransactionsPage() {
     </section>
   );
 }
+

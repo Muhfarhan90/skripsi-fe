@@ -18,7 +18,7 @@ export default function RootPage() {
   const dashboardHref = getDefaultPathByRole(user?.role_id);
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-[#f3faf7] via-white to-[#fff8dd]">
+    <main className="min-h-screen bg-background">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-end px-6 pt-6">
         {isLoggedIn ? (
           <Popover>

@@ -85,15 +85,15 @@ export default function AdminUsersPage() {
         description="Kelola akun user dan status akses agar role admin/student tetap konsisten."
       />
 
-      <Card className="border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-sm">
-        <CardHeader className="space-y-4 border-b border-[var(--admin-border)] p-5">
+      <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
+        <CardHeader className="space-y-4 border-b border-[var(--border)] p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <CardTitle className="text-base font-semibold text-[var(--admin-foreground)]">Daftar Users</CardTitle>
-              <p className="mt-1 text-sm text-[var(--admin-muted-foreground)]">
+              <CardTitle className="text-base font-semibold text-[var(--foreground)]">Daftar Users</CardTitle>
+              <p className="mt-1 text-sm text-[var(--muted-foreground)]">
                 Kelola profil user dan role akses dari satu modul.
               </p>
-              <span className="mt-2 inline-flex rounded-md border border-[var(--admin-border)] bg-[var(--admin-surface-soft)] px-2 py-0.5 text-xs font-medium text-[var(--admin-muted-foreground)]">
+              <span className="mt-2 inline-flex rounded-md border border-[var(--border)] bg-[var(--muted)] px-2 py-0.5 text-xs font-medium text-[var(--muted-foreground)]">
                 {filteredUsers.length} data
               </span>
             </div>
@@ -102,7 +102,7 @@ export default function AdminUsersPage() {
               type="button"
               size="lg"
               onClick={() => router.push("/admin/master-data/users/new")}
-              className="h-10 bg-[var(--admin-brand)] px-4 text-white hover:opacity-90"
+              className="h-10 bg-[var(--primary)] px-4 text-[var(--primary-foreground)] hover:brightness-95"
             >
               <Plus className="size-4" />
               <span>Buat User</span>
@@ -110,43 +110,43 @@ export default function AdminUsersPage() {
           </div>
 
           <div className="relative w-full sm:max-w-xs">
-            <Search className="pointer-events-none absolute top-2.5 left-3 size-4 text-[var(--admin-muted-foreground)]" />
+            <Search className="pointer-events-none absolute top-2.5 left-3 size-4 text-[var(--muted-foreground)]" />
             <Input
               value={searchKeyword}
               onChange={(event) => setSearchKeyword(event.target.value)}
               placeholder="Cari user..."
-              className="h-9 border-[var(--admin-border)] bg-[var(--admin-surface-soft)] pl-9 text-[var(--admin-foreground)]"
+              className="h-9 border-[var(--border)] bg-[var(--surface-soft)] pl-9 text-[var(--foreground)]"
             />
           </div>
         </CardHeader>
 
         <CardContent className="p-0">
           <div className="overflow-x-auto rounded-b-lg">
-            <table className="min-w-full divide-y divide-[var(--admin-border)]">
-              <thead className="bg-[var(--admin-surface-soft)]">
+            <table className="min-w-full divide-y divide-[var(--border)]">
+              <thead className="bg-[var(--muted)]">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--admin-muted-foreground)] uppercase">
+                  <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
                     Nama
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--admin-muted-foreground)] uppercase">
+                  <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
                     Email
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--admin-muted-foreground)] uppercase">
+                  <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
                     Role
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--admin-muted-foreground)] uppercase">
+                  <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
                     Status
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold tracking-wide text-[var(--admin-muted-foreground)] uppercase">
+                  <th className="px-4 py-3 text-right text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
                     Aksi
                   </th>
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-[var(--admin-border)]">
+              <tbody className="divide-y divide-[var(--border)]">
                 {usersQuery.isLoading ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-6 text-center text-sm text-[var(--admin-muted-foreground)]">
+                    <td colSpan={5} className="px-4 py-6 text-center text-sm text-[var(--muted-foreground)]">
                       Memuat users...
                     </td>
                   </tr>
@@ -158,10 +158,10 @@ export default function AdminUsersPage() {
                   </tr>
                 ) : filteredUsers.length > 0 ? (
                   filteredUsers.map((user) => (
-                    <tr key={user.id} className="hover:bg-[var(--admin-surface-soft)]">
-                      <td className="px-4 py-3 text-sm font-medium text-[var(--admin-foreground)]">{user.fullname}</td>
-                      <td className="px-4 py-3 text-sm text-[var(--admin-muted-foreground)]">{user.email}</td>
-                      <td className="px-4 py-3 text-sm text-[var(--admin-muted-foreground)]">
+                    <tr key={user.id} className="hover:bg-[var(--surface-hover)]">
+                      <td className="px-4 py-3 text-sm font-medium text-[var(--foreground)]">{user.fullname}</td>
+                      <td className="px-4 py-3 text-sm text-[var(--muted-foreground)]">{user.email}</td>
+                      <td className="px-4 py-3 text-sm text-[var(--muted-foreground)]">
                         {roleNameMap.get(user.role_id) ?? `Role ${user.role_id}`}
                       </td>
                       <td className="px-4 py-3 text-sm">
@@ -174,7 +174,7 @@ export default function AdminUsersPage() {
                             variant="outline"
                             size="icon-sm"
                             onClick={() => router.push(`/admin/master-data/users/${user.id}/edit`)}
-                            className="border-[var(--admin-border)] bg-[var(--admin-surface)] text-[var(--admin-foreground)]"
+                            className="border-[var(--border)] bg-[var(--card)] text-[var(--foreground)]"
                             aria-label={`Edit ${user.fullname}`}
                           >
                             <Pencil className="size-4" />
@@ -190,7 +190,7 @@ export default function AdminUsersPage() {
                                 deleteMutation.mutate(user.id);
                               }
                             }}
-                            className="border border-red-200 bg-red-50 text-red-600 hover:bg-red-100"
+                            className="border-[var(--danger-soft-border)] bg-[var(--danger-soft-bg)] text-[var(--danger-soft-foreground)] hover:opacity-90"
                             aria-label={`Hapus ${user.fullname}`}
                           >
                             {deletingId === user.id ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
@@ -201,7 +201,7 @@ export default function AdminUsersPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={5} className="px-4 py-6 text-center text-sm text-[var(--admin-muted-foreground)]">
+                    <td colSpan={5} className="px-4 py-6 text-center text-sm text-[var(--muted-foreground)]">
                       Belum ada data users.
                     </td>
                   </tr>
@@ -214,3 +214,4 @@ export default function AdminUsersPage() {
     </section>
   );
 }
+

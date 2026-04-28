@@ -213,6 +213,7 @@ src/
 
 - base UI primitive stays in `components/ui/*`
 - business wrapper stays in `features/*`
+- keep global shadcn design tokens centralized in `src/app/globals.css` (minimally color semantics + base radius tokens)
 
 Example:
 
@@ -551,6 +552,13 @@ Use yellow for:
 - secondary CTA
 - important callouts
 
+### Visual Consistency Rules
+
+- Gunakan pendekatan `solid-first` untuk background/surface komponen dashboard (admin dan student).
+- Hindari gradient sebagai default pada panel, card, header, modal, dan shell layout.
+- Gradient hanya boleh dipakai untuk kebutuhan khusus yang eksplisit (misalnya hero marketing), bukan untuk UI sistem utama.
+- Semua dashboard role (admin/student) wajib memakai token theme bersama agar tampilan konsisten.
+
 ### Required UX Rules
 
 - mobile-first layout
@@ -685,6 +693,19 @@ Suggested commands:
 pnpm lint
 pnpm exec tsc --noEmit
 ```
+
+---
+
+## Git Commit Message Rules
+
+- Do not run `git commit` unless the user explicitly asks for a commit.
+- Do not auto-generate commit messages as part of normal code changes.
+- If a commit message is requested, write exactly one complete sentence in one line.
+- Use this format only: `<type>: <imperative summary>` with one prefix from `feat`, `fix`, `refactor`, `chore`, `docs`, or `test`.
+- Use imperative mood for the summary (example: `refactor: unify theme variables for dark mode`).
+- Keep one commit message focused on one primary change only.
+- Keep the first line concise (target 50-72 characters), and do not end the subject with a period.
+- Do not use bullet lists, numbered lists, or multiline commit message formats.
 
 ---
 

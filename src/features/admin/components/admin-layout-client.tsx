@@ -2,38 +2,23 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { useTheme } from "next-themes";
 import { AdminSidebar } from "@/features/admin/components/admin-sidebar";
 import { AdminTopbar } from "@/features/admin/components/admin-topbar";
-import {
-  ADMIN_THEME_STORAGE_KEY,
-  DEFAULT_ADMIN_THEME,
-  isAdminTheme,
-  type AdminTheme,
-} from "@/features/admin/lib/theme";
 import { cn } from "@/lib/utils/cn";
 
-interface AdminShellProps {
+interface AdminLayoutClientProps {
   fullName: string;
   email: string;
   children: React.ReactNode;
 }
 
-export function AdminShell({ fullName, email, children }: AdminShellProps) {
+export function AdminLayoutClient({ fullName, email, children }: AdminLayoutClientProps) {
   const pathname = usePathname();
-  const [theme, setTheme] = useState<AdminTheme>(() => {
-    if (typeof window === "undefined") {
-      return DEFAULT_ADMIN_THEME;
-    }
-
-    const storedTheme = window.localStorage.getItem(ADMIN_THEME_STORAGE_KEY);
-    return isAdminTheme(storedTheme) ? storedTheme : DEFAULT_ADMIN_THEME;
-  });
+  const { theme, setTheme } = useTheme();
   const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-
-  useEffect(() => {
-    window.localStorage.setItem(ADMIN_THEME_STORAGE_KEY, theme);
-  }, [theme]);
+  const activeTheme = theme === "dark" ? "dark" : "light";
 
   useEffect(() => {
     if (!isMobileSidebarOpen) {
@@ -64,10 +49,7 @@ export function AdminShell({ fullName, email, children }: AdminShellProps) {
   }, [isMobileSidebarOpen]);
 
   return (
-    <div
-      className="admin-shell min-h-screen bg-[var(--admin-bg)] text-[var(--admin-foreground)]"
-      data-admin-theme={theme}
-    >
+    <div className="min-h-screen bg-background text-foreground">
       <AdminSidebar
         pathname={pathname}
         collapsed={isDesktopSidebarCollapsed}
@@ -85,9 +67,9 @@ export function AdminShell({ fullName, email, children }: AdminShellProps) {
           fullName={fullName}
           email={email}
           pathname={pathname}
-          theme={theme}
+          theme={activeTheme}
           isSidebarCollapsed={isDesktopSidebarCollapsed}
-          onToggleTheme={() => setTheme((prev) => (prev === "light" ? "dark" : "light"))}
+          onToggleTheme={() => setTheme(activeTheme === "light" ? "dark" : "light")}
           onToggleSidebar={() => setIsDesktopSidebarCollapsed((prev) => !prev)}
           onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
         />

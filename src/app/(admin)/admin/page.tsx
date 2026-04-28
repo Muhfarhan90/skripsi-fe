@@ -34,26 +34,26 @@ export default function AdminPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        <Card className="border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-sm xl:col-span-2">
-          <CardHeader className="border-b border-[var(--admin-border)]">
-            <CardTitle className="text-base font-semibold text-[var(--admin-foreground)]">Aktivitas Terbaru</CardTitle>
+        <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm xl:col-span-2">
+          <CardHeader className="border-b border-[var(--border)]">
+            <CardTitle className="text-base font-semibold text-[var(--foreground)]">Aktivitas Terbaru</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-[var(--admin-border)]">
-                <thead className="bg-[var(--admin-surface-soft)]">
+              <table className="min-w-full divide-y divide-[var(--border)]">
+                <thead className="bg-[var(--muted)]">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--admin-muted-foreground)] uppercase">Aktivitas</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--admin-muted-foreground)] uppercase">Pelaku</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--admin-muted-foreground)] uppercase">Waktu</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">Aktivitas</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">Pelaku</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">Waktu</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[var(--admin-border)]">
+                <tbody className="divide-y divide-[var(--border)]">
                   {recentActivities.map((activity) => (
-                    <tr key={activity.id} className="hover:bg-[var(--admin-surface-soft)]">
-                      <td className="px-4 py-3 text-sm text-[var(--admin-foreground)]">{activity.activity}</td>
-                      <td className="px-4 py-3 text-sm text-[var(--admin-muted-foreground)]">{activity.actor}</td>
-                      <td className="px-4 py-3 text-sm text-[var(--admin-muted-foreground)]">{activity.time}</td>
+                    <tr key={activity.id} className="hover:bg-[var(--surface-hover)]">
+                      <td className="px-4 py-3 text-sm text-[var(--foreground)]">{activity.activity}</td>
+                      <td className="px-4 py-3 text-sm text-[var(--muted-foreground)]">{activity.actor}</td>
+                      <td className="px-4 py-3 text-sm text-[var(--muted-foreground)]">{activity.time}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -63,20 +63,20 @@ export default function AdminPage() {
         </Card>
 
         <div className="space-y-4">
-          <Card className="border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-sm">
+          <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
             <CardHeader className="space-y-2">
-              <div className="inline-flex size-9 items-center justify-center rounded-lg bg-[var(--admin-brand-soft)] text-[var(--admin-brand)]">
+              <div className="inline-flex size-9 items-center justify-center rounded-lg bg-[var(--muted)] text-[var(--primary)]">
                 <Database className="size-4" />
               </div>
-              <CardTitle className="text-base font-semibold text-[var(--admin-foreground)]">Manajemen Data</CardTitle>
-              <p className="text-sm text-[var(--admin-muted-foreground)]">
+              <CardTitle className="text-base font-semibold text-[var(--foreground)]">Manajemen Data</CardTitle>
+              <p className="text-sm text-[var(--muted-foreground)]">
                 Kelola users, categories, courses, dan vouchers dalam satu modul.
               </p>
             </CardHeader>
             <CardContent>
               <Link
                 href="/admin/master-data/users"
-                className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--admin-brand)] hover:opacity-80"
+                className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--primary)] hover:opacity-80"
               >
                 Buka Data Users
                 <ArrowRight className="size-4" />
@@ -84,20 +84,20 @@ export default function AdminPage() {
             </CardContent>
           </Card>
 
-          <Card className="border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-sm">
+          <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
             <CardHeader className="space-y-2">
-              <div className="inline-flex size-9 items-center justify-center rounded-lg bg-[var(--admin-brand-soft)] text-[var(--admin-brand)]">
+              <div className="inline-flex size-9 items-center justify-center rounded-lg bg-[var(--muted)] text-[var(--primary)]">
                 <ReceiptText className="size-4" />
               </div>
-              <CardTitle className="text-base font-semibold text-[var(--admin-foreground)]">Transaksi</CardTitle>
-              <p className="text-sm text-[var(--admin-muted-foreground)]">
+              <CardTitle className="text-base font-semibold text-[var(--foreground)]">Transaksi</CardTitle>
+              <p className="text-sm text-[var(--muted-foreground)]">
                 Pantau order, pembayaran, dan enrollment dari satu dashboard transaksi.
               </p>
             </CardHeader>
             <CardContent>
               <Link
                 href="/admin/transactions"
-                className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--admin-brand)] hover:opacity-80"
+                className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--primary)] hover:opacity-80"
               >
                 Buka Data Transaksi
                 <ArrowRight className="size-4" />
@@ -105,13 +105,13 @@ export default function AdminPage() {
             </CardContent>
           </Card>
 
-          <Card className="border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-sm">
+          <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
             <CardHeader className="space-y-2">
-              <div className="inline-flex size-9 items-center justify-center rounded-lg bg-[var(--admin-brand-soft)] text-[var(--admin-brand)]">
+              <div className="inline-flex size-9 items-center justify-center rounded-lg bg-[var(--muted)] text-[var(--primary)]">
                 <BookOpenText className="size-4" />
               </div>
-              <CardTitle className="text-base font-semibold text-[var(--admin-foreground)]">Instructor Capability</CardTitle>
-              <p className="text-sm text-[var(--admin-muted-foreground)]">
+              <CardTitle className="text-base font-semibold text-[var(--foreground)]">Instructor Capability</CardTitle>
+              <p className="text-sm text-[var(--muted-foreground)]">
                 Area admin juga memuat kebutuhan instructor untuk pengelolaan konten belajar.
               </p>
             </CardHeader>
@@ -121,3 +121,4 @@ export default function AdminPage() {
     </section>
   );
 }
+

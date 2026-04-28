@@ -53,25 +53,25 @@ export function AdminModal({
         aria-modal="true"
         aria-labelledby={titleId}
         className={cn(
-          "relative flex max-h-[95vh] w-full flex-col overflow-hidden rounded-t-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-[0_20px_50px_-12px_rgba(15,23,42,0.45)] sm:max-h-[92vh] sm:rounded-lg",
+          "relative flex max-h-[95vh] w-full flex-col overflow-hidden rounded-t-lg border border-[var(--border)] bg-[var(--card)] shadow-[0_20px_50px_-12px_rgba(15,23,42,0.45)] sm:max-h-[92vh] sm:rounded-lg",
           maxWidthClassName,
         )}
       >
-        <div className="h-1.5 bg-gradient-to-r from-[var(--admin-brand)]/85 via-[var(--admin-brand)]/40 to-transparent" />
-        <header className="flex items-start justify-between border-b border-[var(--admin-border)] px-5 py-4 sm:px-6">
+        <div className="h-1.5 bg-[var(--primary)]/85" />
+        <header className="flex items-start justify-between border-b border-[var(--border)] px-5 py-4 sm:px-6">
           <div>
-            <h3 id={titleId} className="text-lg font-semibold text-[var(--admin-foreground)]">
+            <h3 id={titleId} className="text-lg font-semibold text-[var(--foreground)]">
               {title}
             </h3>
             {description ? (
-              <p className="mt-1 text-sm text-[var(--admin-muted-foreground)]">{description}</p>
+              <p className="mt-1 text-sm text-[var(--muted-foreground)]">{description}</p>
             ) : null}
           </div>
 
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex size-8 items-center justify-center rounded-md border border-[var(--admin-border)] text-[var(--admin-muted-foreground)] transition hover:bg-[var(--admin-surface-soft)] hover:text-[var(--admin-foreground)]"
+            className="inline-flex size-8 items-center justify-center rounded-md border border-[var(--border)] text-[var(--muted-foreground)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--foreground)]"
             aria-label="Tutup popup"
           >
             <X className="size-4" />
@@ -83,3 +83,4 @@ export function AdminModal({
     </div>
   );
 }
+
