@@ -1226,9 +1226,18 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
           nextErrors[FORM_ERROR_KEY] = "Tambahkan minimal 1 section sebelum lanjut ke step berikutnya.";
         }
 
+        const totalLessonsCount = form.sections.reduce((total, section) => total + section.lessons.length, 0);
+        if (totalLessonsCount === 0) {
+          nextErrors[FORM_ERROR_KEY] = "Tambahkan minimal 1 lesson sebelum lanjut ke step berikutnya.";
+        }
+
         form.sections.forEach((section, sectionIndex) => {
           if (!section.title.trim()) {
             nextErrors[`sections.${sectionIndex}.title`] = "Judul section wajib diisi";
+          }
+
+          if (section.lessons.length === 0) {
+            nextErrors[FORM_ERROR_KEY] = "Setiap section harus memiliki minimal 1 lesson.";
           }
 
           section.lessons.forEach((lesson, lessonIndex) => {
@@ -1280,7 +1289,12 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
       return;
     }
 
-    if (!validateStep(activeStepIndex)) return;
+    for (let stepIndex = activeStepIndex; stepIndex < nextStepIndex; stepIndex += 1) {
+      if (!validateStep(stepIndex)) {
+        setActiveStepIndex(stepIndex);
+        return;
+      }
+    }
 
     if (!isEditing && validCourseId === null && activeStepIndex === 0 && nextStepIndex >= 1) {
       autoCreateDraftMutation.mutate(nextStepIndex);
