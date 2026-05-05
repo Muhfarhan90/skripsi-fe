@@ -42,7 +42,11 @@ export interface AdminQuickNavigationItem {
   keywords: string[];
 }
 
-type AdminMasterEntity = "users" | "categories" | "courses" | "vouchers";
+type AdminMasterEntity =
+  | "users"
+  | "categories"
+  | "courses"
+  | "vouchers";
 
 const ADMIN_ICON_MAP: Record<AdminNavIcon, LucideIcon> = {
   dashboard: LayoutDashboard,
@@ -139,8 +143,7 @@ export const ADMIN_NAVIGATION: AdminNavigationGroup[] = [
 ];
 
 interface AdminDynamicRouteMeta {
-  entityHref: string;
-  entityLabel: string;
+  breadcrumbs: AdminBreadcrumb[];
   title: string;
 }
 
@@ -208,19 +211,55 @@ function resolveAdminDynamicRoute(pathname: string): AdminDynamicRouteMeta | und
   const entityHref = `/admin/master-data/${entity}`;
   const entityNavLabel = getAdminRouteLabel(entityHref) ?? fallbackSegmentLabel(entity);
 
+  if (entity === "courses" && segments.length === 3 && isNumericIdSegment(segments[2])) {
+    return {
+      title: "Detail Course",
+      breadcrumbs: [
+        { label: "Dashboard", href: "/admin" },
+        { label: entityNavLabel, href: entityHref },
+        { label: "Detail Course" },
+      ],
+    };
+  }
+
+  if (
+    entity === "courses" &&
+    segments.length === 5 &&
+    isNumericIdSegment(segments[2]) &&
+    segments[3] === "quizzes" &&
+    isNumericIdSegment(segments[4])
+  ) {
+    const courseId = segments[2];
+    return {
+      title: "Detail Quiz",
+      breadcrumbs: [
+        { label: "Dashboard", href: "/admin" },
+        { label: entityNavLabel, href: entityHref },
+        { label: "Detail Course", href: `/admin/master-data/courses/${courseId}` },
+        { label: "Detail Quiz" },
+      ],
+    };
+  }
+
   if (segments.length === 3 && segments[2] === "new") {
     return {
-      entityHref,
-      entityLabel: entityNavLabel,
       title: `Buat ${entityLabel}`,
+      breadcrumbs: [
+        { label: "Dashboard", href: "/admin" },
+        { label: entityNavLabel, href: entityHref },
+        { label: `Buat ${entityLabel}` },
+      ],
     };
   }
 
   if (segments.length === 4 && isNumericIdSegment(segments[2]) && segments[3] === "edit") {
     return {
-      entityHref,
-      entityLabel: entityNavLabel,
       title: `Edit ${entityLabel}`,
+      breadcrumbs: [
+        { label: "Dashboard", href: "/admin" },
+        { label: entityNavLabel, href: entityHref },
+        { label: `Edit ${entityLabel}` },
+      ],
     };
   }
 
@@ -253,11 +292,7 @@ export function getAdminBreadcrumbs(pathname: string): AdminBreadcrumb[] {
 
   const dynamicRoute = resolveAdminDynamicRoute(pathname);
   if (dynamicRoute) {
-    return [
-      { label: "Dashboard", href: "/admin" },
-      { label: dynamicRoute.entityLabel, href: dynamicRoute.entityHref },
-      { label: dynamicRoute.title },
-    ];
+    return dynamicRoute.breadcrumbs;
   }
 
   const breadcrumbs: AdminBreadcrumb[] = [{ label: "Dashboard", href: "/admin" }];

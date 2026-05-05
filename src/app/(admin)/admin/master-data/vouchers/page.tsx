@@ -10,6 +10,7 @@ import { StatusBadge } from "@/features/admin/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ConfirmAlertDialog } from "@/components/ui/confirm-alert-dialog";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -84,6 +85,7 @@ function formatDiscount(voucher: AdminVoucher): string {
 export default function AdminVouchersPage() {
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [confirmDeleteVoucher, setConfirmDeleteVoucher] = useState<AdminVoucher | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [form, setForm] = useState<VoucherFormState>(defaultForm);
@@ -166,6 +168,7 @@ export default function AdminVouchersPage() {
     onSuccess: (message) => {
       queryClient.invalidateQueries({ queryKey: ["admin", "vouchers"] });
       toast.success(message || "Voucher berhasil dihapus");
+      setConfirmDeleteVoucher(null);
     },
     onError: (error) => {
       toast.error(normalizeError(error));
@@ -295,9 +298,7 @@ export default function AdminVouchersPage() {
                             variant="destructive"
                             size="icon-sm"
                             onClick={() => {
-                              if (window.confirm(`Hapus voucher "${voucher.code}"?`)) {
-                                deleteMutation.mutate(voucher.id);
-                              }
+                              setConfirmDeleteVoucher(voucher);
                             }}
                             className="border-[var(--danger-soft-border)] bg-[var(--danger-soft-bg)] text-[var(--danger-soft-foreground)] hover:opacity-90"
                             aria-label={`Hapus ${voucher.code}`}
@@ -447,6 +448,27 @@ export default function AdminVouchersPage() {
           </div>
         </div>
       </AdminModal>
+
+      <ConfirmAlertDialog
+        open={confirmDeleteVoucher !== null}
+        title="Hapus Voucher"
+        description={
+          confirmDeleteVoucher
+            ? `Voucher "${confirmDeleteVoucher.code}" akan dihapus permanen. Aksi ini tidak dapat dibatalkan.`
+            : ""
+        }
+        confirmLabel="Ya, Hapus"
+        cancelLabel="Batal"
+        isPending={deleteMutation.isPending}
+        onClose={() => {
+          if (deleteMutation.isPending) return;
+          setConfirmDeleteVoucher(null);
+        }}
+        onConfirm={() => {
+          if (!confirmDeleteVoucher) return;
+          deleteMutation.mutate(confirmDeleteVoucher.id);
+        }}
+      />
     </section>
   );
 }

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Moon, Sun } from "lucide-react";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/providers/theme-provider";
 
 interface StudentLayoutClientProps {
   fullName: string;

@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { useTheme } from "next-themes";
 import { AdminSidebar } from "@/features/admin/components/admin-sidebar";
 import { AdminTopbar } from "@/features/admin/components/admin-topbar";
+import { useTheme } from "@/providers/theme-provider";
 import { cn } from "@/lib/utils/cn";
 
 interface AdminLayoutClientProps {

@@ -8,6 +8,7 @@ import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { AdminModal } from "@/features/admin/components/admin-modal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmAlertDialog } from "@/components/ui/confirm-alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api/client";
@@ -28,6 +29,7 @@ function normalizeError(error: unknown): string {
 export default function AdminCategoriesPage() {
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [confirmDeleteCategory, setConfirmDeleteCategory] = useState<AdminCategory | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [form, setForm] = useState({
@@ -109,6 +111,7 @@ export default function AdminCategoriesPage() {
     onSuccess: (message) => {
       queryClient.invalidateQueries({ queryKey: ["admin", "categories"] });
       toast.success(message || "Kategori berhasil dihapus");
+      setConfirmDeleteCategory(null);
     },
     onError: (error) => {
       toast.error(normalizeError(error));
@@ -225,9 +228,7 @@ export default function AdminCategoriesPage() {
                             variant="destructive"
                             size="icon-sm"
                             onClick={() => {
-                              if (window.confirm(`Hapus kategori "${category.name}"?`)) {
-                                deleteMutation.mutate(category.id);
-                              }
+                              setConfirmDeleteCategory(category);
                             }}
                             className="border-[var(--danger-soft-border)] bg-[var(--danger-soft-bg)] text-[var(--danger-soft-foreground)] hover:opacity-90"
                             aria-label={`Hapus ${category.name}`}
@@ -304,6 +305,27 @@ export default function AdminCategoriesPage() {
           </div>
         </div>
       </AdminModal>
+
+      <ConfirmAlertDialog
+        open={confirmDeleteCategory !== null}
+        title="Hapus Category"
+        description={
+          confirmDeleteCategory
+            ? `Category "${confirmDeleteCategory.name}" akan dihapus permanen. Aksi ini tidak dapat dibatalkan.`
+            : ""
+        }
+        confirmLabel="Ya, Hapus"
+        cancelLabel="Batal"
+        isPending={deleteMutation.isPending}
+        onClose={() => {
+          if (deleteMutation.isPending) return;
+          setConfirmDeleteCategory(null);
+        }}
+        onConfirm={() => {
+          if (!confirmDeleteCategory) return;
+          deleteMutation.mutate(confirmDeleteCategory.id);
+        }}
+      />
     </section>
   );
 }

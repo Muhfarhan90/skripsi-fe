@@ -9,6 +9,7 @@ import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { StatusBadge } from "@/features/admin/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmAlertDialog } from "@/components/ui/confirm-alert-dialog";
 import { Input } from "@/components/ui/input";
 import { ApiError } from "@/lib/api/client";
 import {
@@ -29,6 +30,7 @@ export default function AdminCoursesPage() {
   const queryClient = useQueryClient();
   const [searchKeyword, setSearchKeyword] = useState("");
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [confirmDeleteCourse, setConfirmDeleteCourse] = useState<{ id: number; title: string } | null>(null);
 
   const courseQuery = useQuery({
     queryKey: ["admin", "courses"],
@@ -79,6 +81,7 @@ export default function AdminCoursesPage() {
     onSuccess: (message) => {
       queryClient.invalidateQueries({ queryKey: ["admin", "courses"] });
       toast.success(message || "Course berhasil dihapus");
+      setConfirmDeleteCourse(null);
     },
     onError: (error) => {
       toast.error(normalizeError(error));
@@ -174,10 +177,10 @@ export default function AdminCoursesPage() {
                     <tr key={course.id} className="hover:bg-[var(--surface-hover)]">
                       <td className="px-4 py-3 text-sm font-medium text-[var(--foreground)]">{course.title}</td>
                       <td className="px-4 py-3 text-sm text-[var(--muted-foreground)]">
-                        {categoryMap.get(course.category_id) ?? `Category ${course.category_id}`}
+                        {categoryMap.get(course.category_id) ?? "-"}
                       </td>
                       <td className="px-4 py-3 text-sm text-[var(--muted-foreground)]">
-                        {userMap.get(course.instructor_id) ?? `User ${course.instructor_id}`}
+                        {userMap.get(course.instructor_id) ?? "-"}
                       </td>
                       <td className="px-4 py-3 text-sm text-[var(--muted-foreground)]">
                         Rp{Number(course.price).toLocaleString("id-ID")}
@@ -191,9 +194,9 @@ export default function AdminCoursesPage() {
                             type="button"
                             variant="outline"
                             size="icon-sm"
-                            onClick={() => router.push(`/admin/master-data/courses/${course.id}/edit`)}
+                            onClick={() => router.push(`/admin/master-data/courses/${course.id}`)}
                             className="border-[var(--border)] bg-[var(--card)] text-[var(--foreground)]"
-                            aria-label={`Edit ${course.title}`}
+                            aria-label={`Detail ${course.title}`}
                           >
                             <Pencil className="size-4" />
                           </Button>
@@ -204,9 +207,10 @@ export default function AdminCoursesPage() {
                             size="icon-sm"
                             disabled={deleteMutation.isPending}
                             onClick={() => {
-                              if (window.confirm(`Hapus course "${course.title}"?`)) {
-                                deleteMutation.mutate(course.id);
-                              }
+                              setConfirmDeleteCourse({
+                                id: course.id,
+                                title: course.title,
+                              });
                             }}
                             className="border-[var(--danger-soft-border)] bg-[var(--danger-soft-bg)] text-[var(--danger-soft-foreground)] hover:opacity-90"
                             aria-label={`Hapus ${course.title}`}
@@ -233,6 +237,27 @@ export default function AdminCoursesPage() {
           </div>
         </CardContent>
       </Card>
+
+      <ConfirmAlertDialog
+        open={confirmDeleteCourse !== null}
+        title="Hapus Course"
+        description={
+          confirmDeleteCourse
+            ? `Course "${confirmDeleteCourse.title}" akan dihapus permanen. Aksi ini tidak dapat dibatalkan.`
+            : ""
+        }
+        confirmLabel="Ya, Hapus"
+        cancelLabel="Batal"
+        isPending={deleteMutation.isPending}
+        onClose={() => {
+          if (deleteMutation.isPending) return;
+          setConfirmDeleteCourse(null);
+        }}
+        onConfirm={() => {
+          if (!confirmDeleteCourse) return;
+          deleteMutation.mutate(confirmDeleteCourse.id);
+        }}
+      />
     </section>
   );
 }

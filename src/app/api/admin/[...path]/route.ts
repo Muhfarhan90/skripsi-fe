@@ -5,6 +5,11 @@ import { buildApiUrl, getAuthCookieOptions } from "@/features/auth/lib/server";
 const ALLOWED_ADMIN_RESOURCES = new Set([
   "categories",
   "courses",
+  "sections",
+  "lessons",
+  "quizzes",
+  "questions",
+  "options",
   "vouchers",
   "users",
   "roles",
@@ -34,6 +39,46 @@ function resolveTargetPath(pathSegments: string[] | undefined): string | null {
   // Allow selected nested actions for admin resources (strictly scoped).
   if (resource === "courses" && pathSegments.length === 3 && maybeId && action === "curriculum") {
     return `/admin/courses/${maybeId}/curriculum`;
+  }
+
+  if (resource === "courses" && pathSegments.length === 3 && maybeId && action === "quizzes") {
+    return `/admin/courses/${maybeId}/quizzes`;
+  }
+
+  if (resource === "courses" && pathSegments.length === 5 && maybeId && action === "sections") {
+    const [,, , sectionId, sectionAction] = pathSegments;
+    if (sectionId && sectionAction === "quizzes") {
+      return `/admin/courses/${maybeId}/sections/${sectionId}/quizzes`;
+    }
+  }
+
+  if (resource === "courses" && pathSegments.length === 6 && maybeId && action === "sections") {
+    const [,, , sectionId, sectionAction, quizId] = pathSegments;
+    if (sectionId && sectionAction === "quizzes" && quizId) {
+      return `/admin/courses/${maybeId}/sections/${sectionId}/quizzes/${quizId}`;
+    }
+  }
+
+  if (resource === "quizzes" && pathSegments.length === 3 && maybeId && action === "questions") {
+    return `/admin/quizzes/${maybeId}/questions`;
+  }
+
+  if (resource === "quizzes" && pathSegments.length === 4 && maybeId && action === "questions") {
+    const [, , , questionId] = pathSegments;
+    if (questionId) {
+      return `/admin/quizzes/${maybeId}/questions/${questionId}`;
+    }
+  }
+
+  if (resource === "questions" && pathSegments.length === 3 && maybeId && action === "options") {
+    return `/admin/questions/${maybeId}/options`;
+  }
+
+  if (resource === "questions" && pathSegments.length === 4 && maybeId && action === "options") {
+    const [, , , optionId] = pathSegments;
+    if (optionId) {
+      return `/admin/questions/${maybeId}/options/${optionId}`;
+    }
   }
 
   return null;

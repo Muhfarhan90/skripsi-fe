@@ -1,10 +1,10 @@
 import { notFound, redirect } from "next/navigation";
 
-interface AdminCourseEditPageProps {
+interface AdminCourseQuizzesPageProps {
   params: Promise<{ id: string }>;
 }
 
-export default async function AdminCourseEditPage({ params }: AdminCourseEditPageProps) {
+export default async function AdminCourseQuizzesPage({ params }: AdminCourseQuizzesPageProps) {
   const { id } = await params;
   const courseId = Number(id);
 

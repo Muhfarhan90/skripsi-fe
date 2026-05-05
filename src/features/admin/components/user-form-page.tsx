@@ -320,7 +320,16 @@ export function AdminUserFormPage({ mode, userId }: AdminUserFormPageProps) {
                   onValueChange={(value) => setForm((prev) => ({ ...prev, role_id: value ?? "" }))}
                 >
                   <SelectTrigger className="h-9 w-full border-[var(--border)] bg-[var(--card)]">
-                    <SelectValue placeholder="Pilih role">{selectedRoleLabel}</SelectValue>
+                    <SelectValue>
+                      {() => {
+                        const label = selectedRoleLabel ?? "Pilih role";
+                        return (
+                          <span className={selectedRoleLabel ? undefined : "text-[var(--muted-foreground)]"}>
+                            {label}
+                          </span>
+                        );
+                      }}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {(rolesQuery.data ?? []).map((role) => (

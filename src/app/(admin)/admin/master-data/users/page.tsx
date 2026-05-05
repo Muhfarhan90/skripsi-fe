@@ -9,6 +9,7 @@ import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { StatusBadge } from "@/features/admin/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmAlertDialog } from "@/components/ui/confirm-alert-dialog";
 import { Input } from "@/components/ui/input";
 import { ApiError } from "@/lib/api/client";
 import { deleteAdminUser, getAdminRoles, getAdminUsers } from "@/features/admin/api/master-api";
@@ -24,6 +25,7 @@ export default function AdminUsersPage() {
   const queryClient = useQueryClient();
   const [searchKeyword, setSearchKeyword] = useState("");
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [confirmDeleteUser, setConfirmDeleteUser] = useState<{ id: number; fullname: string } | null>(null);
 
   const usersQuery = useQuery({
     queryKey: ["admin", "users"],
@@ -69,6 +71,7 @@ export default function AdminUsersPage() {
     onSuccess: (message) => {
       queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
       toast.success(message || "User berhasil dihapus");
+      setConfirmDeleteUser(null);
     },
     onError: (error) => {
       toast.error(normalizeError(error));
@@ -186,9 +189,10 @@ export default function AdminUsersPage() {
                             size="icon-sm"
                             disabled={deleteMutation.isPending}
                             onClick={() => {
-                              if (window.confirm(`Hapus user "${user.fullname}"?`)) {
-                                deleteMutation.mutate(user.id);
-                              }
+                              setConfirmDeleteUser({
+                                id: user.id,
+                                fullname: user.fullname,
+                              });
                             }}
                             className="border-[var(--danger-soft-border)] bg-[var(--danger-soft-bg)] text-[var(--danger-soft-foreground)] hover:opacity-90"
                             aria-label={`Hapus ${user.fullname}`}
@@ -211,6 +215,27 @@ export default function AdminUsersPage() {
           </div>
         </CardContent>
       </Card>
+
+      <ConfirmAlertDialog
+        open={confirmDeleteUser !== null}
+        title="Hapus User"
+        description={
+          confirmDeleteUser
+            ? `User "${confirmDeleteUser.fullname}" akan dihapus permanen. Aksi ini tidak dapat dibatalkan.`
+            : ""
+        }
+        confirmLabel="Ya, Hapus"
+        cancelLabel="Batal"
+        isPending={deleteMutation.isPending}
+        onClose={() => {
+          if (deleteMutation.isPending) return;
+          setConfirmDeleteUser(null);
+        }}
+        onConfirm={() => {
+          if (!confirmDeleteUser) return;
+          deleteMutation.mutate(confirmDeleteUser.id);
+        }}
+      />
     </section>
   );
 }

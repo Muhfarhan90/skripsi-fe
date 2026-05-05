@@ -29,12 +29,21 @@ export interface AdminCourse {
   created_at: string;
 }
 
+export interface AdminSection {
+  id: number;
+  course_id: number;
+  title: string;
+  sort_order: number;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
 export interface AdminCourseCurriculumLesson {
   id: number;
   section_id: number;
   title: string;
   description: string | null;
-  type: "video" | "file" | "quiz";
+  type: "video" | "file";
   lesson_url: string | null;
   duration: number;
   sort_order: number;
@@ -47,6 +56,7 @@ export interface AdminCourseCurriculumSection {
   title: string;
   sort_order: number;
   lessons: AdminCourseCurriculumLesson[];
+  quizzes: AdminQuiz[];
 }
 
 export interface AdminCourseCurriculum {
@@ -63,6 +73,47 @@ export interface AdminCourseCurriculum {
   requirements: string | null;
   outcomes: string | null;
   sections: AdminCourseCurriculumSection[];
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface AdminQuiz {
+  id: number;
+  course_id: number;
+  section_id: number;
+  title: string;
+  description: string | null;
+  duration: number | null;
+  passing_score: number | null;
+  weight: number | null;
+  is_active: boolean;
+  is_random: boolean;
+  max_attempts: number | null;
+  questions?: AdminQuestion[];
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface AdminQuestion {
+  id: number;
+  quiz_id: number;
+  question_text: string;
+  image_url: string | null;
+  type: "multiple_choice" | "true_false" | "short_answer";
+  score: number | null;
+  sort_order: number | null;
+  is_active: boolean;
+  created_at: string | null;
+  updated_at: string | null;
+  options: AdminOption[];
+}
+
+export interface AdminOption {
+  id: number;
+  question_id: number;
+  option_text: string;
+  image_url: string | null;
+  is_correct: boolean;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -116,6 +167,36 @@ export interface CoursePayload {
   outcomes?: string | null;
 }
 
+export interface QuizPayload {
+  course_id: number;
+  section_id: number;
+  title: string;
+  description?: string | null;
+  duration?: number | null;
+  passing_score?: number | null;
+  weight?: number | null;
+  is_active?: boolean;
+  is_random?: boolean;
+  max_attempts?: number | null;
+}
+
+export interface QuestionPayload {
+  quiz_id?: number;
+  question_text: string;
+  image_url?: string | null;
+  type: "multiple_choice" | "true_false" | "short_answer";
+  score?: number | null;
+  sort_order?: number | null;
+  is_active?: boolean;
+}
+
+export interface OptionPayload {
+  question_id?: number;
+  option_text: string;
+  image_url?: string | null;
+  is_correct: boolean;
+}
+
 export interface VoucherPayload {
   code: string;
   discount_type: "percentage" | "fixed";
@@ -131,7 +212,7 @@ export interface CourseCurriculumLessonPayload {
   id?: number;
   title: string;
   description?: string | null;
-  type: "video" | "file" | "quiz";
+  type: "video" | "file";
   lesson_url?: string | null;
   duration?: number;
   sort_order?: number;
@@ -148,6 +229,24 @@ export interface CourseCurriculumSectionPayload {
 export interface CourseCurriculumPayload {
   course?: Partial<CoursePayload>;
   sections?: CourseCurriculumSectionPayload[];
+}
+
+export interface SectionPayload {
+  course_id: number;
+  title: string;
+  sort_order?: number | null;
+  is_locked?: boolean;
+}
+
+export interface LessonPayload {
+  section_id: number;
+  title: string;
+  description?: string | null;
+  type: "video" | "file";
+  lesson_url?: string | null;
+  duration?: number | null;
+  sort_order?: number | null;
+  is_preview?: boolean;
 }
 
 export interface UserPayload {
@@ -252,6 +351,64 @@ export function getAdminCourses() {
   });
 }
 
+export function getAdminSections() {
+  return apiRequest<AdminSection[]>("/api/admin/sections", {
+    method: "GET",
+  });
+}
+
+export function getAdminSectionById(id: number) {
+  return apiRequest<AdminSection>(`/api/admin/sections/${id}`, {
+    method: "GET",
+  });
+}
+
+export function createAdminSection(payload: SectionPayload) {
+  return apiRequest<AdminSection>("/api/admin/sections", {
+    method: "POST",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function updateAdminSection(id: number, payload: Partial<SectionPayload>) {
+  return apiRequest<AdminSection>(`/api/admin/sections/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function deleteAdminSection(id: number) {
+  return apiMessageOnly(`/api/admin/sections/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export function getAdminLessonById(id: number) {
+  return apiRequest<AdminCourseCurriculumLesson>(`/api/admin/lessons/${id}`, {
+    method: "GET",
+  });
+}
+
+export function createAdminLesson(payload: LessonPayload) {
+  return apiRequest<AdminCourseCurriculumLesson>("/api/admin/lessons", {
+    method: "POST",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function updateAdminLesson(id: number, payload: Partial<LessonPayload>) {
+  return apiRequest<AdminCourseCurriculumLesson>(`/api/admin/lessons/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function deleteAdminLesson(id: number) {
+  return apiMessageOnly(`/api/admin/lessons/${id}`, {
+    method: "DELETE",
+  });
+}
+
 export function getAdminCourseById(id: number) {
   return apiRequest<AdminCourse>(`/api/admin/courses/${id}`, {
     method: "GET",
@@ -287,6 +444,168 @@ export function upsertAdminCourseCurriculum(id: number, payload: CourseCurriculu
 
 export function deleteAdminCourse(id: number) {
   return apiMessageOnly(`/api/admin/courses/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export function getAdminQuizzes() {
+  return apiRequest<AdminQuiz[]>("/api/admin/quizzes", {
+    method: "GET",
+  });
+}
+
+export function getAdminCourseQuizzes(courseId: number) {
+  return apiRequest<AdminQuiz[]>(`/api/admin/courses/${courseId}/quizzes`, {
+    method: "GET",
+  });
+}
+
+export function getAdminQuizDetail(quizId: number) {
+  return apiRequest<AdminQuiz>(`/api/admin/quizzes/${quizId}`, {
+    method: "GET",
+  });
+}
+
+export function createAdminQuiz(payload: QuizPayload) {
+  return apiRequest<AdminQuiz>("/api/admin/quizzes", {
+    method: "POST",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function createAdminCourseSectionQuiz(
+  courseId: number,
+  sectionId: number,
+  payload: Omit<QuizPayload, "course_id" | "section_id">,
+) {
+  return apiRequest<AdminQuiz>(`/api/admin/courses/${courseId}/sections/${sectionId}/quizzes`, {
+    method: "POST",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function updateAdminCourseSectionQuiz(
+  courseId: number,
+  sectionId: number,
+  quizId: number,
+  payload: Omit<QuizPayload, "course_id" | "section_id">,
+) {
+  return apiRequest<AdminQuiz>(`/api/admin/courses/${courseId}/sections/${sectionId}/quizzes/${quizId}`, {
+    method: "PUT",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function updateAdminQuiz(id: number, payload: QuizPayload) {
+  return apiRequest<AdminQuiz>(`/api/admin/quizzes/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function deleteAdminQuiz(id: number) {
+  return apiMessageOnly(`/api/admin/quizzes/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export function getAdminQuestions() {
+  return apiRequest<AdminQuestion[]>("/api/admin/questions", {
+    method: "GET",
+  });
+}
+
+export function createAdminQuestion(payload: QuestionPayload) {
+  return apiRequest<AdminQuestion>("/api/admin/questions", {
+    method: "POST",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function createAdminQuizQuestion(quizId: number, payload: QuestionPayload) {
+  return apiRequest<AdminQuestion>(`/api/admin/quizzes/${quizId}/questions`, {
+    method: "POST",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function updateAdminQuestion(id: number, payload: QuestionPayload) {
+  return apiRequest<AdminQuestion>(`/api/admin/questions/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function updateAdminQuizQuestion(quizId: number, questionId: number, payload: QuestionPayload) {
+  return apiRequest<AdminQuestion>(`/api/admin/quizzes/${quizId}/questions/${questionId}`, {
+    method: "PUT",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function reorderAdminQuizQuestions(quizId: number, questionIds: number[]) {
+  return apiMessageOnly(`/api/admin/quizzes/${quizId}/questions/reorder`, {
+    method: "PUT",
+    body: JSON.stringify({
+      question_ids: questionIds,
+    }),
+  });
+}
+
+export function deleteAdminQuestion(id: number) {
+  return apiMessageOnly(`/api/admin/questions/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export function deleteAdminQuizQuestion(quizId: number, questionId: number) {
+  return apiMessageOnly(`/api/admin/quizzes/${quizId}/questions/${questionId}`, {
+    method: "DELETE",
+  });
+}
+
+export function getAdminOptions() {
+  return apiRequest<AdminOption[]>("/api/admin/options", {
+    method: "GET",
+  });
+}
+
+export function createAdminOption(payload: OptionPayload) {
+  return apiRequest<AdminOption>("/api/admin/options", {
+    method: "POST",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function createAdminQuestionOption(questionId: number, payload: OptionPayload) {
+  return apiRequest<AdminOption>(`/api/admin/questions/${questionId}/options`, {
+    method: "POST",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function updateAdminOption(id: number, payload: OptionPayload) {
+  return apiRequest<AdminOption>(`/api/admin/options/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function updateAdminQuestionOption(questionId: number, optionId: number, payload: OptionPayload) {
+  return apiRequest<AdminOption>(`/api/admin/questions/${questionId}/options/${optionId}`, {
+    method: "PUT",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function deleteAdminOption(id: number) {
+  return apiMessageOnly(`/api/admin/options/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export function deleteAdminQuestionOption(questionId: number, optionId: number) {
+  return apiMessageOnly(`/api/admin/questions/${questionId}/options/${optionId}`, {
     method: "DELETE",
   });
 }
