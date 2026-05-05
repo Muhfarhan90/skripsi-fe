@@ -2367,6 +2367,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
               variant="outline"
               onClick={handleSaveDraft}
               disabled={isPrimaryActionPending}
+              className="border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100"
             >
               {saveMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
               <span>Simpan Draft</span>
