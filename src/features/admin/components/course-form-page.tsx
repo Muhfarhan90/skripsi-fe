@@ -388,9 +388,11 @@ function buildCurriculumPayloadSections(form: CourseFormState): CourseCurriculum
   }));
 }
 
-function toNullableNumber(raw: string): number | null {
-  if (!raw.trim()) return null;
-  return Number(raw);
+function toNonNegativeNumberOrZero(raw: string): number {
+  if (!raw.trim()) return 0;
+  const parsed = Number(raw);
+  if (Number.isNaN(parsed) || parsed < 0) return 0;
+  return parsed;
 }
 
 function isInvalidOptionalNumber(value: string): boolean {
@@ -908,10 +910,10 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
         return updateAdminCourseSectionQuiz(validCourseId, Number(quizForm.section_id), editingQuizId, {
           title: quizForm.title.trim(),
           description: quizForm.description.trim() || null,
-          duration: toNullableNumber(quizForm.duration),
-          passing_score: toNullableNumber(quizForm.passing_score),
-          weight: toNullableNumber(quizForm.weight),
-          max_attempts: toNullableNumber(quizForm.max_attempts),
+          duration: toNonNegativeNumberOrZero(quizForm.duration),
+          passing_score: toNonNegativeNumberOrZero(quizForm.passing_score),
+          weight: toNonNegativeNumberOrZero(quizForm.weight),
+          max_attempts: toNonNegativeNumberOrZero(quizForm.max_attempts),
           is_active: quizForm.is_active,
           is_random: quizForm.is_random,
         });
@@ -920,10 +922,10 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
       return createAdminCourseSectionQuiz(validCourseId, Number(quizForm.section_id), {
         title: quizForm.title.trim(),
         description: quizForm.description.trim() || null,
-        duration: toNullableNumber(quizForm.duration),
-        passing_score: toNullableNumber(quizForm.passing_score),
-        weight: toNullableNumber(quizForm.weight),
-        max_attempts: toNullableNumber(quizForm.max_attempts),
+        duration: toNonNegativeNumberOrZero(quizForm.duration),
+        passing_score: toNonNegativeNumberOrZero(quizForm.passing_score),
+        weight: toNonNegativeNumberOrZero(quizForm.weight),
+        max_attempts: toNonNegativeNumberOrZero(quizForm.max_attempts),
         is_active: quizForm.is_active,
         is_random: quizForm.is_random,
       });
