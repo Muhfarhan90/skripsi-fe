@@ -165,6 +165,7 @@ function createClientId(prefix: string): string {
 export function QuizDetailPage({ courseId, quizId }: QuizDetailPageProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const curriculumReturnTo = `/admin/master-data/courses/${courseId}?step=curriculum`;
   const questionListRef = useRef<HTMLDivElement | null>(null);
   const questionTextRef = useRef<HTMLTextAreaElement | null>(null);
   const [expandedQuestionId, setExpandedQuestionId] = useState<number | null>(null);
@@ -274,7 +275,7 @@ export function QuizDetailPage({ courseId, quizId }: QuizDetailPageProps) {
       setDeleteTarget(null);
       queryClient.invalidateQueries({ queryKey: ["admin", "courses", "curriculum", courseId] });
       queryClient.invalidateQueries({ queryKey: ["admin", "courses", "quizzes", courseId] });
-      router.push(`/admin/master-data/courses/${courseId}`);
+      router.push(curriculumReturnTo);
     },
     onError: (error) => {
       toast.error(normalizeError(error));
@@ -501,7 +502,7 @@ export function QuizDetailPage({ courseId, quizId }: QuizDetailPageProps) {
           title="Detail Quiz"
           description="Data quiz tidak dapat dimuat. Kembali ke halaman course untuk mencoba lagi."
         />
-        <Button type="button" variant="outline" onClick={() => router.push(`/admin/master-data/courses/${courseId}`)}>
+        <Button type="button" variant="outline" onClick={() => router.push(curriculumReturnTo)}>
           Kembali ke Detail Course
         </Button>
       </section>
@@ -515,7 +516,7 @@ export function QuizDetailPage({ courseId, quizId }: QuizDetailPageProps) {
           title="Detail Quiz"
           description="Quiz ini tidak terhubung dengan course yang dipilih."
         />
-        <Button type="button" variant="outline" onClick={() => router.push(`/admin/master-data/courses/${courseId}`)}>
+        <Button type="button" variant="outline" onClick={() => router.push(curriculumReturnTo)}>
           Kembali ke Detail Course
         </Button>
       </section>
@@ -557,7 +558,7 @@ export function QuizDetailPage({ courseId, quizId }: QuizDetailPageProps) {
       />
 
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Button type="button" variant="outline" onClick={() => router.push(`/admin/master-data/courses/${courseId}`)}>
+        <Button type="button" variant="outline" onClick={() => router.push(curriculumReturnTo)}>
           Kembali ke Detail Course
         </Button>
         <div className="flex items-center gap-2">
