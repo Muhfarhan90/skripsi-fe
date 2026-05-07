@@ -20,6 +20,12 @@ export default function RootPage() {
   return (
     <main className="min-h-screen bg-background">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-end px-6 pt-6">
+        <Link
+          href="/courses"
+          className="mr-3 inline-flex h-9 items-center rounded-md border border-zinc-300 bg-white px-4 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50"
+        >
+          Lihat Course
+        </Link>
         {isLoggedIn ? (
           <Popover>
             <PopoverTrigger className="flex items-center gap-2 rounded-full border border-zinc-200 bg-white/90 px-3 py-2 shadow-sm backdrop-blur transition hover:bg-white">
@@ -74,14 +80,28 @@ export default function RootPage() {
 
         <div className="mt-8 flex w-full max-w-md flex-col gap-3 sm:flex-row sm:justify-center">
           {isLoggedIn ? (
-            <Link
-              href={dashboardHref}
-              className="inline-flex h-11 items-center justify-center rounded-md bg-[#0F7A5A] px-6 text-sm font-medium text-white transition hover:bg-[#0d6b4f]"
-            >
-              Lanjut ke Dashboard
-            </Link>
+            <>
+              <Link
+                href="/courses"
+                className="inline-flex h-11 items-center justify-center rounded-md border border-zinc-300 bg-white px-6 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50"
+              >
+                Jelajahi Course
+              </Link>
+              <Link
+                href={dashboardHref}
+                className="inline-flex h-11 items-center justify-center rounded-md bg-[#0F7A5A] px-6 text-sm font-medium text-white transition hover:bg-[#0d6b4f]"
+              >
+                Lanjut ke Dashboard
+              </Link>
+            </>
           ) : (
             <>
+              <Link
+                href="/courses"
+                className="inline-flex h-11 items-center justify-center rounded-md border border-zinc-300 bg-white px-6 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50"
+              >
+                Jelajahi Course
+              </Link>
               <Link
                 href="/login"
                 className="inline-flex h-11 items-center justify-center rounded-md bg-[#0F7A5A] px-6 text-sm font-medium text-white transition hover:bg-[#0d6b4f]"

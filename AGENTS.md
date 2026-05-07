@@ -35,6 +35,7 @@ This repository is responsible for:
 ## Hard Constraints
 
 - DO NOT connect directly to PostgreSQL
+- DO NOT run any database-changing command in backend workspace (including `php artisan migrate`, `migrate:fresh`, `migrate:refresh`, `db:seed`, or direct write SQL)
 - DO NOT implement backend business logic in frontend
 - DO NOT assume cookie-based auth
 - DO NOT hardcode API base URLs
@@ -486,6 +487,14 @@ Examples:
 - Use `NEXT_PUBLIC_API_URL`
 - Normalize request and error handling
 - Keep endpoint-specific wrappers small and organized
+
+## Import Rules
+
+- Selalu deklarasikan import di bagian atas file (TypeScript/JavaScript: `import ...`, PHP: `use ...;`) untuk dependency/class yang dipakai.
+- Jangan menulis fully qualified class name inline di dalam kode.
+- Contoh yang dilarang: `App\Http\Middleware\EnsureAdminAccess::class`.
+- Contoh yang benar: deklarasikan `use App\Http\Middleware\EnsureAdminAccess;` di atas, lalu pakai `EnsureAdminAccess::class` di body kode.
+- Terapkan pola yang sama untuk middleware, request, resource, service, enum, dan class lain yang direferensikan.
 
 Preferred modules:
 

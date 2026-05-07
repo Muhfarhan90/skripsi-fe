@@ -150,6 +150,46 @@ export interface AdminUser {
   updated_at: string | null;
 }
 
+export interface AdminOrderItem {
+  course_id: number;
+  price: number;
+  course?: {
+    id: number;
+    title: string;
+  };
+}
+
+export interface AdminOrder {
+  id: number;
+  user_id: number;
+  order_code: string;
+  subtotal: number;
+  discount: number;
+  grand_total: number;
+  status: "cart" | "pending" | "completed" | "cancelled";
+  note: string | null;
+  created_at: string | null;
+  user?: {
+    id: number;
+    fullname: string;
+    email: string;
+  };
+  items: AdminOrderItem[];
+  transactions?: AdminOrderTransaction[];
+}
+
+export interface AdminOrderTransaction {
+  id: number;
+  order_id: number;
+  invoice_code: string;
+  payment_method: string | null;
+  payment_reference: string | null;
+  payment_proof: string | null;
+  status: "pending" | "success" | "failed";
+  paid_at: string | null;
+  expired_at: string | null;
+}
+
 export interface CategoryPayload {
   name: string;
   description?: string | null;
@@ -613,6 +653,22 @@ export function deleteAdminQuestionOption(questionId: number, optionId: number) 
 export function getAdminVouchers() {
   return apiRequest<AdminVoucher[]>("/api/admin/vouchers", {
     method: "GET",
+  });
+}
+
+export function getAdminOrders() {
+  return apiRequest<AdminOrder[]>("/api/admin/orders", {
+    method: "GET",
+  });
+}
+
+export function updateAdminTransaction(
+  id: number,
+  payload: Partial<Pick<AdminOrderTransaction, "status" | "payment_reference" | "payment_proof">>,
+) {
+  return apiRequest<AdminOrderTransaction>(`/api/admin/transactions/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(normalizePayload(payload)),
   });
 }
 

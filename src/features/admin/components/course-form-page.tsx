@@ -274,7 +274,10 @@ function mapCurriculumToFormState(curriculum: AdminCourseCurriculum): CourseForm
     category_id: String(curriculum.category_id),
     instructor_id: String(curriculum.instructor_id),
     price: String(curriculum.price),
-    discount_price: curriculum.discount_price ? String(curriculum.discount_price) : "",
+    discount_price:
+      curriculum.discount_price !== null && Number(curriculum.discount_price) > 0
+        ? String(curriculum.discount_price)
+        : "",
     status: curriculum.status,
     description: curriculum.description ?? "",
     requirements: curriculum.requirements ?? "",
@@ -300,8 +303,13 @@ function mapCurriculumToFormState(curriculum: AdminCourseCurriculum): CourseForm
 function buildCoursePayload(form: CourseFormState, status: CourseFormState["status"]): CoursePayload {
   const parsedPrice = Number(form.price);
   const safePrice = Number.isNaN(parsedPrice) || parsedPrice < 0 ? 0 : parsedPrice;
-  const parsedDiscount = form.discount_price.trim() ? Number(form.discount_price) : 0;
-  const safeDiscount = Number.isNaN(parsedDiscount) || parsedDiscount < 0 ? 0 : parsedDiscount;
+  const parsedDiscount = form.discount_price.trim() ? Number(form.discount_price) : null;
+  const safeDiscount =
+    parsedDiscount === null || Number.isNaN(parsedDiscount) || parsedDiscount <= 0
+      ? null
+      : parsedDiscount > safePrice
+        ? null
+        : parsedDiscount;
 
   return {
     title: form.title.trim(),
@@ -309,7 +317,7 @@ function buildCoursePayload(form: CourseFormState, status: CourseFormState["stat
     category_id: Number(form.category_id),
     instructor_id: Number(form.instructor_id),
     price: safePrice,
-    discount_price: safeDiscount > safePrice ? safePrice : safeDiscount,
+    discount_price: safeDiscount,
     status,
     requirements: form.requirements.trim() || null,
     outcomes: form.outcomes.trim() || null,
@@ -364,7 +372,7 @@ function buildDraftCoursePayload(form: CourseFormState): Partial<CoursePayload> 
   if (discount !== null && (price === null || discount <= price)) {
     payload.discount_price = discount;
   } else if (!form.discount_price.trim()) {
-    payload.discount_price = 0;
+    payload.discount_price = null;
   }
 
   return payload;

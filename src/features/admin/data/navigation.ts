@@ -14,7 +14,8 @@ export type AdminNavIcon =
   | "categories"
   | "courses"
   | "vouchers"
-  | "transactions";
+  | "transactions"
+  | "orders";
 
 export interface AdminNavigationItem {
   key: string;
@@ -55,6 +56,7 @@ const ADMIN_ICON_MAP: Record<AdminNavIcon, LucideIcon> = {
   courses: BookOpenText,
   vouchers: TicketPercent,
   transactions: ReceiptText,
+  orders: ReceiptText,
 };
 
 const ADMIN_ENTITY_LABEL: Record<AdminMasterEntity, string> = {
@@ -131,6 +133,13 @@ export const ADMIN_NAVIGATION: AdminNavigationGroup[] = [
     key: "transactions",
     title: "TRANSAKSI",
     items: [
+      {
+        key: "orders-overview",
+        label: "Orders",
+        href: "/admin/orders",
+        description: "Kelola order pembelian course siswa",
+        icon: "orders",
+      },
       {
         key: "transactions-overview",
         label: "Transaksi",
