@@ -1,8 +1,11 @@
 "use client";
 
-import Link from "next/link";
-import { Moon, Sun } from "lucide-react";
+import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils/cn";
 import { useTheme } from "@/providers/theme-provider";
+import { StudentSidebar } from "@/features/student/components/student-sidebar";
+import { StudentTopbar } from "@/features/student/components/student-topbar";
 
 interface StudentLayoutClientProps {
   fullName: string;
@@ -10,39 +13,69 @@ interface StudentLayoutClientProps {
 }
 
 export function StudentLayoutClient({ fullName, children }: StudentLayoutClientProps) {
+  const pathname = usePathname();
   const { theme, setTheme } = useTheme();
+  const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const activeTheme = theme === "dark" ? "dark" : "light";
+
+  useEffect(() => {
+    if (!isMobileSidebarOpen) {
+      return;
+    }
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsMobileSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [isMobileSidebarOpen]);
+
+  useEffect(() => {
+    if (!isMobileSidebarOpen) {
+      return;
+    }
+
+    const { overflow } = document.body.style;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = overflow;
+    };
+  }, [isMobileSidebarOpen]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur">
-        <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-4">
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-primary">Student Area</p>
-            <p className="truncate text-xs text-muted-foreground">{fullName}</p>
-          </div>
+      <StudentSidebar
+        pathname={pathname}
+        collapsed={isDesktopSidebarCollapsed}
+        mobileOpen={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
+      />
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setTheme(activeTheme === "light" ? "dark" : "light")}
-              className="inline-flex size-8 items-center justify-center rounded-md border border-border bg-card text-foreground transition hover:bg-muted"
-              aria-label={activeTheme === "light" ? "Aktifkan dark mode" : "Aktifkan light mode"}
-            >
-              {activeTheme === "light" ? <Moon className="size-4" /> : <Sun className="size-4" />}
-            </button>
+      <div
+        className={cn(
+          "flex min-h-screen flex-col transition-[padding] duration-300",
+          isDesktopSidebarCollapsed ? "lg:pl-[92px]" : "lg:pl-[280px]",
+        )}
+      >
+        <StudentTopbar
+          fullName={fullName}
+          pathname={pathname}
+          theme={activeTheme}
+          isSidebarCollapsed={isDesktopSidebarCollapsed}
+          onToggleTheme={() => setTheme(activeTheme === "light" ? "dark" : "light")}
+          onToggleSidebar={() => setIsDesktopSidebarCollapsed((prev) => !prev)}
+          onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
+        />
 
-            <Link
-              href="/"
-              className="inline-flex h-8 items-center rounded-md border border-border bg-card px-3 text-sm text-muted-foreground transition hover:bg-muted hover:text-foreground"
-            >
-              Beranda
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto w-full max-w-5xl px-4 py-8">{children}</main>
+        <main className="flex-1 px-4 py-5 sm:px-6 lg:px-8">
+          <div className="mx-auto w-full max-w-[1320px]">{children}</div>
+        </main>
+      </div>
     </div>
   );
 }
