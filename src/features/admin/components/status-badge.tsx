@@ -7,6 +7,17 @@ interface StatusBadgeProps {
 function resolveStatusClass(value: string): string {
   const normalized = value.toLowerCase();
 
+  if (normalized.includes("upcoming") || normalized.includes("submitted")) {
+    return "border-sky-200 bg-sky-100 text-sky-700 dark:border-sky-500/40 dark:bg-sky-500/20 dark:text-sky-200";
+  }
+
+  if (
+    normalized.includes("closed") ||
+    normalized.includes("tidak wajib")
+  ) {
+    return "border-zinc-300 bg-zinc-100 text-zinc-700 dark:border-zinc-500/40 dark:bg-zinc-500/20 dark:text-zinc-200";
+  }
+
   if (
     normalized.includes("nonaktif") ||
     normalized.includes("diblokir") ||
@@ -19,9 +30,12 @@ function resolveStatusClass(value: string): string {
 
   if (
     normalized.includes("aktif") ||
+    normalized.includes("active") ||
     normalized.includes("paid") ||
     normalized.includes("published") ||
-    normalized.includes("selesai")
+    normalized.includes("selesai") ||
+    normalized.includes("approved") ||
+    normalized.includes("wajib")
   ) {
     return "border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-500/20 dark:text-emerald-200";
   }
@@ -29,7 +43,9 @@ function resolveStatusClass(value: string): string {
   if (
     normalized.includes("pending") ||
     normalized.includes("waiting") ||
-    normalized.includes("draft")
+    normalized.includes("planned") ||
+    normalized.includes("draft") ||
+    normalized.includes("revision required")
   ) {
     return "border-amber-200 bg-amber-100 text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/20 dark:text-amber-200";
   }

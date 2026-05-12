@@ -16,6 +16,8 @@ const ALLOWED_ADMIN_RESOURCES = new Set([
   "orders",
   "enrollments",
   "transactions",
+  "course-offerings",
+  "academic-periods",
 ]);
 
 function resolveTargetPath(pathSegments: string[] | undefined): string | null {
@@ -43,6 +45,17 @@ function resolveTargetPath(pathSegments: string[] | undefined): string | null {
 
   if (resource === "courses" && pathSegments.length === 3 && maybeId && action === "quizzes") {
     return `/admin/courses/${maybeId}/quizzes`;
+  }
+
+  if (resource === "courses" && pathSegments.length === 3 && maybeId && action === "assignments") {
+    return `/admin/courses/${maybeId}/assignments`;
+  }
+
+  if (resource === "courses" && pathSegments.length === 4 && maybeId && action === "assignments") {
+    const [, , , assignmentId] = pathSegments;
+    if (assignmentId) {
+      return `/admin/courses/${maybeId}/assignments/${assignmentId}`;
+    }
   }
 
   if (resource === "courses" && pathSegments.length === 5 && maybeId && action === "sections") {

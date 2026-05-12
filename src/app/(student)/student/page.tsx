@@ -31,7 +31,7 @@ export default function StudentPage() {
 
       <div className="flex flex-wrap gap-2">
         <Link
-          href="/courses"
+          href="/student/catalog"
           className="inline-flex h-9 items-center rounded-md border border-border bg-card px-4 text-sm text-muted-foreground transition hover:bg-muted hover:text-foreground"
         >
           Jelajahi Course

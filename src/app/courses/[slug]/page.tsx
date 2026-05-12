@@ -27,6 +27,7 @@ export default function CourseDetailPage() {
   const router = useRouter();
   const params = useParams<{ slug: string }>();
   const user = useAuthStore((state) => state.user);
+  const catalogHref = user?.role_id === 3 ? "/student/catalog" : "/courses";
 
   const slug = typeof params.slug === "string" ? params.slug : "";
 
@@ -88,7 +89,7 @@ export default function CourseDetailPage() {
       <main className="min-h-screen bg-background px-6 py-10">
         <section className="mx-auto w-full max-w-4xl space-y-4">
           <p className="text-sm text-red-600">Course tidak ditemukan atau gagal dimuat.</p>
-          <Link href="/courses" className="text-sm text-[#0F7A5A] hover:underline">
+          <Link href={catalogHref} className="text-sm text-[#0F7A5A] hover:underline">
             Kembali ke katalog course
           </Link>
         </section>
@@ -103,8 +104,8 @@ export default function CourseDetailPage() {
   return (
     <main className="min-h-screen bg-background px-6 py-10">
       <section className="mx-auto w-full max-w-4xl space-y-6">
-        <Link href="/courses" className="inline-flex text-sm text-[#0F7A5A] hover:underline">
-          ← Kembali ke katalog
+        <Link href={catalogHref} className="inline-flex text-sm text-[#0F7A5A] hover:underline">
+          Kembali ke katalog
         </Link>
 
         <article className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
@@ -144,3 +145,4 @@ export default function CourseDetailPage() {
     </main>
   );
 }
+

@@ -14,10 +14,10 @@ import {
 import { ApiError } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 
 interface CourseLessonEditorPageProps {
@@ -264,17 +264,16 @@ export function CourseLessonEditorPage({
             </div>
           </div>
 
-          <label
-            htmlFor="lesson-preview"
-            className="inline-flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--muted)] px-3 py-2 text-sm text-[var(--foreground)]"
-          >
-            <Checkbox
+          <div className="flex items-center justify-between gap-3 rounded-md border border-[var(--border)] bg-[var(--muted)] px-3 py-2">
+            <Label htmlFor="lesson-preview" className="text-sm text-[var(--foreground)]">
+              Jadikan lesson ini sebagai preview
+            </Label>
+            <Switch
               id="lesson-preview"
               checked={form.is_preview}
               onCheckedChange={(checked) => updateForm("is_preview", checked)}
             />
-            Jadikan lesson ini sebagai preview
-          </label>
+          </div>
 
           <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--border)] pt-3">
             <Button
@@ -300,4 +299,3 @@ export function CourseLessonEditorPage({
     </section>
   );
 }
-

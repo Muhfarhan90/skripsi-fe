@@ -6,7 +6,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
-import { StatusBadge } from "@/features/admin/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmAlertDialog } from "@/components/ui/confirm-alert-dialog";
@@ -67,7 +66,7 @@ export default function AdminCoursesPage() {
       const categoryName = categoryMap.get(course.category_id) ?? "";
       const instructorName = userMap.get(course.instructor_id) ?? "";
 
-      return [course.title, course.status, categoryName, instructorName].some((value) =>
+      return [course.title, categoryName, instructorName].some((value) =>
         value.toLowerCase().includes(keyword),
       );
     });
@@ -94,18 +93,16 @@ export default function AdminCoursesPage() {
   return (
     <section className="space-y-5">
       <AdminPageHeader
-        title="Kelola Courses"
-        description="Kelola data course, kategori, dan instructor sebelum dipublikasikan ke student."
+        title="Kelola Course Master"
+        description="Kelola konten course utama, kategori, dan instructor sebelum dibuatkan offering."
       />
 
       <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
         <CardHeader className="space-y-4 border-b border-[var(--border)] p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <CardTitle className="text-base font-semibold text-[var(--foreground)]">Daftar Courses</CardTitle>
-              <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-                Kelola metadata course lengkap dari satu tabel.
-              </p>
+              <CardTitle className="text-base font-semibold text-[var(--foreground)]">Daftar Course Master</CardTitle>
+              <p className="mt-1 text-sm text-[var(--muted-foreground)]">Kelola metadata course master dari satu tabel.</p>
               <span className="mt-2 inline-flex rounded-md border border-[var(--border)] bg-[var(--muted)] px-2 py-0.5 text-xs font-medium text-[var(--muted-foreground)]">
                 {filteredCourses.length} data
               </span>
@@ -118,7 +115,7 @@ export default function AdminCoursesPage() {
               className="h-10 bg-[var(--primary)] px-4 text-[var(--primary-foreground)] hover:brightness-95"
             >
               <Plus className="size-4" />
-              <span>Buat Course</span>
+              <span>Buat Course Master</span>
             </Button>
           </div>
 
@@ -139,19 +136,19 @@ export default function AdminCoursesPage() {
               <thead className="bg-[var(--muted)]">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
+                    Thumbnail
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
                     Judul
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
                     Kategori
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
+                    Skill
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
                     Instructor
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
-                    Harga
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
-                    Status
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
                     Aksi
@@ -174,19 +171,45 @@ export default function AdminCoursesPage() {
                   </tr>
                 ) : filteredCourses.length > 0 ? (
                   filteredCourses.map((course) => (
-                    <tr key={course.id} className="hover:bg-[var(--surface-hover)]">
-                      <td className="px-4 py-3 text-sm font-medium text-[var(--foreground)]">{course.title}</td>
+                    <tr key={course.id} className="align-top hover:bg-[var(--surface-hover)]">
+                      <td className="px-4 py-3">
+                        <div className="flex h-14 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md border border-[var(--border)] bg-[var(--muted)]">
+                          {course.thumbnail ? (
+                            <>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={course.thumbnail}
+                                alt={course.title}
+                                className="h-full w-full object-cover"
+                              />
+                            </>
+                          ) : (
+                            <span className="px-2 text-center text-[11px] text-[var(--muted-foreground)]">No thumbnail</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm font-semibold text-[var(--foreground)]">{course.title}</td>
                       <td className="px-4 py-3 text-sm text-[var(--muted-foreground)]">
                         {categoryMap.get(course.category_id) ?? "-"}
                       </td>
+                      <td className="px-4 py-3">
+                        {course.skills.length > 0 ? (
+                          <div className="flex flex-wrap gap-1.5">
+                            {course.skills.map((skill) => (
+                              <span
+                                key={skill.id}
+                                className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700"
+                              >
+                                {skill.name}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-sm text-[var(--muted-foreground)]">-</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-sm text-[var(--muted-foreground)]">
                         {userMap.get(course.instructor_id) ?? "-"}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-[var(--muted-foreground)]">
-                        Rp{Number(course.price).toLocaleString("id-ID")}
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        <StatusBadge value={course.status} />
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-2">

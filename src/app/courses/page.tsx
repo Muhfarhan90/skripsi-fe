@@ -4,7 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { addCourseToCart, getPublishedCourses } from "@/features/student/api/store-api";
+import {
+  addCourseToCart,
+  getPublishedCourses,
+  getStudentEnrollments,
+} from "@/features/student/api/store-api";
 import { useAuthStore } from "@/features/auth/store/auth-store";
 import { ApiError } from "@/lib/api/client";
 
@@ -26,10 +30,17 @@ function hasValidDiscount(price: number | null | undefined, discountPrice: numbe
 export default function CoursesPage() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
+  const isStudentUser = user?.role_id === 3;
 
   const courseQuery = useQuery({
     queryKey: ["store", "courses"],
     queryFn: getPublishedCourses,
+  });
+
+  const enrollmentsQuery = useQuery({
+    queryKey: ["student", "enrollments", "catalog-filter"],
+    queryFn: getStudentEnrollments,
+    enabled: isStudentUser,
   });
 
   const addToCartMutation = useMutation({
@@ -61,6 +72,16 @@ export default function CoursesPage() {
     addToCartMutation.mutate(courseId);
   };
 
+  const enrolledCourseIds = new Set(
+    (enrollmentsQuery.data ?? [])
+      .filter((enrollment) => enrollment.status !== "cancelled")
+      .map((enrollment) => enrollment.course_id),
+  );
+
+  const visibleCourses = (courseQuery.data ?? []).filter((course) => !enrolledCourseIds.has(course.id));
+  const isLoading = courseQuery.isLoading || (isStudentUser && enrollmentsQuery.isLoading);
+  const isError = courseQuery.isError || (isStudentUser && enrollmentsQuery.isError);
+
   return (
     <main className="min-h-screen bg-background px-6 py-10">
       <section className="mx-auto w-full max-w-6xl space-y-8">
@@ -71,16 +92,24 @@ export default function CoursesPage() {
           </p>
         </header>
 
-        {courseQuery.isLoading ? (
+        {isLoading ? (
           <p className="text-sm text-zinc-500">Memuat katalog course...</p>
         ) : null}
 
-        {courseQuery.isError ? (
+        {isError ? (
           <p className="text-sm text-red-600">Gagal memuat katalog course.</p>
         ) : null}
 
+        {!isLoading && !isError && visibleCourses.length === 0 ? (
+          <article className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
+            <p className="text-sm text-zinc-600">
+              Tidak ada course baru. Semua course yang tersedia sudah ada di enrollment Anda.
+            </p>
+          </article>
+        ) : null}
+
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {courseQuery.data?.map((course) => {
+          {visibleCourses.map((course) => {
             const hasDiscount = hasValidDiscount(course.price, course.discount_price);
             const activePrice = hasDiscount ? Number(course.discount_price ?? 0) : Number(course.price ?? 0);
 

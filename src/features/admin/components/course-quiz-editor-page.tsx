@@ -13,9 +13,9 @@ import {
 import { ApiError } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 
 interface CourseQuizEditorPageProps {
@@ -31,6 +31,8 @@ interface QuizFormState {
   passing_score: string;
   weight: string;
   max_attempts: string;
+  open_at: string;
+  close_at: string;
   is_active: boolean;
   is_random: boolean;
 }
@@ -42,6 +44,8 @@ const DEFAULT_FORM: QuizFormState = {
   passing_score: "",
   weight: "",
   max_attempts: "",
+  open_at: "",
+  close_at: "",
   is_active: true,
   is_random: false,
 };
@@ -63,6 +67,21 @@ function isInvalidOptionalNumber(value: string): boolean {
   if (!value.trim()) return false;
   const parsed = Number(value);
   return Number.isNaN(parsed) || parsed < 0;
+}
+
+function toApiDateTimeOrNull(value: string): string | null {
+  const normalized = value.trim();
+  if (!normalized) return null;
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) return null;
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+
+  return `${year}-${month}-${day} ${hour}:${minute}:00`;
 }
 
 export function CourseQuizEditorPage({ courseId, sectionId, returnTo }: CourseQuizEditorPageProps) {
@@ -94,6 +113,9 @@ export function CourseQuizEditorPage({ courseId, sectionId, returnTo }: CourseQu
       ) {
         throw new Error("Durasi, passing score, weight, dan max attempts harus angka >= 0");
       }
+      if (form.open_at && form.close_at && new Date(form.close_at) < new Date(form.open_at)) {
+        throw new Error("Waktu tutup quiz harus lebih besar atau sama dengan waktu buka quiz");
+      }
 
       return createAdminCourseSectionQuiz(courseId, sectionId, {
         title: form.title.trim(),
@@ -102,6 +124,8 @@ export function CourseQuizEditorPage({ courseId, sectionId, returnTo }: CourseQu
         passing_score: toNonNegativeNumberOrZero(form.passing_score),
         weight: toNonNegativeNumberOrZero(form.weight),
         max_attempts: toNonNegativeNumberOrZero(form.max_attempts),
+        open_at: toApiDateTimeOrNull(form.open_at),
+        close_at: toApiDateTimeOrNull(form.close_at),
         is_active: form.is_active,
         is_random: form.is_random,
       });
@@ -238,32 +262,52 @@ export function CourseQuizEditorPage({ courseId, sectionId, returnTo }: CourseQu
                 className="border-[var(--border)] bg-[var(--card)]"
               />
             </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="quiz-open-at">Quiz Buka (Tanggal & Jam)</Label>
+              <Input
+                id="quiz-open-at"
+                type="datetime-local"
+                value={form.open_at}
+                onChange={(event) => setForm((prev) => ({ ...prev, open_at: event.target.value }))}
+                className="border-[var(--border)] bg-[var(--card)]"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="quiz-close-at">Quiz Tutup (Tanggal & Jam)</Label>
+              <Input
+                id="quiz-close-at"
+                type="datetime-local"
+                value={form.close_at}
+                onChange={(event) => setForm((prev) => ({ ...prev, close_at: event.target.value }))}
+                className="border-[var(--border)] bg-[var(--card)]"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-            <label
-              htmlFor="quiz-is-active"
-              className="inline-flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--muted)] px-3 py-2 text-sm text-[var(--foreground)]"
-            >
-              <Checkbox
+            <div className="flex items-center justify-between gap-3 rounded-md border border-[var(--border)] bg-[var(--muted)] px-3 py-2">
+              <Label htmlFor="quiz-is-active" className="text-sm text-[var(--foreground)]">
+                Quiz aktif
+              </Label>
+              <Switch
                 id="quiz-is-active"
                 checked={form.is_active}
                 onCheckedChange={(checked) => setForm((prev) => ({ ...prev, is_active: checked }))}
               />
-              Quiz aktif
-            </label>
+            </div>
 
-            <label
-              htmlFor="quiz-is-random"
-              className="inline-flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--muted)] px-3 py-2 text-sm text-[var(--foreground)]"
-            >
-              <Checkbox
+            <div className="flex items-center justify-between gap-3 rounded-md border border-[var(--border)] bg-[var(--muted)] px-3 py-2">
+              <Label htmlFor="quiz-is-random" className="text-sm text-[var(--foreground)]">
+                Soal diacak
+              </Label>
+              <Switch
                 id="quiz-is-random"
                 checked={form.is_random}
                 onCheckedChange={(checked) => setForm((prev) => ({ ...prev, is_random: checked }))}
               />
-              Soal diacak
-            </label>
+            </div>
           </div>
 
           <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--border)] pt-3">

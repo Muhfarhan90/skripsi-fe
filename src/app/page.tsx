@@ -16,12 +16,13 @@ export default function RootPage() {
 
   const isLoggedIn = Boolean(user);
   const dashboardHref = getDefaultPathByRole(user?.role_id);
+  const catalogHref = user?.role_id === 3 ? "/student/catalog" : "/courses";
 
   return (
     <main className="min-h-screen bg-background">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-end px-6 pt-6">
         <Link
-          href="/courses"
+          href={catalogHref}
           className="mr-3 inline-flex h-9 items-center rounded-md border border-zinc-300 bg-white px-4 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50"
         >
           Lihat Course
@@ -82,7 +83,7 @@ export default function RootPage() {
           {isLoggedIn ? (
             <>
               <Link
-                href="/courses"
+                href={catalogHref}
                 className="inline-flex h-11 items-center justify-center rounded-md border border-zinc-300 bg-white px-6 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50"
               >
                 Jelajahi Course
@@ -97,7 +98,7 @@ export default function RootPage() {
           ) : (
             <>
               <Link
-                href="/courses"
+                href={catalogHref}
                 className="inline-flex h-11 items-center justify-center rounded-md border border-zinc-300 bg-white px-6 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50"
               >
                 Jelajahi Course

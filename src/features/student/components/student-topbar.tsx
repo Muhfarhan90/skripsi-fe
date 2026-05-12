@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import {
+  ChevronDown,
   ChevronRight,
   LayoutDashboard,
   LogOut,
@@ -9,10 +11,12 @@ import {
   Moon,
   PanelLeft,
   PanelLeftClose,
+  ShoppingCart,
   Sun,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useLogoutAction } from "@/features/auth/hooks/use-logout-action";
+import { getStudentCart } from "@/features/student/api/store-api";
 import {
   getStudentBreadcrumbs,
   getStudentPageTitle,
@@ -43,6 +47,13 @@ export function StudentTopbar({
   const logoutMutation = useLogoutAction();
   const breadcrumbs = getStudentBreadcrumbs(pathname);
   const pageTitle = getStudentPageTitle(pathname);
+  const cartQuery = useQuery({
+    queryKey: ["student", "cart"],
+    queryFn: getStudentCart,
+    staleTime: 30_000,
+  });
+  const cartItemsCount = cartQuery.data?.items.length ?? 0;
+  const isCartPage = pathname === "/student/cart" || pathname.startsWith("/student/cart/");
   const formattedDate = new Date().toLocaleDateString("id-ID", {
     weekday: "long",
     day: "2-digit",
@@ -100,22 +111,36 @@ export function StudentTopbar({
           {theme === "light" ? <Moon className="size-4" /> : <Sun className="size-4" />}
         </button>
 
+        <Link
+          href="/student/cart"
+          className={cn(
+            "relative inline-flex size-9 items-center justify-center rounded-md border transition",
+            isCartPage
+              ? "border-[var(--secondary)] bg-[var(--secondary)] text-[var(--secondary-foreground)]"
+              : "border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] hover:bg-[var(--surface-hover)]",
+          )}
+          aria-label="Buka cart student"
+        >
+          <ShoppingCart className="size-4" />
+          {cartItemsCount > 0 ? (
+            <span className="absolute -right-1.5 -top-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold leading-none text-white">
+              {cartItemsCount > 99 ? "99+" : cartItemsCount}
+            </span>
+          ) : null}
+        </Link>
+
         <Popover>
           <PopoverTrigger
-            className="inline-flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--card)] px-2 py-1.5 text-left transition hover:bg-[var(--surface-hover)]"
+            className="inline-flex items-center gap-2 rounded-md px-1 py-1 text-left transition hover:bg-[var(--surface-hover)]"
             aria-label="Buka menu profil student"
           >
-            <span className="inline-flex size-8 items-center justify-center rounded-md bg-[var(--primary)] text-xs font-semibold text-white">
+            <span className="inline-flex size-9 items-center justify-center rounded-full bg-[var(--primary)] text-xs font-semibold text-white">
               {fullName.trim().charAt(0).toUpperCase() || "S"}
             </span>
             <span className="hidden min-w-0 sm:block">
-              <span className="block max-w-28 truncate text-xs font-semibold text-[var(--foreground)]">
-                {fullName}
-              </span>
-              <span className="block max-w-28 truncate text-[11px] text-[var(--muted-foreground)]">
-                Student
-              </span>
+              <span className="block max-w-32 truncate text-sm font-semibold text-[var(--foreground)]">{fullName}</span>
             </span>
+            <ChevronDown className="hidden size-4 text-[var(--muted-foreground)] sm:block" />
           </PopoverTrigger>
 
           <PopoverContent

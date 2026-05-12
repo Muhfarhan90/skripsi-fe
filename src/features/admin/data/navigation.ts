@@ -1,5 +1,7 @@
 import {
   BookOpenText,
+  CalendarClock,
+  CalendarRange,
   FolderKanban,
   LayoutDashboard,
   ReceiptText,
@@ -13,6 +15,8 @@ export type AdminNavIcon =
   | "users"
   | "categories"
   | "courses"
+  | "courseOfferings"
+  | "academicPeriods"
   | "vouchers"
   | "transactions"
   | "orders";
@@ -54,6 +58,8 @@ const ADMIN_ICON_MAP: Record<AdminNavIcon, LucideIcon> = {
   users: Shapes,
   categories: FolderKanban,
   courses: BookOpenText,
+  courseOfferings: CalendarRange,
+  academicPeriods: CalendarClock,
   vouchers: TicketPercent,
   transactions: ReceiptText,
   orders: ReceiptText,
@@ -62,7 +68,7 @@ const ADMIN_ICON_MAP: Record<AdminNavIcon, LucideIcon> = {
 const ADMIN_ENTITY_LABEL: Record<AdminMasterEntity, string> = {
   users: "User",
   categories: "Category",
-  courses: "Course",
+  courses: "Course Master",
   vouchers: "Voucher",
 };
 
@@ -74,10 +80,22 @@ const ADMIN_QUICK_ACTIONS: AdminQuickNavigationItem[] = [
     keywords: ["create", "user", "tambah", "akun"],
   },
   {
-    label: "Buat Course",
+    label: "Buat Course Master",
     href: "/admin/master-data/courses/new",
-    description: "Tambah course baru",
+    description: "Tambah course master baru",
     keywords: ["create", "course", "kursus", "tambah"],
+  },
+  {
+    label: "Buat Offering",
+    href: "/admin/course-offerings/new",
+    description: "Tambah batch/offering course baru",
+    keywords: ["create", "offering", "batch", "periode"],
+  },
+  {
+    label: "Buat Periode Akademik",
+    href: "/admin/academic-periods/new",
+    description: "Tambah periode akademik baru",
+    keywords: ["periode", "academic", "calendar", "create"],
   },
 ];
 
@@ -115,10 +133,24 @@ export const ADMIN_NAVIGATION: AdminNavigationGroup[] = [
       },
       {
         key: "master-data-courses",
-        label: "Courses",
+        label: "Course Master",
         href: "/admin/master-data/courses",
-        description: "Kelola struktur data course",
+        description: "Kelola konten master course",
         icon: "courses",
+      },
+      {
+        key: "course-offerings",
+        label: "Course Offerings",
+        href: "/admin/course-offerings",
+        description: "Kelola batch/offering per periode",
+        icon: "courseOfferings",
+      },
+      {
+        key: "academic-periods",
+        label: "Academic Periods",
+        href: "/admin/academic-periods",
+        description: "Kelola kalender akademik",
+        icon: "academicPeriods",
       },
       {
         key: "master-data-vouchers",
@@ -206,6 +238,54 @@ function isNumericIdSegment(segment: string): boolean {
 // Normalize dynamic admin forms so title/breadcrumb stays human-readable.
 function resolveAdminDynamicRoute(pathname: string): AdminDynamicRouteMeta | undefined {
   const segments = pathname.replace(/^\/admin\/?/, "").split("/").filter(Boolean);
+
+  if (segments.length >= 1 && segments[0] === "course-offerings") {
+    if (segments.length === 2 && isNumericIdSegment(segments[1])) {
+      return {
+        title: "Detail Course Offering",
+        breadcrumbs: [
+          { label: "Dashboard", href: "/admin" },
+          { label: "Course Offerings", href: "/admin/course-offerings" },
+          { label: "Detail Course Offering" },
+        ],
+      };
+    }
+
+    if (segments.length === 2 && segments[1] === "new") {
+      return {
+        title: "Buat Course Offering",
+        breadcrumbs: [
+          { label: "Dashboard", href: "/admin" },
+          { label: "Course Offerings", href: "/admin/course-offerings" },
+          { label: "Buat Course Offering" },
+        ],
+      };
+    }
+  }
+
+  if (segments.length >= 1 && segments[0] === "academic-periods") {
+    if (segments.length === 2 && isNumericIdSegment(segments[1])) {
+      return {
+        title: "Detail Academic Period",
+        breadcrumbs: [
+          { label: "Dashboard", href: "/admin" },
+          { label: "Academic Periods", href: "/admin/academic-periods" },
+          { label: "Detail Academic Period" },
+        ],
+      };
+    }
+
+    if (segments.length === 2 && segments[1] === "new") {
+      return {
+        title: "Buat Academic Period",
+        breadcrumbs: [
+          { label: "Dashboard", href: "/admin" },
+          { label: "Academic Periods", href: "/admin/academic-periods" },
+          { label: "Buat Academic Period" },
+        ],
+      };
+    }
+  }
 
   if (segments.length < 3 || segments[0] !== "master-data") {
     return undefined;

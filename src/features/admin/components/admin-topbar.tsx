@@ -4,22 +4,21 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  ChevronRight,
-  LayoutDashboard,
+  Bell,
+  ChevronDown,
   LogOut,
   Menu,
   Moon,
   PanelLeft,
   PanelLeftClose,
   Search,
+  Settings,
   Sun,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useLogoutAction } from "@/features/auth/hooks/use-logout-action";
 import {
-  getAdminBreadcrumbs,
-  getAdminPageTitle,
   getAdminQuickNavigationItems,
   type AdminQuickNavigationItem,
 } from "@/features/admin/data/navigation";
@@ -30,7 +29,6 @@ type DashboardTheme = "light" | "dark";
 interface AdminTopbarProps {
   fullName: string;
   email: string;
-  pathname: string;
   theme: DashboardTheme;
   isSidebarCollapsed: boolean;
   onToggleTheme: () => void;
@@ -43,7 +41,6 @@ const MAX_QUICK_RESULTS = 6;
 export function AdminTopbar({
   fullName,
   email,
-  pathname,
   theme,
   isSidebarCollapsed,
   onToggleTheme,
@@ -52,17 +49,10 @@ export function AdminTopbar({
 }: AdminTopbarProps) {
   const router = useRouter();
   const logoutMutation = useLogoutAction();
-  const breadcrumbs = getAdminBreadcrumbs(pathname);
-  const pageTitle = getAdminPageTitle(pathname);
   const quickNavigationItems = useMemo(() => getAdminQuickNavigationItems(), []);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [showSearchResults, setShowSearchResults] = useState(false);
-  const formattedDate = new Date().toLocaleDateString("id-ID", {
-    weekday: "long",
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  });
+  const unreadNotificationCount = 8;
 
   const searchResults = useMemo(() => {
     const keyword = searchKeyword.trim().toLowerCase();
@@ -118,26 +108,8 @@ export function AdminTopbar({
           </button>
         </div>
 
-        <div className="min-w-0 flex-1">
-          <div className="mb-1 flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
-            {breadcrumbs.map((item, index) => (
-              <span key={`${item.label}-${index}`} className="inline-flex items-center gap-1">
-                {item.href ? (
-                  <Link href={item.href} className="hover:text-[var(--primary)]">
-                    {item.label}
-                  </Link>
-                ) : (
-                  <span className="text-[var(--foreground)]">{item.label}</span>
-                )}
-                {index < breadcrumbs.length - 1 ? <ChevronRight className="size-3" /> : null}
-              </span>
-            ))}
-          </div>
-          <p className="truncate text-sm font-semibold text-[var(--foreground)] sm:text-base">{pageTitle}</p>
-        </div>
-
         <div className="relative hidden flex-1 lg:block">
-          <div className="relative ml-auto w-full max-w-md">
+          <div className="relative w-full max-w-md">
             <Search className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-[var(--muted-foreground)]" />
             <Input
               type="search"
@@ -160,67 +132,66 @@ export function AdminTopbar({
               placeholder="Cari menu cepat admin..."
               className="h-9 border-[var(--border)] bg-[var(--card)] pl-9 text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]"
             />
+            {showSearchResults ? (
+              <div className="absolute top-full left-0 z-40 mt-2 w-full rounded-md border border-[var(--border)] bg-[var(--card)] p-2 shadow-lg">
+                {searchResults.length > 0 ? (
+                  <div className="space-y-1">
+                    {searchResults.map((item) => (
+                      <button
+                        key={`${item.href}-${item.label}`}
+                        type="button"
+                        onClick={() => handleQuickNavigate(item)}
+                        className="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left transition hover:bg-[var(--surface-hover)]"
+                      >
+                        <span className="mt-0.5 inline-flex size-4 items-center justify-center text-[var(--muted-foreground)]">
+                          <Search className="size-3" />
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-medium text-[var(--foreground)]">
+                            {item.label}
+                          </span>
+                          <span className="block truncate text-xs text-[var(--muted-foreground)]">
+                            {item.description}
+                          </span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="px-2 py-1.5 text-xs text-[var(--muted-foreground)]">
+                    Tidak ada hasil untuk kata kunci tersebut.
+                  </p>
+                )}
+              </div>
+            ) : null}
           </div>
-
-          {showSearchResults ? (
-            <div className="absolute right-0 z-40 mt-2 w-full max-w-md rounded-md border border-[var(--border)] bg-[var(--card)] p-2 shadow-lg">
-              {searchResults.length > 0 ? (
-                <div className="space-y-1">
-                  {searchResults.map((item) => (
-                    <button
-                      key={`${item.href}-${item.label}`}
-                      type="button"
-                      onClick={() => handleQuickNavigate(item)}
-                      className="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left transition hover:bg-[var(--surface-hover)]"
-                    >
-                      <span className="mt-0.5 inline-flex size-4 items-center justify-center text-[var(--muted-foreground)]">
-                        <Search className="size-3" />
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block truncate text-sm font-medium text-[var(--foreground)]">
-                          {item.label}
-                        </span>
-                        <span className="block truncate text-xs text-[var(--muted-foreground)]">
-                          {item.description}
-                        </span>
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <p className="px-2 py-1.5 text-xs text-[var(--muted-foreground)]">
-                  Tidak ada hasil untuk kata kunci tersebut.
-                </p>
-              )}
-            </div>
-          ) : null}
         </div>
 
         <button
           type="button"
-          onClick={onToggleTheme}
-          className="inline-flex size-9 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] transition hover:bg-[var(--surface-hover)]"
-          aria-label={theme === "light" ? "Aktifkan dark mode" : "Aktifkan light mode"}
+          className="relative inline-flex size-9 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] transition hover:bg-[var(--surface-hover)]"
+          aria-label={`Notifikasi (${unreadNotificationCount} belum dibaca)`}
         >
-          {theme === "light" ? <Moon className="size-4" /> : <Sun className="size-4" />}
+          <Bell className="size-4" />
+          {unreadNotificationCount > 0 ? (
+            <span className="absolute -top-1 -right-1 inline-flex min-w-4 items-center justify-center rounded-full bg-[var(--danger-soft-foreground)] px-1 text-[10px] font-semibold leading-4 text-white">
+              {unreadNotificationCount}
+            </span>
+          ) : null}
         </button>
 
         <Popover>
           <PopoverTrigger
-            className="inline-flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--card)] px-2 py-1.5 text-left transition hover:bg-[var(--surface-hover)]"
+            className="inline-flex items-center gap-2 rounded-md px-1 py-1 text-left transition hover:bg-[var(--surface-hover)]"
             aria-label="Buka menu profil admin"
           >
-            <span className="inline-flex size-8 items-center justify-center rounded-md bg-[var(--primary)] text-xs font-semibold text-white">
+            <span className="inline-flex size-9 items-center justify-center rounded-full bg-[var(--primary)] text-xs font-semibold text-white">
               {fullName.trim().charAt(0).toUpperCase() || "A"}
             </span>
             <span className="hidden min-w-0 sm:block">
-              <span className="block max-w-28 truncate text-xs font-semibold text-[var(--foreground)]">
-                {fullName}
-              </span>
-              <span className="block max-w-28 truncate text-[11px] text-[var(--muted-foreground)]">
-                Admin
-              </span>
+              <span className="block max-w-32 truncate text-sm font-semibold text-[var(--foreground)]">{fullName}</span>
             </span>
+            <ChevronDown className="hidden size-4 text-[var(--muted-foreground)] sm:block" />
           </PopoverTrigger>
 
           <PopoverContent
@@ -230,16 +201,44 @@ export function AdminTopbar({
             <div className="space-y-1 border-b border-[var(--border)] px-2 pb-2">
               <p className="text-sm font-semibold">{fullName}</p>
               <p className="text-xs text-[var(--muted-foreground)]">{email}</p>
-              <p className="text-xs text-[var(--muted-foreground)]">{formattedDate}</p>
             </div>
 
             <div className="space-y-1 pt-2">
+              <button
+                type="button"
+                onClick={onToggleTheme}
+                aria-pressed={theme === "dark"}
+                aria-label={theme === "dark" ? "Nonaktifkan dark mode" : "Aktifkan dark mode"}
+                className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm transition hover:bg-[var(--surface-hover)]"
+              >
+                <span className="inline-flex items-center gap-2">
+                  {theme === "light" ? <Moon className="size-4" /> : <Sun className="size-4" />}
+                  <span>Dark Mode</span>
+                </span>
+                <span
+                  aria-hidden
+                  className={cn(
+                    "relative inline-flex h-5 w-9 items-center rounded-full border transition",
+                    theme === "dark"
+                      ? "border-emerald-600 bg-emerald-600"
+                      : "border-[var(--border)] bg-[var(--muted)]",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "inline-block size-4 rounded-full bg-white transition-transform",
+                      theme === "dark" ? "translate-x-4" : "translate-x-0.5",
+                    )}
+                  />
+                </span>
+              </button>
+
               <Link
                 href="/admin"
                 className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition hover:bg-[var(--surface-hover)]"
               >
-                <LayoutDashboard className="size-4" />
-                <span>Dashboard Admin</span>
+                <Settings className="size-4" />
+                <span>Settings</span>
               </Link>
 
               <button

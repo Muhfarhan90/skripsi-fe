@@ -86,7 +86,7 @@ export default function StudentCartPage() {
       {!cart || cart.items.length === 0 ? (
         <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
           <p className="text-sm text-muted-foreground">Cart masih kosong.</p>
-          <Link href="/courses" className="mt-3 inline-flex text-sm text-primary hover:underline">
+          <Link href="/student/catalog" className="mt-3 inline-flex text-sm text-primary hover:underline">
             Jelajahi course
           </Link>
         </div>
@@ -170,4 +170,3 @@ export default function StudentCartPage() {
     </section>
   );
 }
-

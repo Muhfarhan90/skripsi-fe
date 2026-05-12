@@ -50,6 +50,8 @@ interface QuizFormState {
   passing_score: string;
   weight: string;
   max_attempts: string;
+  open_at: string;
+  close_at: string;
   is_active: boolean;
   is_random: boolean;
 }
@@ -86,6 +88,8 @@ const DEFAULT_QUIZ_FORM: QuizFormState = {
   passing_score: "",
   weight: "",
   max_attempts: "",
+  open_at: "",
+  close_at: "",
   is_active: true,
   is_random: false,
 };
@@ -123,6 +127,27 @@ function isInvalidOptionalNumber(raw: string): boolean {
   return Number.isNaN(parsed) || parsed < 0;
 }
 
+function toDateTimeLocalInput(value?: string | null): string {
+  if (!value) return "";
+  const normalized = value.includes("T") ? value : value.replace(" ", "T");
+  return normalized.slice(0, 16);
+}
+
+function toApiDateTimeOrNull(value: string): string | null {
+  const normalized = value.trim();
+  if (!normalized) return null;
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) return null;
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+
+  return `${year}-${month}-${day} ${hour}:${minute}:00`;
+}
+
 function mapQuizToForm(quiz: AdminQuiz): QuizFormState {
   return {
     section_id: String(quiz.section_id),
@@ -132,6 +157,8 @@ function mapQuizToForm(quiz: AdminQuiz): QuizFormState {
     passing_score: quiz.passing_score === null ? "" : String(quiz.passing_score),
     weight: quiz.weight === null ? "" : String(quiz.weight),
     max_attempts: quiz.max_attempts === null ? "" : String(quiz.max_attempts),
+    open_at: toDateTimeLocalInput(quiz.open_at),
+    close_at: toDateTimeLocalInput(quiz.close_at),
     is_active: quiz.is_active,
     is_random: quiz.is_random,
   };
@@ -246,6 +273,9 @@ export function QuizDetailPage({ courseId, quizId }: QuizDetailPageProps) {
       ) {
         throw new Error("Durasi, passing score, weight, dan max attempts harus angka >= 0");
       }
+      if (quizForm.open_at && quizForm.close_at && new Date(quizForm.close_at) < new Date(quizForm.open_at)) {
+        throw new Error("Waktu tutup quiz harus lebih besar atau sama dengan waktu buka quiz");
+      }
 
       return updateAdminCourseSectionQuiz(courseId, Number(quizForm.section_id), quizId, {
         title: quizForm.title.trim(),
@@ -254,6 +284,8 @@ export function QuizDetailPage({ courseId, quizId }: QuizDetailPageProps) {
         passing_score: toNonNegativeNumberOrZero(quizForm.passing_score),
         weight: toNonNegativeNumberOrZero(quizForm.weight),
         max_attempts: toNonNegativeNumberOrZero(quizForm.max_attempts),
+        open_at: toApiDateTimeOrNull(quizForm.open_at),
+        close_at: toApiDateTimeOrNull(quizForm.close_at),
         is_active: quizForm.is_active,
         is_random: quizForm.is_random,
       });
@@ -991,6 +1023,8 @@ export function QuizDetailPage({ courseId, quizId }: QuizDetailPageProps) {
             <p>Section: {sectionLabelMap.get(String(quiz.section_id)) ?? "-"}</p>
             <p>Status: {quiz.is_active ? "Aktif" : "Nonaktif"}</p>
             <p>Random: {quiz.is_random ? "Ya" : "Tidak"}</p>
+            <p>Quiz Buka: {quiz.open_at ?? "-"}</p>
+            <p>Quiz Tutup: {quiz.close_at ?? "-"}</p>
           </CardContent>
         </Card>
       </aside>
@@ -1100,6 +1134,28 @@ export function QuizDetailPage({ courseId, quizId }: QuizDetailPageProps) {
                 min={0}
                 value={quizForm.max_attempts}
                 onChange={(event) => setQuizForm((prev) => ({ ...prev, max_attempts: event.target.value }))}
+                className="border-[var(--border)] bg-[var(--card)]"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="quiz-open-at">Quiz Buka (Tanggal & Jam)</Label>
+              <Input
+                id="quiz-open-at"
+                type="datetime-local"
+                value={quizForm.open_at}
+                onChange={(event) => setQuizForm((prev) => ({ ...prev, open_at: event.target.value }))}
+                className="border-[var(--border)] bg-[var(--card)]"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="quiz-close-at">Quiz Tutup (Tanggal & Jam)</Label>
+              <Input
+                id="quiz-close-at"
+                type="datetime-local"
+                value={quizForm.close_at}
+                onChange={(event) => setQuizForm((prev) => ({ ...prev, close_at: event.target.value }))}
                 className="border-[var(--border)] bg-[var(--card)]"
               />
             </div>

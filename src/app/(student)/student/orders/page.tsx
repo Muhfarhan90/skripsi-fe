@@ -57,7 +57,7 @@ export default function StudentOrdersPage() {
       {ordersQuery.data && ordersQuery.data.length === 0 ? (
         <article className="rounded-lg border border-border bg-card p-5 shadow-sm">
           <p className="text-sm text-muted-foreground">Belum ada order.</p>
-          <Link href="/courses" className="mt-3 inline-flex text-sm text-primary hover:underline">
+          <Link href="/student/catalog" className="mt-3 inline-flex text-sm text-primary hover:underline">
             Jelajahi course
           </Link>
         </article>

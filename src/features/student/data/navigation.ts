@@ -2,12 +2,11 @@ import {
   BookOpen,
   GraduationCap,
   LayoutDashboard,
-  ShoppingCart,
   ReceiptText,
   type LucideIcon,
 } from "lucide-react";
 
-export type StudentNavIcon = "dashboard" | "catalog" | "enrollments" | "orders" | "cart";
+export type StudentNavIcon = "dashboard" | "catalog" | "enrollments" | "orders";
 
 export interface StudentNavigationItem {
   key: string;
@@ -33,7 +32,6 @@ const STUDENT_ICON_MAP: Record<StudentNavIcon, LucideIcon> = {
   catalog: BookOpen,
   enrollments: GraduationCap,
   orders: ReceiptText,
-  cart: ShoppingCart,
 };
 
 export const STUDENT_NAVIGATION: StudentNavigationGroup[] = [
@@ -51,7 +49,7 @@ export const STUDENT_NAVIGATION: StudentNavigationGroup[] = [
       {
         key: "catalog",
         label: "Katalog",
-        href: "/courses",
+        href: "/student/catalog",
         description: "Cari course yang tersedia",
         icon: "catalog",
       },
@@ -75,13 +73,6 @@ export const STUDENT_NAVIGATION: StudentNavigationGroup[] = [
         description: "Riwayat pembelian",
         icon: "orders",
       },
-      {
-        key: "cart",
-        label: "Cart",
-        href: "/student/cart",
-        description: "Daftar checkout",
-        icon: "cart",
-      },
     ],
   },
 ];
@@ -99,8 +90,8 @@ export function isStudentItemActive(pathname: string, href: string): boolean {
     return pathname === "/student";
   }
 
-  if (href === "/courses") {
-    return pathname === "/courses" || pathname.startsWith("/courses/");
+  if (href === "/student/catalog") {
+    return pathname === "/student/catalog" || pathname.startsWith("/student/catalog/");
   }
 
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -116,6 +107,10 @@ export function getStudentPageTitle(pathname: string): string {
     return "Belajar";
   }
 
+  if (pathname.startsWith("/student/cart")) {
+    return "Cart";
+  }
+
   return "Student";
 }
 
@@ -126,8 +121,8 @@ export function getStudentBreadcrumbs(pathname: string): StudentBreadcrumb[] {
     return [{ label: "Dashboard" }];
   }
 
-  if (pathname.startsWith("/courses")) {
-    breadcrumbs.push({ label: "Katalog", href: "/courses" });
+  if (pathname.startsWith("/student/catalog")) {
+    breadcrumbs.push({ label: "Katalog", href: "/student/catalog" });
     return breadcrumbs;
   }
 

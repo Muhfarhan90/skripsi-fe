@@ -56,7 +56,7 @@ function SidebarMenu({ pathname, collapsed, isMobile, onNavigate }: SidebarMenuP
         ) : null}
       </header>
 
-      <div className="flex-1 overflow-y-auto px-3 py-4">
+      <div className="flex-1 overflow-y-auto px-3 py-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {ADMIN_NAVIGATION.map((group) => (
           <section key={group.key} className="mb-5">
             {collapsed && !isMobile ? (

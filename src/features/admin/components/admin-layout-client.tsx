@@ -66,7 +66,6 @@ export function AdminLayoutClient({ fullName, email, children }: AdminLayoutClie
         <AdminTopbar
           fullName={fullName}
           email={email}
-          pathname={pathname}
           theme={activeTheme}
           isSidebarCollapsed={isDesktopSidebarCollapsed}
           onToggleTheme={() => setTheme(activeTheme === "light" ? "dark" : "light")}

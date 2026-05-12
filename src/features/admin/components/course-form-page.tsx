@@ -7,7 +7,6 @@ import Sortable, { type SortableEvent } from "sortablejs";
 import {
   AlertTriangle,
   ArrowLeft,
-  ArrowRight,
   GripVertical,
   Loader2,
   Pencil,
@@ -20,17 +19,21 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import {
+  createAdminCourseAssignment,
   createAdminCourseSectionQuiz,
   createAdminCourse,
   createAdminSection,
   deleteAdminQuiz,
   deleteAdminLesson,
+  getAdminCourseAssignments,
   getAdminCategories,
   getAdminCourseCurriculum,
   getAdminCourseQuizzes,
   getAdminUsers,
   upsertAdminCourseCurriculum,
+  updateAdminCourseAssignment,
   updateAdminCourseSectionQuiz,
+  type AdminAssignment,
   type AdminQuiz,
   type AdminCourseCurriculum,
   type CoursePayload,
@@ -41,11 +44,11 @@ import { AdminModal } from "@/features/admin/components/admin-modal";
 import { ApiError } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmAlertDialog } from "@/components/ui/confirm-alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 
 type CourseFormMode = "create" | "edit";
@@ -78,9 +81,6 @@ interface CourseFormState {
   title: string;
   category_id: string;
   instructor_id: string;
-  price: string;
-  discount_price: string;
-  status: "draft" | "published" | "archived";
   description: string;
   requirements: string;
   outcomes: string;
@@ -95,13 +95,26 @@ interface QuizFormState {
   passing_score: string;
   weight: string;
   max_attempts: string;
+  open_at: string;
+  close_at: string;
   is_active: boolean;
   is_random: boolean;
 }
 
+interface AssignmentFormState {
+  section_id: string;
+  title: string;
+  description: string;
+  instructions: string;
+  due_at: string;
+  is_required_for_certificate: boolean;
+  allow_resubmission: boolean;
+  max_attempts: string;
+  status: "draft" | "published" | "archived";
+}
+
 type CourseFormErrors = Record<string, string>;
-type CourseWizardStep = "general" | "curriculum" | "settings" | "publish";
-type CourseSaveIntent = "draft" | "publish";
+type CourseWizardStep = "general" | "curriculum";
 
 interface SectionDeleteTarget {
   sectionIndex: number;
@@ -128,9 +141,6 @@ const DEFAULT_FORM: CourseFormState = {
   title: "",
   category_id: "",
   instructor_id: "",
-  price: "",
-  discount_price: "",
-  status: "draft",
   description: "",
   requirements: "",
   outcomes: "",
@@ -145,8 +155,22 @@ const DEFAULT_QUIZ_FORM: QuizFormState = {
   passing_score: "",
   weight: "",
   max_attempts: "",
+  open_at: "",
+  close_at: "",
   is_active: true,
   is_random: false,
+};
+
+const DEFAULT_ASSIGNMENT_FORM: AssignmentFormState = {
+  section_id: "",
+  title: "",
+  description: "",
+  instructions: "",
+  due_at: "",
+  is_required_for_certificate: true,
+  allow_resubmission: true,
+  max_attempts: "",
+  status: "published",
 };
 
 const COURSE_WIZARD_STEPS: CourseWizardStepItem[] = [
@@ -158,17 +182,7 @@ const COURSE_WIZARD_STEPS: CourseWizardStepItem[] = [
   {
     key: "curriculum",
     label: "Curriculum",
-    description: "Atur section, lesson, dan quiz per section.",
-  },
-  {
-    key: "settings",
-    label: "Settings",
-    description: "Harga dan diskon course.",
-  },
-  {
-    key: "publish",
-    label: "Publish",
-    description: "Review ringkasan, lalu pilih simpan draft atau publish.",
+    description: "Atur section, lesson, quiz, dan assignment per section.",
   },
 ];
 
@@ -176,9 +190,6 @@ const courseMetadataKeys: Array<Exclude<keyof CourseFormState, "sections">> = [
   "title",
   "category_id",
   "instructor_id",
-  "price",
-  "discount_price",
-  "status",
   "description",
   "requirements",
   "outcomes",
@@ -213,41 +224,15 @@ const sectionSchema = z.object({
   lessons: z.array(lessonSchema),
 });
 
-const courseFormSchema = z
-  .object({
-    title: z.string().trim().min(1, "Judul course wajib diisi"),
-    category_id: z.string().trim().min(1, "Kategori wajib dipilih"),
-    instructor_id: z.string().trim().min(1, "Instructor wajib dipilih"),
-    price: z
-      .string()
-      .trim()
-      .min(1, "Harga wajib diisi")
-      .refine((value) => !Number.isNaN(Number(value)) && Number(value) >= 0, {
-        message: "Harga harus berupa angka positif",
-      }),
-    discount_price: z
-      .string()
-      .trim()
-      .refine((value) => value === "" || (!Number.isNaN(Number(value)) && Number(value) >= 0), {
-        message: "Harga diskon harus berupa angka positif",
-      }),
-    status: z.enum(["draft", "published", "archived"]),
-    description: z.string(),
-    requirements: z.string(),
-    outcomes: z.string(),
-    sections: z.array(sectionSchema),
-  })
-  .superRefine((course, context) => {
-    if (!course.discount_price.trim()) return;
-
-    if (Number(course.discount_price) > Number(course.price)) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["discount_price"],
-        message: "Harga diskon tidak boleh lebih besar dari harga utama",
-      });
-    }
-  });
+const courseFormSchema = z.object({
+  title: z.string().trim().min(1, "Judul course wajib diisi"),
+  category_id: z.string().trim().min(1, "Kategori wajib dipilih"),
+  instructor_id: z.string().trim().min(1, "Instructor wajib dipilih"),
+  description: z.string(),
+  requirements: z.string(),
+  outcomes: z.string(),
+  sections: z.array(sectionSchema),
+});
 
 function createClientId(prefix: string): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -273,12 +258,6 @@ function mapCurriculumToFormState(curriculum: AdminCourseCurriculum): CourseForm
     title: curriculum.title,
     category_id: String(curriculum.category_id),
     instructor_id: String(curriculum.instructor_id),
-    price: String(curriculum.price),
-    discount_price:
-      curriculum.discount_price !== null && Number(curriculum.discount_price) > 0
-        ? String(curriculum.discount_price)
-        : "",
-    status: curriculum.status,
     description: curriculum.description ?? "",
     requirements: curriculum.requirements ?? "",
     outcomes: curriculum.outcomes ?? "",
@@ -300,25 +279,12 @@ function mapCurriculumToFormState(curriculum: AdminCourseCurriculum): CourseForm
   };
 }
 
-function buildCoursePayload(form: CourseFormState, status: CourseFormState["status"]): CoursePayload {
-  const parsedPrice = Number(form.price);
-  const safePrice = Number.isNaN(parsedPrice) || parsedPrice < 0 ? 0 : parsedPrice;
-  const parsedDiscount = form.discount_price.trim() ? Number(form.discount_price) : null;
-  const safeDiscount =
-    parsedDiscount === null || Number.isNaN(parsedDiscount) || parsedDiscount <= 0
-      ? null
-      : parsedDiscount > safePrice
-        ? null
-        : parsedDiscount;
-
+function buildCoursePayload(form: CourseFormState): CoursePayload {
   return {
     title: form.title.trim(),
     description: form.description.trim() || null,
     category_id: Number(form.category_id),
     instructor_id: Number(form.instructor_id),
-    price: safePrice,
-    discount_price: safeDiscount,
-    status,
     requirements: form.requirements.trim() || null,
     outcomes: form.outcomes.trim() || null,
   };
@@ -332,17 +298,8 @@ function parsePositiveInteger(raw: string): number | null {
   return parsed;
 }
 
-function parseNonNegativeNumber(raw: string): number | null {
-  const normalized = raw.trim();
-  if (!normalized) return null;
-  const parsed = Number(normalized);
-  if (Number.isNaN(parsed) || parsed < 0) return null;
-  return parsed;
-}
-
-function buildDraftCoursePayload(form: CourseFormState): Partial<CoursePayload> {
+function buildAutosaveCoursePayload(form: CourseFormState): Partial<CoursePayload> {
   const payload: Partial<CoursePayload> = {
-    status: "draft",
     description: form.description.trim() || null,
     requirements: form.requirements.trim() || null,
     outcomes: form.outcomes.trim() || null,
@@ -361,18 +318,6 @@ function buildDraftCoursePayload(form: CourseFormState): Partial<CoursePayload> 
   const instructorId = parsePositiveInteger(form.instructor_id);
   if (instructorId !== null) {
     payload.instructor_id = instructorId;
-  }
-
-  const price = parseNonNegativeNumber(form.price);
-  if (price !== null) {
-    payload.price = price;
-  }
-
-  const discount = parseNonNegativeNumber(form.discount_price);
-  if (discount !== null && (price === null || discount <= price)) {
-    payload.discount_price = discount;
-  } else if (!form.discount_price.trim()) {
-    payload.discount_price = null;
   }
 
   return payload;
@@ -407,6 +352,46 @@ function isInvalidOptionalNumber(value: string): boolean {
   if (!value.trim()) return false;
   const parsed = Number(value);
   return Number.isNaN(parsed) || parsed < 0;
+}
+
+function toApiDateTimeOrNull(value: string): string | null {
+  const normalized = value.trim();
+  if (!normalized) return null;
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) return null;
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+
+  return `${year}-${month}-${day} ${hour}:${minute}:00`;
+}
+
+function toDateTimeLocalInput(value?: string | null): string {
+  if (!value) return "";
+  const normalized = value.trim().replace(" ", "T");
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(normalized)) {
+    return normalized.slice(0, 16);
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hour}:${minute}`;
+}
+
+function parsePositiveIntegerOrNull(raw: string): number | null {
+  const normalized = raw.trim();
+  if (!normalized) return null;
+  const parsed = Number(normalized);
+  if (!Number.isInteger(parsed) || parsed < 1) return null;
+  return parsed;
 }
 
 function mapSchemaErrors(error: z.ZodError): CourseFormErrors {
@@ -459,6 +444,18 @@ function normalizeError(error: unknown): string {
   return "Terjadi kesalahan tak terduga";
 }
 
+function formatQuizWindowLabel(openAt?: string | null, closeAt?: string | null): string {
+  if (!openAt && !closeAt) return "Window: selalu terbuka";
+  if (openAt && !closeAt) return `Buka: ${openAt}`;
+  if (!openAt && closeAt) return `Tutup: ${closeAt}`;
+  return `Buka: ${openAt} | Tutup: ${closeAt}`;
+}
+
+function formatAssignmentDueLabel(dueAt?: string | null): string {
+  if (!dueAt) return "Tanpa deadline";
+  return `Deadline: ${dueAt}`;
+}
+
 function getSectionDisplayLabel(section: Pick<SectionFormState, "title">, fallbackIndex?: number): string {
   const title = section.title.trim();
   if (title) return title;
@@ -468,8 +465,6 @@ function getSectionDisplayLabel(section: Pick<SectionFormState, "title">, fallba
 
 function getStepIndexFromParam(stepParam: string | null): number {
   if (stepParam === "curriculum") return 1;
-  if (stepParam === "settings") return 2;
-  if (stepParam === "publish") return 3;
   return 0;
 }
 
@@ -525,6 +520,9 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
   const [quizModalOpen, setQuizModalOpen] = useState(false);
   const [editingQuizId, setEditingQuizId] = useState<number | null>(null);
   const [quizForm, setQuizForm] = useState<QuizFormState>(DEFAULT_QUIZ_FORM);
+  const [assignmentModalOpen, setAssignmentModalOpen] = useState(false);
+  const [editingAssignmentId, setEditingAssignmentId] = useState<number | null>(null);
+  const [assignmentForm, setAssignmentForm] = useState<AssignmentFormState>(DEFAULT_ASSIGNMENT_FORM);
   const [confirmDeleteQuiz, setConfirmDeleteQuiz] = useState<AdminQuiz | null>(null);
   const [confirmDeleteSection, setConfirmDeleteSection] = useState<SectionDeleteTarget | null>(null);
   const [confirmDeleteLesson, setConfirmDeleteLesson] = useState<LessonDeleteTarget | null>(null);
@@ -570,6 +568,17 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
     enabled: isEditing && validCourseId !== null,
   });
 
+  const courseAssignmentsQuery = useQuery({
+    queryKey: ["admin", "courses", "assignments", validCourseId],
+    queryFn: () => {
+      if (validCourseId === null) {
+        throw new Error("ID course tidak valid");
+      }
+      return getAdminCourseAssignments(validCourseId);
+    },
+    enabled: isEditing && validCourseId !== null,
+  });
+
   // SECTION 3: Base form source and updater helpers.
   const baseForm = useMemo<CourseFormState>(() => {
     if (isEditing && curriculumQuery.data) {
@@ -600,9 +609,14 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
 
     return getSectionDisplayLabel(form.sections[sectionIndex], sectionIndex);
   }, [form.sections, quizForm.section_id]);
-  const totalLessons = useMemo(() => {
-    return form.sections.reduce((total, section) => total + section.lessons.length, 0);
-  }, [form.sections]);
+  const selectedAssignmentSectionLabel = useMemo(() => {
+    if (!assignmentForm.section_id) return undefined;
+
+    const sectionIndex = form.sections.findIndex((section) => String(section.id ?? "") === assignmentForm.section_id);
+    if (sectionIndex < 0) return "Section tidak ditemukan";
+
+    return getSectionDisplayLabel(form.sections[sectionIndex], sectionIndex);
+  }, [assignmentForm.section_id, form.sections]);
   const curriculumReturnTo = useMemo(() => {
     if (validCourseId === null) return "/admin/master-data/courses";
     return `/admin/master-data/courses/${validCourseId}?step=curriculum`;
@@ -616,6 +630,16 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
       return acc;
     }, new Map());
   }, [courseQuizzesQuery.data]);
+  const assignmentsBySectionId = useMemo(() => {
+    return (courseAssignmentsQuery.data ?? []).reduce<Map<number, AdminAssignment[]>>((acc, assignment) => {
+      const sectionId = Number(assignment.section_id ?? 0);
+      if (!sectionId) return acc;
+      const current = acc.get(sectionId) ?? [];
+      current.push(assignment);
+      acc.set(sectionId, current);
+      return acc;
+    }, new Map());
+  }, [courseAssignmentsQuery.data]);
 
   const updateForm = useCallback(
     (updater: (prev: CourseFormState) => CourseFormState, shouldClearErrors = false) => {
@@ -703,15 +727,11 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
   const saveMutation = useMutation({
     mutationFn: async ({
       submittedForm,
-      intent,
       includeSections,
     }: {
       submittedForm: CourseFormState;
-      intent: CourseSaveIntent;
       includeSections: boolean;
     }) => {
-      const shouldPublish = intent === "publish";
-      const publishStatus: CourseFormState["status"] = shouldPublish ? "published" : "draft";
       const curriculumSectionsPayload = includeSections ? buildCurriculumPayloadSections(submittedForm) : undefined;
 
       if (isEditing) {
@@ -719,18 +739,13 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
           throw new Error("ID course tidak valid untuk proses update");
         }
 
-        const metadataPayload = shouldPublish
-          ? buildCoursePayload(submittedForm, publishStatus)
-          : buildDraftCoursePayload(submittedForm);
-
         return upsertAdminCourseCurriculum(validCourseId, {
-          course: metadataPayload,
+          course: buildCoursePayload(submittedForm),
           ...(includeSections ? { sections: curriculumSectionsPayload ?? [] } : {}),
         });
       }
 
-      const metadataPayload = buildCoursePayload(submittedForm, publishStatus);
-      const createdCourse = await createAdminCourse(metadataPayload);
+      const createdCourse = await createAdminCourse(buildCoursePayload(submittedForm));
 
       if (includeSections && (curriculumSectionsPayload?.length ?? 0) > 0) {
         await upsertAdminCourseCurriculum(createdCourse.id, {
@@ -740,20 +755,13 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
 
       return createdCourse;
     },
-    onSuccess: (_, variables) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "courses"] });
       if (validCourseId !== null) {
         queryClient.invalidateQueries({ queryKey: ["admin", "courses", "curriculum", validCourseId] });
       }
 
-      const successMessage =
-        variables.intent === "publish"
-          ? isEditing
-            ? "Course berhasil dipublish"
-            : "Course berhasil dipublish"
-          : isEditing
-            ? "Draft course berhasil disimpan"
-            : "Draft course berhasil dibuat";
+      const successMessage = isEditing ? "Course master berhasil diperbarui" : "Course master berhasil dibuat";
       toast.success(successMessage);
       router.push("/admin/master-data/courses");
       router.refresh();
@@ -765,13 +773,13 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
     },
   });
 
-  const autoCreateDraftMutation = useMutation({
+  const initializeCourseMutation = useMutation({
     mutationFn: async (nextStepIndex: number) => {
       if (isEditing) {
-        throw new Error("Auto-create draft hanya berlaku saat membuat course baru.");
+        throw new Error("Course sudah tersedia dan tidak perlu diinisialisasi ulang.");
       }
 
-      const createdCourse = await createAdminCourse(buildCoursePayload(form, "draft"));
+      const createdCourse = await createAdminCourse(buildCoursePayload(form));
       return {
         createdCourse,
         nextStepIndex,
@@ -780,14 +788,13 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
     onSuccess: ({ createdCourse, nextStepIndex }) => {
       queryClient.invalidateQueries({ queryKey: ["admin", "courses"] });
       const nextStepKey = COURSE_WIZARD_STEPS[nextStepIndex]?.key ?? "curriculum";
-      toast.success("Draft course otomatis dibuat.");
       router.replace(`/admin/master-data/courses/${createdCourse.id}?step=${nextStepKey}`);
       router.refresh();
     },
     onError: (error) => {
-      const message = normalizeError(error);
-      setFormErrors({ [FORM_ERROR_KEY]: message });
-      toast.error(message);
+      const nextErrors = mapApiError(error);
+      setFormErrors(nextErrors);
+      toast.error(nextErrors[FORM_ERROR_KEY] ?? "Gagal menyiapkan course untuk lanjut ke curriculum");
     },
   });
 
@@ -810,7 +817,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
         : undefined;
 
       await upsertAdminCourseCurriculum(validCourseId, {
-        course: buildDraftCoursePayload(submittedForm),
+        course: buildAutosaveCoursePayload(submittedForm),
         ...(includeSections ? { sections: curriculumSectionsPayload ?? [] } : {}),
       });
 
@@ -895,6 +902,11 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
     setQuizForm(DEFAULT_QUIZ_FORM);
   }, []);
 
+  const resetAssignmentForm = useCallback(() => {
+    setEditingAssignmentId(null);
+    setAssignmentForm(DEFAULT_ASSIGNMENT_FORM);
+  }, []);
+
   const saveQuizMutation = useMutation({
     mutationFn: async () => {
       if (validCourseId === null) {
@@ -914,6 +926,10 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
         throw new Error("Durasi, passing score, weight, dan max attempts harus angka >= 0");
       }
 
+      if (quizForm.open_at && quizForm.close_at && new Date(quizForm.close_at) < new Date(quizForm.open_at)) {
+        throw new Error("Waktu tutup quiz harus lebih besar atau sama dengan waktu buka quiz");
+      }
+
       if (editingQuizId) {
         return updateAdminCourseSectionQuiz(validCourseId, Number(quizForm.section_id), editingQuizId, {
           title: quizForm.title.trim(),
@@ -922,6 +938,8 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
           passing_score: toNonNegativeNumberOrZero(quizForm.passing_score),
           weight: toNonNegativeNumberOrZero(quizForm.weight),
           max_attempts: toNonNegativeNumberOrZero(quizForm.max_attempts),
+          open_at: toApiDateTimeOrNull(quizForm.open_at),
+          close_at: toApiDateTimeOrNull(quizForm.close_at),
           is_active: quizForm.is_active,
           is_random: quizForm.is_random,
         });
@@ -934,6 +952,8 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
         passing_score: toNonNegativeNumberOrZero(quizForm.passing_score),
         weight: toNonNegativeNumberOrZero(quizForm.weight),
         max_attempts: toNonNegativeNumberOrZero(quizForm.max_attempts),
+        open_at: toApiDateTimeOrNull(quizForm.open_at),
+        close_at: toApiDateTimeOrNull(quizForm.close_at),
         is_active: quizForm.is_active,
         is_random: quizForm.is_random,
       });
@@ -966,6 +986,55 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
     setQuizModalOpen(false);
     resetQuizForm();
   }, [resetQuizForm, saveQuizMutation.isPending]);
+
+  const saveAssignmentMutation = useMutation({
+    mutationFn: async () => {
+      if (validCourseId === null) {
+        throw new Error("ID course tidak valid");
+      }
+
+      if (!assignmentForm.section_id || !assignmentForm.title.trim()) {
+        throw new Error("Section dan judul assignment wajib diisi");
+      }
+
+      if (assignmentForm.max_attempts.trim() && parsePositiveIntegerOrNull(assignmentForm.max_attempts) === null) {
+        throw new Error("Max attempts harus bilangan bulat minimal 1");
+      }
+
+      const payload = {
+        section_id: Number(assignmentForm.section_id),
+        title: assignmentForm.title.trim(),
+        description: assignmentForm.description.trim() || null,
+        instructions: assignmentForm.instructions.trim() || null,
+        due_at: toApiDateTimeOrNull(assignmentForm.due_at),
+        is_required_for_certificate: assignmentForm.is_required_for_certificate,
+        allow_resubmission: assignmentForm.allow_resubmission,
+        max_attempts: parsePositiveIntegerOrNull(assignmentForm.max_attempts),
+        status: assignmentForm.status,
+      } as const;
+
+      if (editingAssignmentId) {
+        return updateAdminCourseAssignment(validCourseId, editingAssignmentId, payload);
+      }
+
+      return createAdminCourseAssignment(validCourseId, payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "courses", "assignments", validCourseId] });
+      toast.success(editingAssignmentId ? "Assignment berhasil diperbarui" : "Assignment berhasil ditambahkan");
+      setAssignmentModalOpen(false);
+      resetAssignmentForm();
+    },
+    onError: (error) => {
+      toast.error(normalizeError(error));
+    },
+  });
+
+  const closeAssignmentModal = useCallback(() => {
+    if (saveAssignmentMutation.isPending) return;
+    setAssignmentModalOpen(false);
+    resetAssignmentForm();
+  }, [resetAssignmentForm, saveAssignmentMutation.isPending]);
 
   // SECTION 6: Actions.
   const openCreateSectionModal = () => {
@@ -1014,7 +1083,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
 
   const openCreateLessonPage = (sectionId?: number) => {
     if (validCourseId === null || !sectionId) {
-      toast.error("Section belum tersimpan. Simpan draft dulu sebelum menambah lesson.");
+      toast.error("Section belum tersimpan. Simpan course dulu sebelum menambah lesson.");
       return;
     }
 
@@ -1030,7 +1099,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
 
   const openEditLessonPage = (sectionId?: number, lessonId?: number) => {
     if (validCourseId === null || !sectionId || !lessonId) {
-      toast.error("Lesson belum tersimpan. Simpan draft dulu sebelum mengubah lesson.");
+      toast.error("Lesson belum tersimpan. Simpan course dulu sebelum mengubah lesson.");
       return;
     }
 
@@ -1046,7 +1115,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
 
   const openCreateQuizPage = (sectionId?: number) => {
     if (validCourseId === null || !sectionId) {
-      toast.error("Section belum tersimpan. Simpan draft dulu sebelum menambah quiz.");
+      toast.error("Section belum tersimpan. Simpan course dulu sebelum menambah quiz.");
       return;
     }
 
@@ -1058,6 +1127,49 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
     router.push(
       `/admin/master-data/courses/${validCourseId}/sections/${sectionId}/quizzes/new?returnTo=${encodeURIComponent(curriculumReturnTo)}`,
     );
+  };
+
+  const openCreateAssignmentModal = (sectionId?: number) => {
+    if (validCourseId === null || !sectionId) {
+      toast.error("Section belum tersimpan. Simpan course dulu sebelum menambah assignment.");
+      return;
+    }
+
+    if (!canManageQuizzes) {
+      toast.error("Simpan course dulu sebelum mengelola assignment.");
+      return;
+    }
+
+    setEditingAssignmentId(null);
+    setAssignmentForm({
+      ...DEFAULT_ASSIGNMENT_FORM,
+      section_id: String(sectionId),
+    });
+    setAssignmentModalOpen(true);
+  };
+
+  const openEditAssignmentModal = (assignment: AdminAssignment) => {
+    if (validCourseId === null) {
+      toast.error("ID course tidak valid.");
+      return;
+    }
+
+    setEditingAssignmentId(assignment.id);
+    setAssignmentForm({
+      section_id: assignment.section_id ? String(assignment.section_id) : "",
+      title: assignment.title ?? "",
+      description: assignment.description ?? "",
+      instructions: assignment.instructions ?? "",
+      due_at: toDateTimeLocalInput(assignment.due_at),
+      is_required_for_certificate: Boolean(assignment.is_required_for_certificate),
+      allow_resubmission: Boolean(assignment.allow_resubmission),
+      max_attempts: assignment.max_attempts ? String(assignment.max_attempts) : "",
+      status:
+        assignment.status === "draft" || assignment.status === "archived" || assignment.status === "published"
+          ? assignment.status
+          : "published",
+    });
+    setAssignmentModalOpen(true);
   };
 
   const openQuizDetail = (quizId: number) => {
@@ -1094,7 +1206,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
     setConfirmDeleteLesson(null);
   };
 
-  const handlePublish = () => {
+  const handleSaveCourse = () => {
     if (isEditing && validCourseId === null) {
       setFormErrors({ [FORM_ERROR_KEY]: "ID course tidak valid." });
       return;
@@ -1109,42 +1221,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
     setFormErrors({});
     saveMutation.mutate({
       submittedForm: form,
-      intent: "publish",
       includeSections: true,
-    });
-  };
-
-  const handleSaveDraft = () => {
-    if (isEditing && validCourseId === null) {
-      setFormErrors({ [FORM_ERROR_KEY]: "ID course tidak valid." });
-      return;
-    }
-
-    if (!isEditing) {
-      const isGeneralValid = validateStep(0);
-      const isSettingsValid = validateStep(2);
-      if (!isGeneralValid) {
-        setActiveStepIndex(0);
-        return;
-      }
-      if (!isSettingsValid) {
-        setActiveStepIndex(2);
-        return;
-      }
-    }
-
-    const curriculumValidation = z.array(sectionSchema).safeParse(form.sections);
-    const includeSections = curriculumValidation.success;
-
-    if (!includeSections && form.sections.length > 0) {
-      toast.info("Draft tersimpan, tetapi kurikulum yang belum lengkap belum ikut disimpan.");
-    }
-
-    setFormErrors({});
-    saveMutation.mutate({
-      submittedForm: form,
-      intent: "draft",
-      includeSections,
     });
   };
 
@@ -1162,8 +1239,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
   const currentStep = COURSE_WIZARD_STEPS[activeStepIndex];
   const isFirstStep = activeStepIndex === 0;
   const isLastStep = activeStepIndex === COURSE_WIZARD_STEPS.length - 1;
-  const isCreateDraftPending = autoCreateDraftMutation.isPending;
-  const isPrimaryActionPending = saveMutation.isPending || isCreateDraftPending;
+  const isPrimaryActionPending = saveMutation.isPending || initializeCourseMutation.isPending;
   const autosaveStatusLabel = useMemo(() => {
     if (!isEditing || validCourseId === null) return null;
     if (autosaveMutation.isPending) return "Menyimpan otomatis...";
@@ -1203,14 +1279,6 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
       return next;
     }
 
-    if (stepIndex === 2) {
-      delete next.price;
-      delete next.discount_price;
-      delete next.status;
-      delete next[FORM_ERROR_KEY];
-      return next;
-    }
-
     delete next[FORM_ERROR_KEY];
     return next;
   }, []);
@@ -1246,10 +1314,6 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
             nextErrors[`sections.${sectionIndex}.title`] = "Judul section wajib diisi";
           }
 
-          if (section.lessons.length === 0) {
-            nextErrors[FORM_ERROR_KEY] = "Setiap section harus memiliki minimal 1 lesson.";
-          }
-
           section.lessons.forEach((lesson, lessonIndex) => {
             if (!lesson.title.trim()) {
               nextErrors[`sections.${sectionIndex}.lessons.${lessonIndex}.title`] = "Judul lesson wajib diisi";
@@ -1258,31 +1322,14 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
         });
       }
 
-      if (stepIndex === 2) {
-        if (!form.price.trim()) {
-          nextErrors.price = "Harga wajib diisi";
-        } else {
-          const priceNumber = Number(form.price);
-          if (Number.isNaN(priceNumber) || priceNumber < 0) {
-            nextErrors.price = "Harga harus berupa angka positif";
-          }
-        }
-
-        if (form.discount_price.trim()) {
-          const discountNumber = Number(form.discount_price);
-          const priceNumber = Number(form.price);
-          if (Number.isNaN(discountNumber) || discountNumber < 0) {
-            nextErrors.discount_price = "Harga diskon harus berupa angka positif";
-          } else if (!Number.isNaN(priceNumber) && discountNumber > priceNumber) {
-            nextErrors.discount_price = "Harga diskon tidak boleh lebih besar dari harga utama";
-          }
-        }
-      }
-
       setFormErrors((prev) => ({
         ...clearStepErrors(prev, stepIndex),
         ...nextErrors,
       }));
+
+      if (nextErrors[FORM_ERROR_KEY]) {
+        toast.error(nextErrors[FORM_ERROR_KEY]);
+      }
 
       return Object.keys(nextErrors).length === 0;
     },
@@ -1290,7 +1337,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
   );
 
   const goToStep = (nextStepIndex: number) => {
-    if (autoCreateDraftMutation.isPending) return;
+    if (initializeCourseMutation.isPending) return;
     if (nextStepIndex === activeStepIndex) return;
     if (nextStepIndex < 0 || nextStepIndex >= COURSE_WIZARD_STEPS.length) return;
 
@@ -1307,7 +1354,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
     }
 
     if (!isEditing && validCourseId === null && activeStepIndex === 0 && nextStepIndex >= 1) {
-      autoCreateDraftMutation.mutate(nextStepIndex);
+      initializeCourseMutation.mutate(nextStepIndex);
       return;
     }
 
@@ -1322,15 +1369,15 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
     goToStep(activeStepIndex - 1);
   };
 
-  const handlePublishFromAnyStep = () => {
-    const stepIndexesToValidate = [0, 1, 2] as const;
+  const handleSaveCourseFromAnyStep = () => {
+    const stepIndexesToValidate = [0, 1] as const;
     for (const stepIndex of stepIndexesToValidate) {
       if (!validateStep(stepIndex)) {
         setActiveStepIndex(stepIndex);
         return;
       }
     }
-    handlePublish();
+    handleSaveCourse();
   };
 
   useEffect(() => {
@@ -1344,15 +1391,15 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
   useEffect(() => {
     if (!isEditing || validCourseId === null) return;
     if (!isDirty) return;
-    if (saveMutation.isPending || autosaveMutation.isPending || autoCreateDraftMutation.isPending) return;
+    if (saveMutation.isPending || autosaveMutation.isPending) return;
     if (lastAutosavedFingerprintRef.current === autosaveFingerprint) return;
 
     if (autosaveTimerRef.current) {
       clearTimeout(autosaveTimerRef.current);
     }
 
-    setAutosaveErrorMessage(null);
     autosaveTimerRef.current = setTimeout(() => {
+      setAutosaveErrorMessage(null);
       autosaveMutation.mutate({
         submittedForm: form,
         fingerprint: autosaveFingerprint,
@@ -1365,8 +1412,8 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
       }
     };
   }, [
-    autoCreateDraftMutation.isPending,
     autosaveFingerprint,
+    autosaveMutation,
     autosaveMutation.isPending,
     form,
     isDirty,
@@ -1523,8 +1570,8 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
   return (
     <section className="space-y-5">
       <AdminPageHeader
-        title={isEditing ? "Detail Course" : "Buat Course"}
-        description="Kelola course dengan alur bertahap: General Info, Curriculum, Settings, lalu Publish."
+        title={isEditing ? "Detail Course Master" : "Buat Course Master"}
+        description="Kelola course master dengan alur bertahap: General Info lalu Curriculum."
       />
 
       <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
@@ -1532,10 +1579,10 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle className="text-base font-semibold text-[var(--foreground)]">
-                {isEditing ? "Edit Course (Step by Step)" : "Buat Course (Step by Step)"}
+                {isEditing ? "Edit Course Master (Step by Step)" : "Buat Course Master (Step by Step)"}
               </CardTitle>
               <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-                Isi form per langkah agar manajemen course dan kurikulum lebih terstruktur.
+                Isi form per langkah agar manajemen course, kurikulum, dan assessment lebih terstruktur.
               </p>
             </div>
 
@@ -1547,15 +1594,8 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
         </CardHeader>
 
         <CardContent className="space-y-6 p-5">
-          {getFieldError(FORM_ERROR_KEY) ? (
-            <div className="flex items-start gap-2 rounded-md border border-[var(--danger-soft-border)] bg-[var(--danger-soft-bg)] px-3 py-2 text-sm text-[var(--danger-soft-foreground)]">
-              <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-              <span>{getFieldError(FORM_ERROR_KEY)}</span>
-            </div>
-          ) : null}
-
           <section className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--muted)] p-4">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2">
               {COURSE_WIZARD_STEPS.map((step, stepIndex) => {
                 const isCurrent = activeStepIndex === stepIndex;
                 const isCompleted = activeStepIndex > stepIndex;
@@ -1565,7 +1605,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
                     key={step.key}
                     type="button"
                     onClick={() => goToStep(stepIndex)}
-                    disabled={isCreateDraftPending}
+                    disabled={isPrimaryActionPending}
                     className="rounded-md border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-left transition hover:bg-[var(--surface-hover)]"
                   >
                     <span
@@ -1587,11 +1627,9 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
             <p className="text-xs text-[var(--muted-foreground)]">{currentStep.description}</p>
           </section>
 
-          {activeStepIndex === 0 || activeStepIndex === 2 ? (
+          {activeStepIndex === 0 ? (
             <section className="space-y-4 rounded-lg border border-[var(--border)] bg-[var(--muted)] p-4">
-            <h3 className="text-sm font-semibold text-[var(--foreground)]">
-              {activeStepIndex === 0 ? "Informasi Utama Course" : "Pengaturan Course"}
-            </h3>
+            <h3 className="text-sm font-semibold text-[var(--foreground)]">Informasi Utama Course</h3>
 
             {activeStepIndex === 0 && isReferenceLoading ? (
               <div className="flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-xs text-[var(--muted-foreground)]">
@@ -1740,42 +1778,6 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
                 </>
               ) : null}
 
-              {activeStepIndex === 2 ? (
-                <>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="course-price">Harga</Label>
-                    <Input
-                      id="course-price"
-                      type="number"
-                      min={0}
-                      value={form.price}
-                      onChange={(event) => updateField("price", event.target.value)}
-                      className="border-[var(--border)] bg-[var(--card)]"
-                    />
-                    {getFieldError("price") ? <p className="text-xs text-red-600">{getFieldError("price")}</p> : null}
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor="course-discount">Harga Diskon</Label>
-                    <Input
-                      id="course-discount"
-                      type="number"
-                      min={0}
-                      value={form.discount_price}
-                      onChange={(event) => updateField("discount_price", event.target.value)}
-                      className="border-[var(--border)] bg-[var(--card)]"
-                    />
-                    {getFieldError("discount_price") ? (
-                      <p className="text-xs text-red-600">{getFieldError("discount_price")}</p>
-                    ) : null}
-                  </div>
-
-                  <div className="rounded-md border border-dashed border-[var(--border)] bg-[var(--card)] px-3 py-2 text-xs text-[var(--muted-foreground)] md:col-span-2">
-                    Status tidak diinput manual. Gunakan tombol <span className="font-semibold">Simpan Draft</span> atau{" "}
-                    <span className="font-semibold">Publish</span> di bagian bawah.
-                  </div>
-                </>
-              ) : null}
             </div>
             </section>
           ) : null}
@@ -1783,7 +1785,9 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
           {activeStepIndex === 1 ? (
             <section className="space-y-4 rounded-lg border border-[var(--border)] bg-[var(--muted)] p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h3 className="text-sm font-semibold text-[var(--foreground)]">Struktur Materi (Section & Lesson)</h3>
+              <h3 className="text-sm font-semibold text-[var(--foreground)]">
+                Struktur Materi (Section, Lesson, Quiz, Assignment)
+              </h3>
               <Button
                 type="button"
                 onClick={openCreateSectionModal}
@@ -1796,7 +1800,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
             </div>
 
             <p className="text-xs text-[var(--muted-foreground)]">
-              Urutan section dan lesson mengikuti posisi daftar dari atas ke bawah.
+              Urutan section, lesson, quiz, dan assignment mengikuti posisi daftar dari atas ke bawah.
             </p>
 
             {form.sections.length === 0 ? (
@@ -1909,6 +1913,9 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
                                 <p className="text-xs text-[var(--muted-foreground)]">
                                   Passing {quiz.passing_score ?? "-"} | Durasi {quiz.duration ?? "-"} menit
                                 </p>
+                                <p className="text-xs text-[var(--muted-foreground)]">
+                                  {formatQuizWindowLabel(quiz.open_at, quiz.close_at)}
+                                </p>
                               </div>
                               <div className="flex items-center gap-2">
                                 <Button
@@ -1946,6 +1953,80 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
                       )}
                     </div>
                   ) : null}
+
+                  <div className="space-y-3 rounded-md border border-[var(--border)] bg-[var(--muted)] p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
+                        Assignments
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openCreateAssignmentModal(section.id)}
+                        disabled={!canManageQuizzes || !section.id}
+                      >
+                        <Plus className="size-4" />
+                        <span>Tambah Assignment</span>
+                      </Button>
+                    </div>
+
+                    {!canManageQuizzes ? (
+                      <p className="text-xs text-[var(--muted-foreground)]">
+                        Simpan course dulu sebelum mengelola assignment.
+                      </p>
+                    ) : null}
+
+                    {!section.id ? (
+                      <p className="text-xs text-[var(--muted-foreground)]">
+                        Simpan course dulu agar section mendapat ID dan bisa dipakai untuk assignment.
+                      </p>
+                    ) : courseAssignmentsQuery.isLoading ? (
+                      <p className="text-xs text-[var(--muted-foreground)]">Memuat assignment section...</p>
+                    ) : courseAssignmentsQuery.isError ? (
+                      <p className="text-xs text-red-600">Gagal memuat assignment. Coba refresh halaman.</p>
+                    ) : ((assignmentsBySectionId.get(section.id) ?? []).length > 0) ? (
+                      <div className="space-y-2">
+                        {(assignmentsBySectionId.get(section.id) ?? []).map((assignment) => (
+                          <div
+                            key={assignment.id}
+                            className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-[var(--border)] bg-[var(--card)] px-3 py-2"
+                          >
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium text-[var(--foreground)]">
+                                {assignment.title ?? `Assignment #${assignment.id}`}
+                              </p>
+                              <p className="text-xs text-[var(--muted-foreground)]">
+                                {assignment.is_required_for_certificate ? "Wajib Sertifikat" : "Opsional"} |{" "}
+                                {assignment.allow_resubmission ? "Boleh resubmit" : "Tidak boleh resubmit"} | Maks{" "}
+                                {assignment.max_attempts ?? "-"}x
+                              </p>
+                              <p className="text-xs text-[var(--muted-foreground)]">
+                                {formatAssignmentDueLabel(assignment.due_at)}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon-sm"
+                                onClick={() => openEditAssignmentModal(assignment)}
+                                disabled={!canManageQuizzes}
+                                className="border-[var(--border)] bg-[var(--card)] text-[var(--foreground)]"
+                                aria-label={`Edit assignment ${assignment.title ?? assignment.id}`}
+                              >
+                                <Pencil className="size-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-[var(--muted-foreground)]">
+                        Belum ada assignment pada section ini.
+                      </p>
+                    )}
+                  </div>
 
                   <div className="space-y-3 rounded-md border border-[var(--border)] bg-[var(--muted)] p-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -2047,45 +2128,6 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
             </section>
           ) : null}
 
-          {activeStepIndex === 3 ? (
-            <section className="space-y-4 rounded-lg border border-[var(--border)] bg-[var(--muted)] p-4">
-              <h3 className="text-sm font-semibold text-[var(--foreground)]">Review Sebelum Publish</h3>
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                <div className="rounded-md border border-[var(--border)] bg-[var(--card)] p-3">
-                  <p className="text-xs text-[var(--muted-foreground)]">Judul Course</p>
-                  <p className="mt-1 text-sm font-medium text-[var(--foreground)]">{form.title || "-"}</p>
-                </div>
-                <div className="rounded-md border border-[var(--border)] bg-[var(--card)] p-3">
-                  <p className="text-xs text-[var(--muted-foreground)]">Status Tersimpan Saat Ini</p>
-                  <p className="mt-1 text-sm font-medium text-[var(--foreground)]">{form.status}</p>
-                  <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-                    Aksi berikutnya ditentukan tombol <span className="font-semibold">Simpan Draft</span> atau{" "}
-                    <span className="font-semibold">Publish</span>.
-                  </p>
-                </div>
-                <div className="rounded-md border border-[var(--border)] bg-[var(--card)] p-3">
-                  <p className="text-xs text-[var(--muted-foreground)]">Kategori</p>
-                  <p className="mt-1 text-sm font-medium text-[var(--foreground)]">{selectedCategoryLabel ?? "-"}</p>
-                </div>
-                <div className="rounded-md border border-[var(--border)] bg-[var(--card)] p-3">
-                  <p className="text-xs text-[var(--muted-foreground)]">Instructor</p>
-                  <p className="mt-1 text-sm font-medium text-[var(--foreground)]">{selectedInstructorLabel ?? "-"}</p>
-                </div>
-                <div className="rounded-md border border-[var(--border)] bg-[var(--card)] p-3">
-                  <p className="text-xs text-[var(--muted-foreground)]">Jumlah Section</p>
-                  <p className="mt-1 text-sm font-medium text-[var(--foreground)]">{form.sections.length}</p>
-                </div>
-                <div className="rounded-md border border-[var(--border)] bg-[var(--card)] p-3">
-                  <p className="text-xs text-[var(--muted-foreground)]">Jumlah Lesson</p>
-                  <p className="mt-1 text-sm font-medium text-[var(--foreground)]">{totalLessons}</p>
-                </div>
-              </div>
-              <p className="text-xs text-[var(--muted-foreground)]">
-                Klik tombol <span className="font-semibold">Simpan Draft</span> atau{" "}
-                <span className="font-semibold">Publish</span> untuk menyelesaikan proses.
-              </p>
-            </section>
-          ) : null}
         </CardContent>
       </Card>
 
@@ -2246,32 +2288,52 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
                 className="border-[var(--border)] bg-[var(--card)]"
               />
             </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="quiz-open-at">Quiz Buka (Tanggal & Jam)</Label>
+              <Input
+                id="quiz-open-at"
+                type="datetime-local"
+                value={quizForm.open_at}
+                onChange={(event) => setQuizForm((prev) => ({ ...prev, open_at: event.target.value }))}
+                className="border-[var(--border)] bg-[var(--card)]"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="quiz-close-at">Quiz Tutup (Tanggal & Jam)</Label>
+              <Input
+                id="quiz-close-at"
+                type="datetime-local"
+                value={quizForm.close_at}
+                onChange={(event) => setQuizForm((prev) => ({ ...prev, close_at: event.target.value }))}
+                className="border-[var(--border)] bg-[var(--card)]"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-            <label
-              htmlFor="quiz-is-active"
-              className="inline-flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--muted)] px-3 py-2 text-sm text-[var(--foreground)]"
-            >
-              <Checkbox
+            <div className="flex items-center justify-between gap-3 rounded-md border border-[var(--border)] bg-[var(--muted)] px-3 py-2">
+              <Label htmlFor="quiz-is-active" className="text-sm text-[var(--foreground)]">
+                Quiz aktif
+              </Label>
+              <Switch
                 id="quiz-is-active"
                 checked={quizForm.is_active}
                 onCheckedChange={(checked) => setQuizForm((prev) => ({ ...prev, is_active: checked }))}
               />
-              Quiz aktif
-            </label>
+            </div>
 
-            <label
-              htmlFor="quiz-is-random"
-              className="inline-flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--muted)] px-3 py-2 text-sm text-[var(--foreground)]"
-            >
-              <Checkbox
+            <div className="flex items-center justify-between gap-3 rounded-md border border-[var(--border)] bg-[var(--muted)] px-3 py-2">
+              <Label htmlFor="quiz-is-random" className="text-sm text-[var(--foreground)]">
+                Soal diacak
+              </Label>
+              <Switch
                 id="quiz-is-random"
                 checked={quizForm.is_random}
                 onCheckedChange={(checked) => setQuizForm((prev) => ({ ...prev, is_random: checked }))}
               />
-              Soal diacak
-            </label>
+            </div>
           </div>
 
           <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--border)] pt-3">
@@ -2286,6 +2348,178 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
             >
               {saveQuizMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
               <span>{editingQuizId ? "Simpan Perubahan" : "Simpan Quiz"}</span>
+            </Button>
+          </div>
+        </div>
+      </AdminModal>
+
+      <AdminModal
+        open={assignmentModalOpen}
+        onClose={closeAssignmentModal}
+        title={editingAssignmentId ? "Edit Assignment" : "Tambah Assignment"}
+        description="Assignment akan terhubung ke section yang dipilih dalam course ini."
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 rounded-lg border border-[var(--border)] bg-[var(--muted)] p-4 md:grid-cols-2">
+            <div className="space-y-1.5 md:col-span-2">
+              <Label>Section</Label>
+              <Select
+                value={assignmentForm.section_id}
+                onValueChange={(value) => setAssignmentForm((prev) => ({ ...prev, section_id: value ?? "" }))}
+              >
+                <SelectTrigger className="h-9 w-full border-[var(--border)] bg-[var(--card)]">
+                  <SelectValue>
+                    {() => {
+                      const label = selectedAssignmentSectionLabel ?? "Pilih section";
+                      return (
+                        <span className={selectedAssignmentSectionLabel ? undefined : "text-[var(--muted-foreground)]"}>
+                          {label}
+                        </span>
+                      );
+                    }}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {form.sections
+                    .filter((section) => section.id)
+                    .map((section, index) => (
+                      <SelectItem key={section.client_id} value={String(section.id)}>
+                        {getSectionDisplayLabel(section, index)}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5 md:col-span-2">
+              <Label htmlFor="assignment-title">Judul Assignment</Label>
+              <Input
+                id="assignment-title"
+                value={assignmentForm.title}
+                onChange={(event) => setAssignmentForm((prev) => ({ ...prev, title: event.target.value }))}
+                className="border-[var(--border)] bg-[var(--card)]"
+              />
+            </div>
+
+            <div className="space-y-1.5 md:col-span-2">
+              <Label htmlFor="assignment-description">Deskripsi</Label>
+              <Textarea
+                id="assignment-description"
+                rows={3}
+                value={assignmentForm.description}
+                onChange={(event) => setAssignmentForm((prev) => ({ ...prev, description: event.target.value }))}
+                className="border-[var(--border)] bg-[var(--card)]"
+              />
+            </div>
+
+            <div className="space-y-1.5 md:col-span-2">
+              <Label htmlFor="assignment-instructions">Instruksi</Label>
+              <Textarea
+                id="assignment-instructions"
+                rows={3}
+                value={assignmentForm.instructions}
+                onChange={(event) => setAssignmentForm((prev) => ({ ...prev, instructions: event.target.value }))}
+                className="border-[var(--border)] bg-[var(--card)]"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="assignment-due-at">Deadline (Tanggal & Jam)</Label>
+              <Input
+                id="assignment-due-at"
+                type="datetime-local"
+                value={assignmentForm.due_at}
+                onChange={(event) => setAssignmentForm((prev) => ({ ...prev, due_at: event.target.value }))}
+                className="border-[var(--border)] bg-[var(--card)]"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="assignment-max-attempts">Max Attempts</Label>
+              <Input
+                id="assignment-max-attempts"
+                type="number"
+                min={1}
+                value={assignmentForm.max_attempts}
+                onChange={(event) => setAssignmentForm((prev) => ({ ...prev, max_attempts: event.target.value }))}
+                className="border-[var(--border)] bg-[var(--card)]"
+              />
+            </div>
+
+            <div className="space-y-1.5 md:col-span-2">
+              <Label>Status</Label>
+              <Select
+                value={assignmentForm.status}
+                onValueChange={(value) =>
+                  setAssignmentForm((prev) => ({
+                    ...prev,
+                    status: value as AssignmentFormState["status"],
+                  }))
+                }
+              >
+                <SelectTrigger className="h-9 w-full border-[var(--border)] bg-[var(--card)]">
+                  <SelectValue>
+                    {assignmentForm.status === "draft"
+                      ? "Draft"
+                      : assignmentForm.status === "archived"
+                        ? "Archived"
+                        : "Published"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="published">Published</SelectItem>
+                  <SelectItem value="archived">Archived</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            <div className="flex items-center justify-between gap-3 rounded-md border border-[var(--border)] bg-[var(--muted)] px-3 py-2">
+              <Label htmlFor="assignment-required" className="text-sm text-[var(--foreground)]">
+                Wajib untuk sertifikat
+              </Label>
+              <Switch
+                id="assignment-required"
+                checked={assignmentForm.is_required_for_certificate}
+                onCheckedChange={(checked) =>
+                  setAssignmentForm((prev) => ({ ...prev, is_required_for_certificate: Boolean(checked) }))
+                }
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-3 rounded-md border border-[var(--border)] bg-[var(--muted)] px-3 py-2">
+              <Label htmlFor="assignment-resubmit" className="text-sm text-[var(--foreground)]">
+                Izinkan resubmit
+              </Label>
+              <Switch
+                id="assignment-resubmit"
+                checked={assignmentForm.allow_resubmission}
+                onCheckedChange={(checked) =>
+                  setAssignmentForm((prev) => ({ ...prev, allow_resubmission: Boolean(checked) }))
+                }
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--border)] pt-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={closeAssignmentModal}
+              disabled={saveAssignmentMutation.isPending}
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              onClick={() => saveAssignmentMutation.mutate()}
+              disabled={saveAssignmentMutation.isPending}
+              className="bg-[var(--primary)] text-[var(--primary-foreground)] hover:brightness-95"
+            >
+              {saveAssignmentMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+              <span>{editingAssignmentId ? "Simpan Perubahan" : "Simpan Assignment"}</span>
             </Button>
           </div>
         </div>
@@ -2317,7 +2551,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
         title="Hapus Section"
         description={
           confirmDeleteSection
-            ? `Section "${confirmDeleteSection.sectionTitle}" akan dihapus dari draft kurikulum ini.`
+            ? `Section "${confirmDeleteSection.sectionTitle}" akan dihapus dari kurikulum ini.`
             : ""
         }
         confirmLabel="Ya, Hapus"
@@ -2360,42 +2594,39 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
           {autosaveStatusLabel ? <p className="text-xs text-[var(--muted-foreground)]">{autosaveStatusLabel}</p> : null}
 
           <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handlePrevStep}
-              disabled={isPrimaryActionPending || isFirstStep}
-            >
-              <ArrowLeft className="size-4" />
-              <span>Previous</span>
-            </Button>
+            {isFirstStep ? (
+              <Button
+                type="button"
+                onClick={handleNextStep}
+                disabled={isPrimaryActionPending}
+                className="bg-[var(--primary)] text-[var(--primary-foreground)] hover:brightness-95"
+              >
+                {isPrimaryActionPending ? <Loader2 className="size-4 animate-spin" /> : null}
+                <span>Next</span>
+              </Button>
+            ) : (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handlePrevStep}
+                  disabled={isPrimaryActionPending}
+                >
+                  <ArrowLeft className="size-4" />
+                  <span>Previous</span>
+                </Button>
 
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleSaveDraft}
-              disabled={isPrimaryActionPending}
-              className="border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100"
-            >
-              {saveMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-              <span>Simpan Draft</span>
-            </Button>
-
-            <Button
-              type="button"
-              onClick={isLastStep ? handlePublishFromAnyStep : handleNextStep}
-              disabled={isPrimaryActionPending}
-              className="bg-[var(--primary)] text-[var(--primary-foreground)] hover:brightness-95"
-            >
-              {isPrimaryActionPending ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : isLastStep ? (
-                <Save className="size-4" />
-              ) : (
-                <ArrowRight className="size-4" />
-              )}
-              <span>{isLastStep ? "Publish" : "Next"}</span>
-            </Button>
+                <Button
+                  type="button"
+                  onClick={handleSaveCourseFromAnyStep}
+                  disabled={isPrimaryActionPending}
+                  className="bg-[var(--primary)] text-[var(--primary-foreground)] hover:brightness-95"
+                >
+                  {isPrimaryActionPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+                  <span>{isLastStep ? "Simpan" : "Next"}</span>
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>

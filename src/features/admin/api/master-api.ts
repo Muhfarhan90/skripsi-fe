@@ -23,10 +23,61 @@ export interface AdminCourse {
   price: string | number;
   discount_price: string | number | null;
   thumbnail: string | null;
-  status: "draft" | "published" | "archived";
+  skills: Array<{
+    id: number;
+    name: string;
+    slug: string;
+  }>;
   requirements: string | null;
   outcomes: string | null;
   created_at: string;
+}
+
+export interface AdminAcademicPeriod {
+  id: number;
+  code: string | null;
+  name: string | null;
+  start_at: string | null;
+  end_at: string | null;
+  enrollment_open_at: string | null;
+  enrollment_close_at: string | null;
+  status: string | null;
+  course_offerings_count: number | null;
+}
+
+export interface AdminCourseOffering {
+  id: number;
+  course_id: number | null;
+  academic_period_id: number | null;
+  title: string | null;
+  start_at: string | null;
+  end_at: string | null;
+  enrollment_open_at: string | null;
+  enrollment_close_at: string | null;
+  capacity: number | null;
+  price: string | number | null;
+  discount_price: string | number | null;
+  status: string | null;
+  enrollments_count: number | null;
+  course: {
+    id: number;
+    title: string;
+    slug: string;
+    category: {
+      id: number;
+      name: string;
+    } | null;
+  } | null;
+  academic_period: {
+    id: number;
+    code: string | null;
+    name: string | null;
+    start_at: string | null;
+    end_at: string | null;
+    enrollment_open_at: string | null;
+    enrollment_close_at: string | null;
+    status: string | null;
+  } | null;
 }
 
 export interface AdminSection {
@@ -69,7 +120,11 @@ export interface AdminCourseCurriculum {
   price: string | number;
   discount_price: string | number | null;
   thumbnail: string | null;
-  status: "draft" | "published" | "archived";
+  skills: Array<{
+    id: number;
+    name: string;
+    slug: string;
+  }>;
   requirements: string | null;
   outcomes: string | null;
   sections: AdminCourseCurriculumSection[];
@@ -89,7 +144,31 @@ export interface AdminQuiz {
   is_active: boolean;
   is_random: boolean;
   max_attempts: number | null;
+  open_at: string | null;
+  close_at: string | null;
   questions?: AdminQuestion[];
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface AdminAssignment {
+  id: number;
+  course_id: number | null;
+  section_id: number | null;
+  created_by: number | null;
+  title: string | null;
+  description: string | null;
+  instructions: string | null;
+  due_at: string | null;
+  is_required_for_certificate: boolean;
+  allow_resubmission: boolean;
+  max_attempts: number | null;
+  status: "draft" | "published" | "archived" | string | null;
+  section?: {
+    id: number | null;
+    course_id: number | null;
+    title: string | null;
+  } | null;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -200,9 +279,8 @@ export interface CoursePayload {
   description?: string | null;
   category_id: number;
   instructor_id: number;
-  price: number;
+  price?: number | null;
   discount_price?: number | null;
-  status: "draft" | "published" | "archived";
   requirements?: string | null;
   outcomes?: string | null;
 }
@@ -218,6 +296,31 @@ export interface QuizPayload {
   is_active?: boolean;
   is_random?: boolean;
   max_attempts?: number | null;
+  open_at?: string | null;
+  close_at?: string | null;
+}
+
+export interface AssignmentPayload {
+  section_id?: number | null;
+  title: string;
+  description?: string | null;
+  instructions?: string | null;
+  due_at?: string | null;
+  is_required_for_certificate?: boolean;
+  allow_resubmission?: boolean;
+  max_attempts?: number | null;
+  status?: "draft" | "published" | "archived";
+}
+
+export interface AdminCourseOfferingQuery {
+  status?: string;
+  academic_period_id?: number | string;
+  search?: string;
+}
+
+export interface AdminAcademicPeriodQuery {
+  status?: string;
+  search?: string;
 }
 
 export interface QuestionPayload {
@@ -391,6 +494,31 @@ export function getAdminCourses() {
   });
 }
 
+export function getAdminCourseOfferings(query: AdminCourseOfferingQuery = {}) {
+  const params = new URLSearchParams();
+  if (query.status) params.set("status", query.status);
+  if (query.academic_period_id !== undefined && query.academic_period_id !== null) {
+    params.set("academic_period_id", String(query.academic_period_id));
+  }
+  if (query.search) params.set("search", query.search);
+
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  return apiRequest<AdminCourseOffering[]>(`/api/admin/course-offerings${suffix}`, {
+    method: "GET",
+  });
+}
+
+export function getAdminAcademicPeriods(query: AdminAcademicPeriodQuery = {}) {
+  const params = new URLSearchParams();
+  if (query.status) params.set("status", query.status);
+  if (query.search) params.set("search", query.search);
+
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  return apiRequest<AdminAcademicPeriod[]>(`/api/admin/academic-periods${suffix}`, {
+    method: "GET",
+  });
+}
+
 export function getAdminSections() {
   return apiRequest<AdminSection[]>("/api/admin/sections", {
     method: "GET",
@@ -500,6 +628,16 @@ export function getAdminCourseQuizzes(courseId: number) {
   });
 }
 
+export function getAdminCourseAssignments(courseId: number) {
+  return apiRequest<AdminAssignment[] | { data?: AdminAssignment[] }>(`/api/admin/courses/${courseId}/assignments`, {
+    method: "GET",
+  }).then((payload) => {
+    if (Array.isArray(payload)) return payload;
+    if (payload && Array.isArray(payload.data)) return payload.data;
+    return [];
+  });
+}
+
 export function getAdminQuizDetail(quizId: number) {
   return apiRequest<AdminQuiz>(`/api/admin/quizzes/${quizId}`, {
     method: "GET",
@@ -520,6 +658,24 @@ export function createAdminCourseSectionQuiz(
 ) {
   return apiRequest<AdminQuiz>(`/api/admin/courses/${courseId}/sections/${sectionId}/quizzes`, {
     method: "POST",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function createAdminCourseAssignment(courseId: number, payload: AssignmentPayload) {
+  return apiRequest<AdminAssignment>(`/api/admin/courses/${courseId}/assignments`, {
+    method: "POST",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function updateAdminCourseAssignment(
+  courseId: number,
+  assignmentId: number,
+  payload: Partial<AssignmentPayload>,
+) {
+  return apiRequest<AdminAssignment>(`/api/admin/courses/${courseId}/assignments/${assignmentId}`, {
+    method: "PUT",
     body: JSON.stringify(normalizePayload(payload)),
   });
 }
