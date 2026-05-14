@@ -420,17 +420,14 @@ export default function AdminVouchersPage() {
             </div>
           </div>
 
-          <label
-            htmlFor="voucher-is-active"
-            className="inline-flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--muted)] px-3 py-2 text-sm text-[var(--foreground)]"
-          >
+          <div className="inline-flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--muted)] px-3 py-2 text-sm text-[var(--foreground)]">
             <Checkbox
               id="voucher-is-active"
               checked={form.is_active}
               onCheckedChange={(checked) => setForm((prev) => ({ ...prev, is_active: checked }))}
             />
-            Voucher aktif
-          </label>
+            <Label htmlFor="voucher-is-active" className="text-sm text-[var(--foreground)]">Voucher aktif</Label>
+          </div>
 
           <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--border)] pt-3">
             <Button type="button" variant="outline" onClick={closeModal} disabled={saveMutation.isPending}>

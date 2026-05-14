@@ -13,6 +13,7 @@ import {
 import { ApiError } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -265,22 +266,20 @@ export function CourseQuizEditorPage({ courseId, sectionId, returnTo }: CourseQu
 
             <div className="space-y-1.5">
               <Label htmlFor="quiz-open-at">Quiz Buka (Tanggal & Jam)</Label>
-              <Input
-                id="quiz-open-at"
-                type="datetime-local"
+              <DateTimePicker
                 value={form.open_at}
-                onChange={(event) => setForm((prev) => ({ ...prev, open_at: event.target.value }))}
+                onChange={(value) => setForm((prev) => ({ ...prev, open_at: value }))}
+                placeholder="Pilih waktu buka quiz"
                 className="border-[var(--border)] bg-[var(--card)]"
               />
             </div>
 
             <div className="space-y-1.5">
               <Label htmlFor="quiz-close-at">Quiz Tutup (Tanggal & Jam)</Label>
-              <Input
-                id="quiz-close-at"
-                type="datetime-local"
+              <DateTimePicker
                 value={form.close_at}
-                onChange={(event) => setForm((prev) => ({ ...prev, close_at: event.target.value }))}
+                onChange={(value) => setForm((prev) => ({ ...prev, close_at: value }))}
+                placeholder="Pilih waktu tutup quiz"
                 className="border-[var(--border)] bg-[var(--card)]"
               />
             </div>

@@ -482,17 +482,14 @@ export function AdminUserFormPage({ mode, userId }: AdminUserFormPageProps) {
             </div>
           </section>
 
-          <label
-            htmlFor="user-is-active"
-            className="inline-flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--muted)] px-3 py-2 text-sm text-[var(--foreground)]"
-          >
+          <div className="inline-flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--muted)] px-3 py-2 text-sm text-[var(--foreground)]">
             <Checkbox
               id="user-is-active"
               checked={form.is_active}
               onCheckedChange={(checked) => setForm((prev) => ({ ...prev, is_active: checked }))}
             />
-            User aktif
-          </label>
+            <Label htmlFor="user-is-active" className="text-sm text-[var(--foreground)]">User aktif</Label>
+          </div>
         </CardContent>
       </Card>
 

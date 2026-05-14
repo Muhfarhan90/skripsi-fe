@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmAlertDialog } from "@/components/ui/confirm-alert-dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api/client";
 import {
@@ -262,9 +263,7 @@ export default function AdminCategoriesPage() {
         <div className="space-y-4">
           <div className="space-y-4 rounded-lg border border-[var(--border)] bg-[var(--muted)] p-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-[var(--foreground)]" htmlFor="category-name">
-                Nama
-              </label>
+              <Label className="text-sm font-medium text-[var(--foreground)]" htmlFor="category-name">Nama</Label>
               <Input
                 id="category-name"
                 value={form.name}
@@ -275,9 +274,9 @@ export default function AdminCategoriesPage() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-[var(--foreground)]" htmlFor="category-description">
+              <Label className="text-sm font-medium text-[var(--foreground)]" htmlFor="category-description">
                 Deskripsi
-              </label>
+              </Label>
               <Textarea
                 id="category-description"
                 rows={4}

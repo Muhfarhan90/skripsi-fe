@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmAlertDialog } from "@/components/ui/confirm-alert-dialog";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -760,10 +761,7 @@ export function QuizDetailPage({ courseId, quizId }: QuizDetailPageProps) {
                                 <SelectItem value="true_false">True / False</SelectItem>
                               </SelectContent>
                             </Select>
-                            <label
-                              htmlFor={`question-inline-active-${question.id}`}
-                              className="inline-flex items-center gap-2 text-sm text-[var(--foreground)]"
-                            >
+                            <div className="inline-flex items-center gap-2 text-sm text-[var(--foreground)]">
                               <Checkbox
                                 id={`question-inline-active-${question.id}`}
                                 checked={questionDraft.is_active}
@@ -777,8 +775,8 @@ export function QuizDetailPage({ courseId, quizId }: QuizDetailPageProps) {
                                   }))
                                 }
                               />
-                              Aktif
-                            </label>
+                              <Label htmlFor={`question-inline-active-${question.id}`}>Aktif</Label>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -823,10 +821,7 @@ export function QuizDetailPage({ courseId, quizId }: QuizDetailPageProps) {
                                     }
                                     className="h-9 border-[var(--border)] bg-[var(--card)]"
                                   />
-                                  <label
-                                    htmlFor={`inline-option-correct-existing-${option.id}`}
-                                    className="inline-flex items-center gap-1 text-sm text-[var(--foreground)]"
-                                  >
+                                  <div className="inline-flex items-center gap-1 text-sm text-[var(--foreground)]">
                                     <Checkbox
                                       id={`inline-option-correct-existing-${option.id}`}
                                       checked={optionDraft.is_correct}
@@ -837,11 +832,11 @@ export function QuizDetailPage({ courseId, quizId }: QuizDetailPageProps) {
                                             ...optionDraft,
                                             is_correct: checked,
                                           },
-                                        }))
-                                      }
-                                    />
-                                    Benar
-                                  </label>
+                                          }))
+                                        }
+                                      />
+                                      <Label htmlFor={`inline-option-correct-existing-${option.id}`}>Benar</Label>
+                                  </div>
                                   <Button
                                     type="button"
                                     variant="ghost"
@@ -888,8 +883,9 @@ export function QuizDetailPage({ courseId, quizId }: QuizDetailPageProps) {
                               placeholder="Add option text..."
                               className="h-9 border-[var(--border)] bg-[var(--card)]"
                             />
-                            <label className="inline-flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
+                            <div className="inline-flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
                               <Checkbox
+                                id={`draft-option-correct-${draftOption.client_id}`}
                                 checked={draftOption.is_correct}
                                 onCheckedChange={(checked) =>
                                   setNewOptionDrafts((prev) => ({
@@ -902,8 +898,8 @@ export function QuizDetailPage({ courseId, quizId }: QuizDetailPageProps) {
                                   }))
                                 }
                               />
-                              Benar
-                            </label>
+                              <Label htmlFor={`draft-option-correct-${draftOption.client_id}`}>Benar</Label>
+                            </div>
                             <Button
                               type="button"
                               variant="ghost"
@@ -1140,50 +1136,42 @@ export function QuizDetailPage({ courseId, quizId }: QuizDetailPageProps) {
 
             <div className="space-y-1.5">
               <Label htmlFor="quiz-open-at">Quiz Buka (Tanggal & Jam)</Label>
-              <Input
-                id="quiz-open-at"
-                type="datetime-local"
+              <DateTimePicker
                 value={quizForm.open_at}
-                onChange={(event) => setQuizForm((prev) => ({ ...prev, open_at: event.target.value }))}
+                onChange={(value) => setQuizForm((prev) => ({ ...prev, open_at: value }))}
+                placeholder="Pilih waktu buka quiz"
                 className="border-[var(--border)] bg-[var(--card)]"
               />
             </div>
 
             <div className="space-y-1.5">
               <Label htmlFor="quiz-close-at">Quiz Tutup (Tanggal & Jam)</Label>
-              <Input
-                id="quiz-close-at"
-                type="datetime-local"
+              <DateTimePicker
                 value={quizForm.close_at}
-                onChange={(event) => setQuizForm((prev) => ({ ...prev, close_at: event.target.value }))}
+                onChange={(value) => setQuizForm((prev) => ({ ...prev, close_at: value }))}
+                placeholder="Pilih waktu tutup quiz"
                 className="border-[var(--border)] bg-[var(--card)]"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-            <label
-              htmlFor="quiz-is-active"
-              className="inline-flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--muted)] px-3 py-2 text-sm text-[var(--foreground)]"
-            >
+            <div className="inline-flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--muted)] px-3 py-2 text-sm text-[var(--foreground)]">
               <Checkbox
                 id="quiz-is-active"
                 checked={quizForm.is_active}
                 onCheckedChange={(checked) => setQuizForm((prev) => ({ ...prev, is_active: checked }))}
               />
-              Quiz aktif
-            </label>
-            <label
-              htmlFor="quiz-is-random"
-              className="inline-flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--muted)] px-3 py-2 text-sm text-[var(--foreground)]"
-            >
+              <Label htmlFor="quiz-is-active" className="text-sm text-[var(--foreground)]">Quiz aktif</Label>
+            </div>
+            <div className="inline-flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--muted)] px-3 py-2 text-sm text-[var(--foreground)]">
               <Checkbox
                 id="quiz-is-random"
                 checked={quizForm.is_random}
                 onCheckedChange={(checked) => setQuizForm((prev) => ({ ...prev, is_random: checked }))}
               />
-              Soal diacak
-            </label>
+              <Label htmlFor="quiz-is-random" className="text-sm text-[var(--foreground)]">Soal diacak</Label>
+            </div>
           </div>
 
           <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--border)] pt-3">
@@ -1261,17 +1249,14 @@ export function QuizDetailPage({ courseId, quizId }: QuizDetailPageProps) {
             </div>
           </div>
 
-          <label
-            htmlFor="question-is-active"
-            className="inline-flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--muted)] px-3 py-2 text-sm text-[var(--foreground)]"
-          >
+          <div className="inline-flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--muted)] px-3 py-2 text-sm text-[var(--foreground)]">
             <Checkbox
               id="question-is-active"
               checked={questionForm.is_active}
               onCheckedChange={(checked) => setQuestionForm((prev) => ({ ...prev, is_active: checked }))}
             />
-            Question aktif
-          </label>
+            <Label htmlFor="question-is-active" className="text-sm text-[var(--foreground)]">Question aktif</Label>
+          </div>
 
           <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--border)] pt-3">
             <Button type="button" variant="outline" onClick={() => setQuestionModalOpen(false)} disabled={saveQuestionMutation.isPending}>
