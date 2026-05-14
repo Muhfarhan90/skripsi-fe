@@ -2,68 +2,72 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
-import { Eye, Loader2, Plus, RotateCcw, Search } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Loader2, Pencil, Plus, RotateCcw, Search, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { StatusBadge } from "@/features/admin/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmAlertDialog } from "@/components/ui/confirm-alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getAdminAcademicPeriods } from "@/features/admin/api/master-api";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ApiError } from "@/lib/api/client";
+import { deleteAdminAcademicPeriod, getAdminAcademicPeriods } from "@/features/admin/api/master-api";
+import { formatDate } from "@/features/admin/lib/offering-utils";
 
-function formatDate(value?: string | null): string {
-  if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("id-ID", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(date);
-}
-
-function toTitleCase(value?: string | null): string {
-  if (!value) return "-";
-  return value
-    .split(/[\s_-]+/)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
-    .join(" ");
+function normalizeError(error: unknown): string {
+  if (error instanceof ApiError) return error.message;
+  if (error instanceof Error) return error.message;
+  return "Terjadi kesalahan tak terduga";
 }
 
 export default function AdminAcademicPeriodsPage() {
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const queryClient = useQueryClient();
+  const [activityFilter, setActivityFilter] = useState<string>("all");
   const [searchKeyword, setSearchKeyword] = useState("");
+  const [confirmDeletePeriod, setConfirmDeletePeriod] = useState<{ id: number; label: string } | null>(null);
 
   const periodQuery = useQuery({
-    queryKey: ["admin", "academic-periods", statusFilter, searchKeyword],
+    queryKey: ["admin", "academic-periods", activityFilter, searchKeyword],
     queryFn: () =>
       getAdminAcademicPeriods({
-        status: statusFilter === "all" ? undefined : statusFilter,
+        is_active: activityFilter === "all" ? undefined : activityFilter === "active",
         search: searchKeyword.trim() || undefined,
       }),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: deleteAdminAcademicPeriod,
+    onSuccess: (message) => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "academic-periods"] });
+      toast.success(message || "Periode akademik berhasil dihapus");
+      setConfirmDeletePeriod(null);
+    },
+    onError: (error) => {
+      toast.error(normalizeError(error));
+    },
+  });
+
   const periods = useMemo(() => [...(periodQuery.data ?? [])].sort((a, b) => b.id - a.id), [periodQuery.data]);
-  const hasActiveFilters = statusFilter !== "all" || searchKeyword.trim().length > 0;
-  const statusOptions = useMemo(
+  const hasActiveFilters = activityFilter !== "all" || searchKeyword.trim().length > 0;
+  const activityOptions = useMemo(
     () => [
-      { value: "all", label: "Semua Status" },
-      { value: "active", label: "Active" },
-      { value: "planned", label: "Planned" },
-      { value: "upcoming", label: "Upcoming" },
-      { value: "closed", label: "Closed" },
+      { value: "all", label: "Semua Aktivasi" },
+      { value: "active", label: "Aktif" },
+      { value: "inactive", label: "Nonaktif" },
     ],
     [],
   );
-  const selectedStatusLabel = statusOptions.find((option) => option.value === statusFilter)?.label ?? "Semua Status";
+  const selectedActivityLabel =
+    activityOptions.find((option) => option.value === activityFilter)?.label ?? "Semua Aktivasi";
 
   return (
     <section className="space-y-5">
       <AdminPageHeader
-        title="Daftar Academic Period"
-        description="Kelola kalender akademik untuk seluruh course offering."
+        title="Academic Periods"
+        description="Mulai dari periode akademik, lalu kelola course offering dari detail period yang dipilih."
       />
 
       <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
@@ -71,7 +75,9 @@ export default function AdminAcademicPeriodsPage() {
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <CardTitle className="text-base font-semibold text-[var(--foreground)]">Data Periode Akademik</CardTitle>
-              <p className="mt-1 text-sm text-[var(--muted-foreground)]">Menampilkan {periods.length} periode.</p>
+              <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+                Pilih satu period untuk mengelola offering yang ada di dalamnya.
+              </p>
             </div>
 
             <Button
@@ -88,15 +94,15 @@ export default function AdminAcademicPeriodsPage() {
           <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-soft)]/70 p-4">
             <div className="grid grid-cols-1 gap-3 xl:grid-cols-12">
               <div className="space-y-1 xl:col-span-3">
-                <p className="text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">Status</p>
-                <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value ?? "all")}>
+                <p className="text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">Aktivasi</p>
+                <Select value={activityFilter} onValueChange={(value) => setActivityFilter(value ?? "all")}>
                   <SelectTrigger className="h-10 w-full rounded-xl border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] shadow-xs">
-                    <SelectValue>{selectedStatusLabel}</SelectValue>
+                    <SelectValue>{selectedActivityLabel}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {statusOptions.map((statusOption) => (
-                      <SelectItem key={statusOption.value} value={statusOption.value}>
-                        {statusOption.label}
+                    {activityOptions.map((activityOption) => (
+                      <SelectItem key={activityOption.value} value={activityOption.value}>
+                        {activityOption.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -123,7 +129,7 @@ export default function AdminAcademicPeriodsPage() {
                   size="lg"
                   className="h-10 rounded-xl border-[var(--border)] bg-[var(--card)] px-4"
                   onClick={() => {
-                    setStatusFilter("all");
+                    setActivityFilter("all");
                     setSearchKeyword("");
                   }}
                   disabled={!hasActiveFilters}
@@ -137,94 +143,113 @@ export default function AdminAcademicPeriodsPage() {
         </CardHeader>
 
         <CardContent className="p-0">
-          <div className="overflow-x-auto rounded-b-lg">
-            <table className="min-w-full divide-y divide-[var(--border)]">
-              <thead className="bg-[var(--muted)]">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
-                    Kode Periode
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
-                    Nama
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
-                    Tanggal Mulai
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
-                    Tanggal Selesai
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
-                    Enrollment Window
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
-                    Offering
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
-                    Aksi
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--border)] bg-[var(--card)]">
-                {periodQuery.isLoading ? (
-                  <tr>
-                    <td colSpan={8} className="px-4 py-7 text-center text-sm text-[var(--muted-foreground)]">
-                      <span className="inline-flex items-center gap-2">
-                        <Loader2 className="size-4 animate-spin" />
-                        Memuat data periode...
-                      </span>
-                    </td>
-                  </tr>
-                ) : periodQuery.isError ? (
-                  <tr>
-                    <td colSpan={8} className="px-4 py-7 text-center text-sm text-red-600">
-                      Gagal memuat data periode. Coba refresh halaman.
-                    </td>
-                  </tr>
-                ) : periods.length > 0 ? (
-                  periods.map((period) => (
-                    <tr key={period.id} className="hover:bg-[var(--surface-hover)]">
-                      <td className="px-4 py-3 text-sm font-medium text-[var(--foreground)]">{period.code ?? "-"}</td>
-                      <td className="px-4 py-3 text-sm text-[var(--foreground)]">{period.name ?? "-"}</td>
-                      <td className="px-4 py-3 text-sm text-[var(--foreground)]">{formatDate(period.start_at)}</td>
-                      <td className="px-4 py-3 text-sm text-[var(--foreground)]">{formatDate(period.end_at)}</td>
-                      <td className="px-4 py-3 text-sm text-[var(--foreground)]">
-                        {formatDate(period.enrollment_open_at)} - {formatDate(period.enrollment_close_at)}
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        <StatusBadge value={toTitleCase(period.status)} />
-                      </td>
-                      <td className="px-4 py-3 text-sm text-[var(--foreground)]">{period.course_offerings_count ?? 0}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex justify-end">
-                          <Button
-                            render={<Link href={`/admin/academic-periods/${period.id}`} />}
-                            type="button"
-                            variant="outline"
-                            size="icon-sm"
-                            className="border-[var(--border)] bg-[var(--card)] text-[var(--foreground)]"
-                            aria-label={`Lihat detail periode ${period.code ?? period.id}`}
-                          >
-                            <Eye className="size-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={8} className="px-4 py-7 text-center text-sm text-[var(--muted-foreground)]">
-                      Data periode akademik tidak ditemukan.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          <Table className="rounded-b-lg">
+            <TableHeader className="bg-[var(--muted)]">
+              <TableRow className="hover:bg-[var(--muted)]">
+                <TableHead>Kode Periode</TableHead>
+                <TableHead>Nama</TableHead>
+                <TableHead>Window Belajar</TableHead>
+                <TableHead>Window Pendaftaran</TableHead>
+                <TableHead>Aktivasi</TableHead>
+                <TableHead>Offering</TableHead>
+                <TableHead className="text-right">Aksi</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="bg-[var(--card)]">
+              {periodQuery.isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="py-7 text-center text-sm text-[var(--muted-foreground)]">
+                    <span className="inline-flex items-center gap-2">
+                      <Loader2 className="size-4 animate-spin" />
+                      Memuat data periode...
+                    </span>
+                  </TableCell>
+                </TableRow>
+              ) : periodQuery.isError ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="py-7 text-center text-sm text-red-600">
+                    Gagal memuat data periode. Coba refresh halaman.
+                  </TableCell>
+                </TableRow>
+              ) : periods.length > 0 ? (
+                periods.map((period) => (
+                  <TableRow key={period.id}>
+                    <TableCell className="text-sm font-medium text-[var(--foreground)]">{period.code ?? "-"}</TableCell>
+                    <TableCell className="text-sm text-[var(--foreground)]">{period.name ?? "-"}</TableCell>
+                    <TableCell className="text-sm text-[var(--foreground)]">
+                      {formatDate(period.start_at)} - {formatDate(period.end_at)}
+                    </TableCell>
+                    <TableCell className="text-sm text-[var(--foreground)]">
+                      {formatDate(period.enrollment_open_at)} - {formatDate(period.enrollment_close_at)}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      <StatusBadge value={period.is_active ? "Aktif" : "Nonaktif"} />
+                    </TableCell>
+                    <TableCell className="text-sm font-medium text-[var(--foreground)]">{period.course_offerings_count ?? 0}</TableCell>
+                    <TableCell>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          render={<Link href={`/admin/academic-periods/${period.id}`} />}
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="border-[var(--border)] bg-[var(--card)]"
+                        >
+                          <Pencil className="size-4" />
+                          <span>Kelola</span>
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon-sm"
+                          disabled={deleteMutation.isPending}
+                          onClick={() => {
+                            setConfirmDeletePeriod({
+                              id: period.id,
+                              label: period.code ?? period.name ?? `Periode ${period.id}`,
+                            });
+                          }}
+                          className="border-[var(--danger-soft-border)] bg-[var(--danger-soft-bg)] text-[var(--danger-soft-foreground)] hover:opacity-90"
+                          aria-label={`Hapus periode ${period.code ?? period.id}`}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={7} className="py-7 text-center text-sm text-[var(--muted-foreground)]">
+                    Data periode akademik tidak ditemukan.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
+
+      <ConfirmAlertDialog
+        open={confirmDeletePeriod !== null}
+        title="Hapus Academic Period"
+        description={
+          confirmDeletePeriod
+            ? `Periode "${confirmDeletePeriod.label}" akan dihapus permanen jika belum memiliki course offering.`
+            : ""
+        }
+        confirmLabel="Ya, Hapus"
+        cancelLabel="Batal"
+        isPending={deleteMutation.isPending}
+        onClose={() => {
+          if (deleteMutation.isPending) return;
+          setConfirmDeletePeriod(null);
+        }}
+        onConfirm={() => {
+          if (!confirmDeletePeriod) return;
+          deleteMutation.mutate(confirmDeletePeriod.id);
+        }}
+      />
     </section>
   );
 }
