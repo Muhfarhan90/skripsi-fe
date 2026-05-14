@@ -22,6 +22,7 @@ import {
   createAdminCourseAssignment,
   createAdminCourseSectionQuiz,
   createAdminCourse,
+  createAdminSkill,
   createAdminSection,
   deleteAdminQuiz,
   deleteAdminLesson,
@@ -29,6 +30,7 @@ import {
   getAdminCategories,
   getAdminCourseCurriculum,
   getAdminCourseQuizzes,
+  getAdminSkills,
   getAdminUsers,
   upsertAdminCourseCurriculum,
   updateAdminCourseAssignment,
@@ -36,15 +38,18 @@ import {
   type AdminAssignment,
   type AdminQuiz,
   type AdminCourseCurriculum,
+  type AdminSkill,
   type CoursePayload,
   type CourseCurriculumSectionPayload,
 } from "@/features/admin/api/master-api";
 import { useUnsavedChangesGuard } from "@/features/admin/hooks/use-unsaved-changes-guard";
 import { AdminModal } from "@/features/admin/components/admin-modal";
 import { ApiError } from "@/lib/api/client";
+import { SkillMultiSelect } from "@/features/admin/components/skill-multi-select";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmAlertDialog } from "@/components/ui/confirm-alert-dialog";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -81,6 +86,7 @@ interface CourseFormState {
   title: string;
   category_id: string;
   instructor_id: string;
+  skill_ids: string[];
   description: string;
   requirements: string;
   outcomes: string;
@@ -141,6 +147,7 @@ const DEFAULT_FORM: CourseFormState = {
   title: "",
   category_id: "",
   instructor_id: "",
+  skill_ids: [],
   description: "",
   requirements: "",
   outcomes: "",
@@ -177,7 +184,7 @@ const COURSE_WIZARD_STEPS: CourseWizardStepItem[] = [
   {
     key: "general",
     label: "General Info",
-    description: "Judul, kategori, instructor, dan deskripsi utama.",
+    description: "Judul, kategori, instructor, skill badge, dan deskripsi utama.",
   },
   {
     key: "curriculum",
@@ -228,6 +235,7 @@ const courseFormSchema = z.object({
   title: z.string().trim().min(1, "Judul course wajib diisi"),
   category_id: z.string().trim().min(1, "Kategori wajib dipilih"),
   instructor_id: z.string().trim().min(1, "Instructor wajib dipilih"),
+  skill_ids: z.array(z.string()),
   description: z.string(),
   requirements: z.string(),
   outcomes: z.string(),
@@ -258,6 +266,7 @@ function mapCurriculumToFormState(curriculum: AdminCourseCurriculum): CourseForm
     title: curriculum.title,
     category_id: String(curriculum.category_id),
     instructor_id: String(curriculum.instructor_id),
+    skill_ids: curriculum.skills.map((skill) => String(skill.id)),
     description: curriculum.description ?? "",
     requirements: curriculum.requirements ?? "",
     outcomes: curriculum.outcomes ?? "",
@@ -285,6 +294,9 @@ function buildCoursePayload(form: CourseFormState): CoursePayload {
     description: form.description.trim() || null,
     category_id: Number(form.category_id),
     instructor_id: Number(form.instructor_id),
+    skill_ids: form.skill_ids
+      .map((skillId) => Number(skillId))
+      .filter((skillId) => Number.isInteger(skillId) && skillId > 0),
     requirements: form.requirements.trim() || null,
     outcomes: form.outcomes.trim() || null,
   };
@@ -300,6 +312,9 @@ function parsePositiveInteger(raw: string): number | null {
 
 function buildAutosaveCoursePayload(form: CourseFormState): Partial<CoursePayload> {
   const payload: Partial<CoursePayload> = {
+    skill_ids: form.skill_ids
+      .map((skillId) => Number(skillId))
+      .filter((skillId) => Number.isInteger(skillId) && skillId > 0),
     description: form.description.trim() || null,
     requirements: form.requirements.trim() || null,
     outcomes: form.outcomes.trim() || null,
@@ -468,8 +483,20 @@ function getStepIndexFromParam(stepParam: string | null): number {
   return 0;
 }
 
+function haveSameSkillSelection(currentSkillIds: string[], baseSkillIds: string[]): boolean {
+  if (currentSkillIds.length !== baseSkillIds.length) {
+    return false;
+  }
+
+  return currentSkillIds.every((skillId, index) => skillId === baseSkillIds[index]);
+}
+
 function isCourseFormDirty(currentForm: CourseFormState, baseForm: CourseFormState): boolean {
   if (courseMetadataKeys.some((key) => currentForm[key] !== baseForm[key])) {
+    return true;
+  }
+
+  if (!haveSameSkillSelection(currentForm.skill_ids, baseForm.skill_ids)) {
     return true;
   }
 
@@ -546,6 +573,11 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
     queryFn: getAdminUsers,
   });
 
+  const skillQuery = useQuery({
+    queryKey: ["admin", "skills", "options"],
+    queryFn: () => getAdminSkills({ per_page: 1000 }),
+  });
+
   const curriculumQuery = useQuery({
     queryKey: ["admin", "courses", "curriculum", validCourseId],
     queryFn: () => {
@@ -601,6 +633,13 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
   const selectedInstructorLabel = form.instructor_id
     ? instructorLabelMap.get(form.instructor_id)
     : undefined;
+  const selectedSkillLabels = useMemo(() => {
+    const skillMap = new Map((skillQuery.data ?? []).map((skill) => [String(skill.id), skill.name]));
+
+    return form.skill_ids
+      .map((skillId) => skillMap.get(skillId))
+      .filter((label): label is string => Boolean(label));
+  }, [form.skill_ids, skillQuery.data]);
   const selectedQuizSectionLabel = useMemo(() => {
     if (!quizForm.section_id) return undefined;
 
@@ -831,6 +870,35 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
     },
     onError: (error) => {
       setAutosaveErrorMessage(normalizeError(error));
+    },
+  });
+
+  const createSkillMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const normalizedName = name.trim();
+      if (!normalizedName) {
+        throw new Error("Nama skill wajib diisi");
+      }
+
+      return createAdminSkill({
+        name: normalizedName,
+        is_active: true,
+      });
+    },
+    onSuccess: (createdSkill) => {
+      queryClient.setQueryData<AdminSkill[]>(["admin", "skills", "options"], (current) => {
+        const skills = current ?? [];
+        if (skills.some((skill) => skill.id === createdSkill.id)) {
+          return skills;
+        }
+
+        return [...skills, createdSkill].sort((left, right) => left.name.localeCompare(right.name));
+      });
+      queryClient.invalidateQueries({ queryKey: ["admin", "skills"] });
+      toast.success("Skill baru berhasil ditambahkan");
+    },
+    onError: (error) => {
+      toast.error(normalizeError(error));
     },
   });
 
@@ -1233,6 +1301,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
   const retryReferenceData = () => {
     categoryQuery.refetch();
     userQuery.refetch();
+    skillQuery.refetch();
   };
 
   const getFieldError = (path: string): string | undefined => formErrors[path];
@@ -1258,15 +1327,16 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
   const clearStepErrors = useCallback((prev: CourseFormErrors, stepIndex: number): CourseFormErrors => {
     const next: CourseFormErrors = { ...prev };
 
-    if (stepIndex === 0) {
-      delete next.title;
-      delete next.category_id;
-      delete next.instructor_id;
-      delete next.description;
-      delete next.requirements;
-      delete next.outcomes;
-      delete next[FORM_ERROR_KEY];
-      return next;
+      if (stepIndex === 0) {
+        delete next.title;
+        delete next.category_id;
+        delete next.instructor_id;
+        delete next.skill_ids;
+        delete next.description;
+        delete next.requirements;
+        delete next.outcomes;
+        delete next[FORM_ERROR_KEY];
+        return next;
     }
 
     if (stepIndex === 1) {
@@ -1564,8 +1634,8 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
     );
   }
 
-  const isReferenceLoading = categoryQuery.isLoading || userQuery.isLoading;
-  const isReferenceError = categoryQuery.isError || userQuery.isError;
+  const isReferenceLoading = categoryQuery.isLoading || userQuery.isLoading || skillQuery.isLoading;
+  const isReferenceError = categoryQuery.isError || userQuery.isError || skillQuery.isError;
 
   return (
     <section className="space-y-5">
@@ -1634,7 +1704,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
             {activeStepIndex === 0 && isReferenceLoading ? (
               <div className="flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-xs text-[var(--muted-foreground)]">
                 <Loader2 className="size-3.5 animate-spin" />
-                Memuat data kategori dan instructor...
+                Memuat data kategori, instructor, dan skill...
               </div>
             ) : null}
 
@@ -1642,7 +1712,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
               <div className="flex items-center justify-between gap-3 rounded-md border border-[var(--danger-soft-border)] bg-[var(--danger-soft-bg)] px-3 py-2 text-xs text-[var(--danger-soft-foreground)]">
                 <span className="inline-flex items-center gap-1.5">
                   <AlertTriangle className="size-3.5" />
-                  Gagal memuat referensi kategori/instructor.
+                  Gagal memuat referensi kategori/instructor/skill.
                 </span>
                 <Button type="button" variant="outline" size="sm" onClick={retryReferenceData} className="h-7">
                   <RefreshCw className="size-3.5" />
@@ -1740,6 +1810,27 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
                     </Select>
                     {getFieldError("instructor_id") ? (
                       <p className="text-xs text-red-600">{getFieldError("instructor_id")}</p>
+                    ) : null}
+                  </div>
+
+                  <div className="space-y-1.5 md:col-span-2">
+                    <Label>Skill Badge</Label>
+                    <SkillMultiSelect
+                      skills={skillQuery.data ?? []}
+                      value={form.skill_ids}
+                      onChange={(value) => updateField("skill_ids", value)}
+                      onCreateSkill={(name) => createSkillMutation.mutateAsync(name)}
+                      disabled={isReferenceLoading || isReferenceError}
+                      isLoading={skillQuery.isLoading || createSkillMutation.isPending}
+                      className="w-full"
+                    />
+                    <p className="text-xs text-[var(--muted-foreground)]">
+                      Pilih skill badge untuk course ini. Jika belum ada, buat langsung dari kolom pencarian.
+                    </p>
+                    {selectedSkillLabels.length > 0 ? (
+                      <p className="text-xs text-[var(--muted-foreground)]">
+                        Terpilih: {selectedSkillLabels.join(", ")}
+                      </p>
                     ) : null}
                   </div>
 
@@ -2291,22 +2382,20 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
 
             <div className="space-y-1.5">
               <Label htmlFor="quiz-open-at">Quiz Buka (Tanggal & Jam)</Label>
-              <Input
-                id="quiz-open-at"
-                type="datetime-local"
+              <DateTimePicker
                 value={quizForm.open_at}
-                onChange={(event) => setQuizForm((prev) => ({ ...prev, open_at: event.target.value }))}
+                onChange={(value) => setQuizForm((prev) => ({ ...prev, open_at: value }))}
+                placeholder="Pilih waktu buka quiz"
                 className="border-[var(--border)] bg-[var(--card)]"
               />
             </div>
 
             <div className="space-y-1.5">
               <Label htmlFor="quiz-close-at">Quiz Tutup (Tanggal & Jam)</Label>
-              <Input
-                id="quiz-close-at"
-                type="datetime-local"
+              <DateTimePicker
                 value={quizForm.close_at}
-                onChange={(event) => setQuizForm((prev) => ({ ...prev, close_at: event.target.value }))}
+                onChange={(value) => setQuizForm((prev) => ({ ...prev, close_at: value }))}
+                placeholder="Pilih waktu tutup quiz"
                 className="border-[var(--border)] bg-[var(--card)]"
               />
             </div>
@@ -2425,11 +2514,10 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
 
             <div className="space-y-1.5">
               <Label htmlFor="assignment-due-at">Deadline (Tanggal & Jam)</Label>
-              <Input
-                id="assignment-due-at"
-                type="datetime-local"
+              <DateTimePicker
                 value={assignmentForm.due_at}
-                onChange={(event) => setAssignmentForm((prev) => ({ ...prev, due_at: event.target.value }))}
+                onChange={(value) => setAssignmentForm((prev) => ({ ...prev, due_at: value }))}
+                placeholder="Pilih deadline assignment"
                 className="border-[var(--border)] bg-[var(--card)]"
               />
             </div>

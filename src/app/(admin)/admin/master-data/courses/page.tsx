@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmAlertDialog } from "@/components/ui/confirm-alert-dialog";
@@ -33,7 +34,7 @@ export default function AdminCoursesPage() {
 
   const courseQuery = useQuery({
     queryKey: ["admin", "courses"],
-    queryFn: getAdminCourses,
+    queryFn: () => getAdminCourses(),
   });
 
   const categoryQuery = useQuery({
@@ -65,8 +66,9 @@ export default function AdminCoursesPage() {
     return sortedCourses.filter((course) => {
       const categoryName = categoryMap.get(course.category_id) ?? "";
       const instructorName = userMap.get(course.instructor_id) ?? "";
+      const skillNames = course.skills.map((skill) => skill.name).join(" ");
 
-      return [course.title, categoryName, instructorName].some((value) =>
+      return [course.title, categoryName, instructorName, skillNames].some((value) =>
         value.toLowerCase().includes(keyword),
       );
     });
@@ -196,12 +198,9 @@ export default function AdminCoursesPage() {
                         {course.skills.length > 0 ? (
                           <div className="flex flex-wrap gap-1.5">
                             {course.skills.map((skill) => (
-                              <span
-                                key={skill.id}
-                                className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700"
-                              >
+                              <Badge key={skill.id} variant="success">
                                 {skill.name}
-                              </span>
+                              </Badge>
                             ))}
                           </div>
                         ) : (

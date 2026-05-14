@@ -1,4 +1,5 @@
 import {
+  BrainCircuit,
   BookOpenText,
   CalendarClock,
   CalendarRange,
@@ -14,6 +15,7 @@ export type AdminNavIcon =
   | "dashboard"
   | "users"
   | "categories"
+  | "skills"
   | "courses"
   | "courseOfferings"
   | "academicPeriods"
@@ -50,6 +52,7 @@ export interface AdminQuickNavigationItem {
 type AdminMasterEntity =
   | "users"
   | "categories"
+  | "skills"
   | "courses"
   | "vouchers";
 
@@ -57,6 +60,7 @@ const ADMIN_ICON_MAP: Record<AdminNavIcon, LucideIcon> = {
   dashboard: LayoutDashboard,
   users: Shapes,
   categories: FolderKanban,
+  skills: BrainCircuit,
   courses: BookOpenText,
   courseOfferings: CalendarRange,
   academicPeriods: CalendarClock,
@@ -68,6 +72,7 @@ const ADMIN_ICON_MAP: Record<AdminNavIcon, LucideIcon> = {
 const ADMIN_ENTITY_LABEL: Record<AdminMasterEntity, string> = {
   users: "User",
   categories: "Category",
+  skills: "Skill",
   courses: "Course Master",
   vouchers: "Voucher",
 };
@@ -86,16 +91,22 @@ const ADMIN_QUICK_ACTIONS: AdminQuickNavigationItem[] = [
     keywords: ["create", "course", "kursus", "tambah"],
   },
   {
-    label: "Buat Offering",
-    href: "/admin/course-offerings/new",
-    description: "Tambah batch/offering course baru",
-    keywords: ["create", "offering", "batch", "periode"],
+    label: "Kelola Skills",
+    href: "/admin/master-data/skills",
+    description: "Tambah dan rapikan badge skill course",
+    keywords: ["skill", "skills", "badge", "tag"],
+  },
+  {
+    label: "Kelola Offering",
+    href: "/admin/academic-periods",
+    description: "Pilih period lalu tambah offering",
+    keywords: ["create", "offering", "batch", "periode", "academic"],
   },
   {
     label: "Buat Periode Akademik",
     href: "/admin/academic-periods/new",
     description: "Tambah periode akademik baru",
-    keywords: ["periode", "academic", "calendar", "create"],
+    keywords: ["periode", "academic", "calendar", "create", "offering"],
   },
 ];
 
@@ -132,6 +143,13 @@ export const ADMIN_NAVIGATION: AdminNavigationGroup[] = [
         icon: "categories",
       },
       {
+        key: "master-data-skills",
+        label: "Skills",
+        href: "/admin/master-data/skills",
+        description: "Kelola badge skill course",
+        icon: "skills",
+      },
+      {
         key: "master-data-courses",
         label: "Course Master",
         href: "/admin/master-data/courses",
@@ -140,16 +158,9 @@ export const ADMIN_NAVIGATION: AdminNavigationGroup[] = [
       },
       {
         key: "course-offerings",
-        label: "Course Offerings",
-        href: "/admin/course-offerings",
-        description: "Kelola batch/offering per periode",
-        icon: "courseOfferings",
-      },
-      {
-        key: "academic-periods",
         label: "Academic Periods",
         href: "/admin/academic-periods",
-        description: "Kelola kalender akademik",
+        description: "Kelola period dan offering course",
         icon: "academicPeriods",
       },
       {
@@ -212,6 +223,10 @@ export function isAdminItemActive(pathname: string, href: string): boolean {
     return pathname === "/admin";
   }
 
+  if (href === "/admin/academic-periods" && pathname.startsWith("/admin/course-offerings")) {
+    return true;
+  }
+
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -245,7 +260,7 @@ function resolveAdminDynamicRoute(pathname: string): AdminDynamicRouteMeta | und
         title: "Detail Course Offering",
         breadcrumbs: [
           { label: "Dashboard", href: "/admin" },
-          { label: "Course Offerings", href: "/admin/course-offerings" },
+          { label: "Academic Periods", href: "/admin/academic-periods" },
           { label: "Detail Course Offering" },
         ],
       };
@@ -256,7 +271,7 @@ function resolveAdminDynamicRoute(pathname: string): AdminDynamicRouteMeta | und
         title: "Buat Course Offering",
         breadcrumbs: [
           { label: "Dashboard", href: "/admin" },
-          { label: "Course Offerings", href: "/admin/course-offerings" },
+          { label: "Academic Periods", href: "/admin/academic-periods" },
           { label: "Buat Course Offering" },
         ],
       };
@@ -264,6 +279,42 @@ function resolveAdminDynamicRoute(pathname: string): AdminDynamicRouteMeta | und
   }
 
   if (segments.length >= 1 && segments[0] === "academic-periods") {
+    if (
+      segments.length === 4 &&
+      isNumericIdSegment(segments[1]) &&
+      segments[2] === "offerings" &&
+      segments[3] === "new"
+    ) {
+      const periodId = segments[1];
+      return {
+        title: "Buat Course Offering",
+        breadcrumbs: [
+          { label: "Dashboard", href: "/admin" },
+          { label: "Academic Periods", href: "/admin/academic-periods" },
+          { label: "Detail Academic Period", href: `/admin/academic-periods/${periodId}` },
+          { label: "Buat Course Offering" },
+        ],
+      };
+    }
+
+    if (
+      segments.length === 4 &&
+      isNumericIdSegment(segments[1]) &&
+      segments[2] === "offerings" &&
+      isNumericIdSegment(segments[3])
+    ) {
+      const periodId = segments[1];
+      return {
+        title: "Detail Course Offering",
+        breadcrumbs: [
+          { label: "Dashboard", href: "/admin" },
+          { label: "Academic Periods", href: "/admin/academic-periods" },
+          { label: "Detail Academic Period", href: `/admin/academic-periods/${periodId}` },
+          { label: "Detail Course Offering" },
+        ],
+      };
+    }
+
     if (segments.length === 2 && isNumericIdSegment(segments[1])) {
       return {
         title: "Detail Academic Period",

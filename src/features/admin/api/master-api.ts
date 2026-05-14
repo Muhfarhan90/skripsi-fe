@@ -13,13 +13,25 @@ export interface AdminCategory {
   created_at: string;
 }
 
+export interface AdminSkill {
+  id: number;
+  name: string;
+  slug: string;
+  is_active: boolean;
+  courses_count?: number | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
 export interface AdminCourse {
   id: number;
   title: string;
   slug: string;
   description: string | null;
   category_id: number;
+  category_name?: string | null;
   instructor_id: number;
+  instructor_name?: string | null;
   price: string | number;
   discount_price: string | number | null;
   thumbnail: string | null;
@@ -41,8 +53,30 @@ export interface AdminAcademicPeriod {
   end_at: string | null;
   enrollment_open_at: string | null;
   enrollment_close_at: string | null;
-  status: string | null;
+  is_active: boolean;
   course_offerings_count: number | null;
+  course_offerings?: Array<{
+    id: number;
+    course_id: number | null;
+    academic_period_id: number | null;
+    title: string | null;
+    capacity: number | null;
+    price: string | number | null;
+    discount_price: string | number | null;
+    is_active: boolean;
+    enrollments_count: number | null;
+    course: {
+      id: number;
+      title: string;
+      slug: string;
+      category: {
+        id: number;
+        name: string;
+      } | null;
+    } | null;
+  }> | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 export interface AdminCourseOffering {
@@ -50,14 +84,10 @@ export interface AdminCourseOffering {
   course_id: number | null;
   academic_period_id: number | null;
   title: string | null;
-  start_at: string | null;
-  end_at: string | null;
-  enrollment_open_at: string | null;
-  enrollment_close_at: string | null;
   capacity: number | null;
   price: string | number | null;
   discount_price: string | number | null;
-  status: string | null;
+  is_active: boolean;
   enrollments_count: number | null;
   course: {
     id: number;
@@ -66,6 +96,10 @@ export interface AdminCourseOffering {
     category: {
       id: number;
       name: string;
+    } | null;
+    instructor?: {
+      id: number;
+      fullname: string;
     } | null;
   } | null;
   academic_period: {
@@ -76,8 +110,10 @@ export interface AdminCourseOffering {
     end_at: string | null;
     enrollment_open_at: string | null;
     enrollment_close_at: string | null;
-    status: string | null;
+    is_active: boolean;
   } | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 export interface AdminSection {
@@ -279,6 +315,7 @@ export interface CoursePayload {
   description?: string | null;
   category_id: number;
   instructor_id: number;
+  skill_ids?: number[];
   price?: number | null;
   discount_price?: number | null;
   requirements?: string | null;
@@ -313,14 +350,42 @@ export interface AssignmentPayload {
 }
 
 export interface AdminCourseOfferingQuery {
-  status?: string;
+  is_active?: boolean | string;
   academic_period_id?: number | string;
   search?: string;
 }
 
 export interface AdminAcademicPeriodQuery {
-  status?: string;
+  is_active?: boolean | string;
   search?: string;
+}
+
+export interface AdminCourseQuery {
+  per_page?: number;
+}
+
+export interface AdminSkillQuery {
+  per_page?: number;
+}
+
+export interface AcademicPeriodPayload {
+  code: string;
+  name: string;
+  start_at: string;
+  end_at: string;
+  enrollment_open_at: string;
+  enrollment_close_at: string;
+  is_active: boolean;
+}
+
+export interface CourseOfferingPayload {
+  course_id: number;
+  academic_period_id: number;
+  title: string;
+  capacity: number;
+  price: number;
+  discount_price?: number | null;
+  is_active: boolean;
 }
 
 export interface QuestionPayload {
@@ -349,6 +414,11 @@ export interface VoucherPayload {
   usage_limit?: number | null;
   is_active?: boolean;
   expired_at?: string | null;
+}
+
+export interface SkillPayload {
+  name: string;
+  is_active?: boolean;
 }
 
 export interface CourseCurriculumLessonPayload {
@@ -468,6 +538,36 @@ export function getAdminCategories() {
   });
 }
 
+export function getAdminSkills(query: AdminSkillQuery = {}) {
+  const params = new URLSearchParams();
+  if (query.per_page) params.set("per_page", String(query.per_page));
+
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  return apiRequest<AdminSkill[]>(`/api/admin/skills${suffix}`, {
+    method: "GET",
+  });
+}
+
+export function createAdminSkill(payload: SkillPayload) {
+  return apiRequest<AdminSkill>("/api/admin/skills", {
+    method: "POST",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function updateAdminSkill(id: number, payload: SkillPayload) {
+  return apiRequest<AdminSkill>(`/api/admin/skills/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function deleteAdminSkill(id: number) {
+  return apiMessageOnly(`/api/admin/skills/${id}`, {
+    method: "DELETE",
+  });
+}
+
 export function createAdminCategory(payload: CategoryPayload) {
   return apiRequest<AdminCategory>("/api/admin/categories", {
     method: "POST",
@@ -488,15 +588,19 @@ export function deleteAdminCategory(id: number) {
   });
 }
 
-export function getAdminCourses() {
-  return apiRequest<AdminCourse[]>("/api/admin/courses", {
+export function getAdminCourses(query: AdminCourseQuery = {}) {
+  const params = new URLSearchParams();
+  if (query.per_page) params.set("per_page", String(query.per_page));
+
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  return apiRequest<AdminCourse[]>(`/api/admin/courses${suffix}`, {
     method: "GET",
   });
 }
 
 export function getAdminCourseOfferings(query: AdminCourseOfferingQuery = {}) {
   const params = new URLSearchParams();
-  if (query.status) params.set("status", query.status);
+  if (query.is_active !== undefined) params.set("is_active", String(query.is_active));
   if (query.academic_period_id !== undefined && query.academic_period_id !== null) {
     params.set("academic_period_id", String(query.academic_period_id));
   }
@@ -508,14 +612,66 @@ export function getAdminCourseOfferings(query: AdminCourseOfferingQuery = {}) {
   });
 }
 
+export function getAdminCourseOfferingById(id: number) {
+  return apiRequest<AdminCourseOffering>(`/api/admin/course-offerings/${id}`, {
+    method: "GET",
+  });
+}
+
+export function createAdminCourseOffering(payload: CourseOfferingPayload) {
+  return apiRequest<AdminCourseOffering>("/api/admin/course-offerings", {
+    method: "POST",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function updateAdminCourseOffering(id: number, payload: CourseOfferingPayload) {
+  return apiRequest<AdminCourseOffering>(`/api/admin/course-offerings/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function deleteAdminCourseOffering(id: number) {
+  return apiMessageOnly(`/api/admin/course-offerings/${id}`, {
+    method: "DELETE",
+  });
+}
+
 export function getAdminAcademicPeriods(query: AdminAcademicPeriodQuery = {}) {
   const params = new URLSearchParams();
-  if (query.status) params.set("status", query.status);
+  if (query.is_active !== undefined) params.set("is_active", String(query.is_active));
   if (query.search) params.set("search", query.search);
 
   const suffix = params.toString() ? `?${params.toString()}` : "";
   return apiRequest<AdminAcademicPeriod[]>(`/api/admin/academic-periods${suffix}`, {
     method: "GET",
+  });
+}
+
+export function getAdminAcademicPeriodById(id: number) {
+  return apiRequest<AdminAcademicPeriod>(`/api/admin/academic-periods/${id}`, {
+    method: "GET",
+  });
+}
+
+export function createAdminAcademicPeriod(payload: AcademicPeriodPayload) {
+  return apiRequest<AdminAcademicPeriod>("/api/admin/academic-periods", {
+    method: "POST",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function updateAdminAcademicPeriod(id: number, payload: AcademicPeriodPayload) {
+  return apiRequest<AdminAcademicPeriod>(`/api/admin/academic-periods/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function deleteAdminAcademicPeriod(id: number) {
+  return apiMessageOnly(`/api/admin/academic-periods/${id}`, {
+    method: "DELETE",
   });
 }
 

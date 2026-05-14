@@ -4,6 +4,7 @@ import { buildApiUrl, getAuthCookieOptions } from "@/features/auth/lib/server";
 
 const ALLOWED_ADMIN_RESOURCES = new Set([
   "categories",
+  "skills",
   "courses",
   "sections",
   "lessons",
