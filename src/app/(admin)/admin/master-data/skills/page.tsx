@@ -6,7 +6,6 @@ import { Loader2, Pencil, Plus, Save, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { AdminModal } from "@/features/admin/components/admin-modal";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmAlertDialog } from "@/components/ui/confirm-alert-dialog";
@@ -15,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ApiError } from "@/lib/api/client";
+import { StatusBadge } from "@/features/admin/components/status-badge";
 import {
   createAdminSkill,
   deleteAdminSkill,
@@ -200,19 +200,10 @@ export default function AdminSkillsPage() {
               ) : filteredSkills.length > 0 ? (
                 filteredSkills.map((skill) => (
                   <TableRow key={skill.id}>
-                    <TableCell className="text-sm font-medium text-[var(--foreground)]">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span>{skill.name}</span>
-                        <Badge variant={skill.is_active ? "success" : "warning"}>
-                          {skill.is_active ? "Aktif" : "Nonaktif"}
-                        </Badge>
-                      </div>
-                    </TableCell>
+                    <TableCell className="text-sm font-medium text-[var(--foreground)]">{skill.name}</TableCell>
                     <TableCell className="text-sm text-[var(--muted-foreground)]">{skill.slug}</TableCell>
                     <TableCell className="text-sm">
-                      <Badge variant={skill.is_active ? "success" : "outline"}>
-                        {skill.is_active ? "Bisa dipilih" : "Disembunyikan"}
-                      </Badge>
+                      <StatusBadge value={skill.is_active ? "Aktif" : "Nonaktif"} />
                     </TableCell>
                     <TableCell className="text-sm text-[var(--foreground)]">{skill.courses_count ?? 0}</TableCell>
                     <TableCell>
@@ -279,7 +270,7 @@ export default function AdminSkillsPage() {
               <div>
                 <p className="text-sm font-medium text-[var(--foreground)]">Skill aktif</p>
                 <p className="text-xs text-[var(--muted-foreground)]">
-                  Skill aktif akan muncul di selector course dan bisa dipilih admin.
+                  Skill aktif akan muncul di selector course.
                 </p>
               </div>
               <Switch
