@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, ChevronDown, ChevronUp, CirclePlay, FileText, HelpCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -12,9 +12,21 @@ import {
   getStudentEnrollmentCurriculum,
   getStudentEnrollmentLessonDetail,
   getStudentLessonProgressList,
+  getStudentQuizAttempts,
+  startStudentQuizAttempt,
   upsertStudentLessonProgress,
 } from "@/features/student/api/store-api";
-import type { StoreCurriculumSection, StoreLesson, StoreQuiz } from "@/types/store";
+import {
+  buildStudentQuizAttemptHref,
+  formatQuizAttemptStatus,
+  formatQuizDuration,
+  getActiveQuizAttempt,
+  getLatestQuizAttempt,
+  getStudentQuizAttemptLinkClass,
+  getStudentQuizAttemptLinkLabel,
+} from "@/features/student/lib/quiz";
+import { formatUtcDateTimeToJakarta, parseUtcDateTime } from "@/features/student/lib/date-time";
+import type { StoreCurriculumSection, StoreLesson, StoreQuiz, StoreQuizAttempt } from "@/types/store";
 
 function toEmbeddableUrl(url: string): string {
   try {
@@ -75,17 +87,107 @@ function formatLessonDuration(duration: number | null | undefined): string {
   return `${value} menit`;
 }
 
+function formatCountdown(remainingMs: number): string {
+  const totalSeconds = Math.max(0, Math.floor(remainingMs / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  return [minutes, seconds].map((value) => String(value).padStart(2, "0")).join(":");
+}
+
 type SelectedContent =
   | { kind: "lesson"; sectionId: number; data: StoreLesson }
   | { kind: "quiz"; sectionId: number; data: StoreQuiz };
 
+function findRequestedContent(
+  sections: StoreCurriculumSection[],
+  requestedLessonId: number | null,
+  requestedQuizId: number | null,
+): SelectedContent | null {
+  if (requestedLessonId) {
+    for (const section of sections) {
+      const lesson = section.lessons?.find((item) => item.id === requestedLessonId);
+      if (lesson) {
+        return { kind: "lesson", sectionId: section.id, data: lesson };
+      }
+    }
+  }
+
+  if (requestedQuizId) {
+    for (const section of sections) {
+      const quiz = section.quizzes?.find((item) => item.id === requestedQuizId);
+      if (quiz) {
+        return { kind: "quiz", sectionId: section.id, data: quiz };
+      }
+    }
+  }
+
+  return null;
+}
+
+function hasRemainingAttempts(maxAttempts: number | null | undefined, attemptCount: number): boolean {
+  if (!maxAttempts || maxAttempts <= 0) {
+    return true;
+  }
+
+  return attemptCount < maxAttempts;
+}
+
+function getQuizCooldownDeadline(attempt: StoreQuizAttempt | null): Date | null {
+  if (!attempt || attempt.status === "in_progress") {
+    return null;
+  }
+
+  const submittedAt = parseUtcDateTime(attempt.submitted_at ?? attempt.updated_at);
+  if (!submittedAt) {
+    return null;
+  }
+
+  return new Date(submittedAt.getTime() + 5 * 60_000);
+}
+
+function canStartQuizFromLearn(
+  quiz: StoreQuiz | null,
+  attempts: StoreQuizAttempt[],
+  isCooldownActive: boolean,
+): boolean {
+  if (!quiz || !quiz.is_active || getActiveQuizAttempt(attempts)) {
+    return false;
+  }
+
+  const now = Date.now();
+  const openAt = parseUtcDateTime(quiz.open_at)?.getTime() ?? null;
+  const closeAt = parseUtcDateTime(quiz.close_at)?.getTime() ?? null;
+
+  if (openAt && openAt > now) {
+    return false;
+  }
+
+  if (closeAt && closeAt < now) {
+    return false;
+  }
+
+  if (isCooldownActive) {
+    return false;
+  }
+
+  return hasRemainingAttempts(quiz.max_attempts, attempts.length);
+}
+
 export default function StudentEnrollmentLearnPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const enrollmentId = Number(params.id);
   const [expandedSectionId, setExpandedSectionId] = useState<number | null>(null);
   const [selectedContent, setSelectedContent] = useState<SelectedContent | null>(null);
   const [showMarkCompleteConfirm, setShowMarkCompleteConfirm] = useState(false);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  const requestedLessonId = Number(searchParams.get("lessonId"));
+  const requestedQuizId = Number(searchParams.get("quizId"));
+  const hasRequestedLessonId = Number.isFinite(requestedLessonId) && requestedLessonId > 0;
+  const hasRequestedQuizId = Number.isFinite(requestedQuizId) && requestedQuizId > 0;
 
   const curriculumQuery = useQuery({
     queryKey: ["student", "enrollment", enrollmentId, "curriculum"],
@@ -104,6 +206,16 @@ export default function StudentEnrollmentLearnPage() {
     [curriculumQuery.data?.sections],
   );
 
+  const requestedSelectedContent = useMemo(
+    () =>
+      findRequestedContent(
+        sections,
+        hasRequestedLessonId ? requestedLessonId : null,
+        hasRequestedQuizId ? requestedQuizId : null,
+      ),
+    [hasRequestedLessonId, hasRequestedQuizId, requestedLessonId, requestedQuizId, sections],
+  );
+
   const completedLessonIds = useMemo(
     () =>
       new Set(
@@ -115,6 +227,10 @@ export default function StudentEnrollmentLearnPage() {
   );
 
   const defaultSelectedContent = useMemo<SelectedContent | null>(() => {
+    if (requestedSelectedContent) {
+      return requestedSelectedContent;
+    }
+
     if (!sections.length) {
       return null;
     }
@@ -131,7 +247,7 @@ export default function StudentEnrollmentLearnPage() {
     }
 
     return null;
-  }, [sections]);
+  }, [requestedSelectedContent, sections]);
 
   const hasSelectedContentInSections = useMemo(() => {
     if (!selectedContent) {
@@ -177,19 +293,76 @@ export default function StudentEnrollmentLearnPage() {
     },
   });
 
+  const startQuizMutation = useMutation({
+    mutationFn: (quizId: number) => startStudentQuizAttempt(enrollmentId, quizId),
+    onSuccess: (attempt) => {
+      queryClient.invalidateQueries({
+        queryKey: ["student", "enrollment", enrollmentId, "quiz", attempt.quiz_id, "attempts"],
+      });
+      toast.success("Quiz berhasil dimulai.");
+      router.push(buildStudentQuizAttemptHref(enrollmentId, attempt.quiz_id, attempt.id));
+    },
+    onError: (error) => {
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+        return;
+      }
+
+      toast.error("Quiz belum bisa dimulai.");
+    },
+  });
+
   const activeSelectedContent = hasSelectedContentInSections ? selectedContent : defaultSelectedContent;
-  const activeExpandedSectionId = expandedSectionId ?? sections[0]?.id ?? null;
+  const activeExpandedSectionId = expandedSectionId ?? activeSelectedContent?.sectionId ?? sections[0]?.id ?? null;
   const selectedLessonId = activeSelectedContent?.kind === "lesson" ? activeSelectedContent.data.id : null;
 
   const selectedLesson = activeSelectedContent?.kind === "lesson" ? activeSelectedContent.data : null;
   const selectedQuiz = activeSelectedContent?.kind === "quiz" ? activeSelectedContent.data : null;
+  const selectedQuizId = selectedQuiz?.id ?? null;
   const lessonDetailQuery = useQuery({
     queryKey: ["student", "enrollment", enrollmentId, "lesson-detail", selectedLessonId],
     queryFn: () => getStudentEnrollmentLessonDetail(enrollmentId, selectedLessonId as number),
     enabled: Number.isFinite(enrollmentId) && enrollmentId > 0 && Boolean(selectedLessonId),
   });
+  const quizAttemptsQuery = useQuery({
+    queryKey: ["student", "enrollment", enrollmentId, "quiz", selectedQuizId, "attempts"],
+    queryFn: () => getStudentQuizAttempts(enrollmentId, selectedQuizId as number),
+    enabled: Number.isFinite(enrollmentId) && enrollmentId > 0 && Boolean(selectedQuizId),
+  });
   const activeLesson = lessonDetailQuery.data?.lesson ?? selectedLesson;
   const embedUrl = activeLesson?.lesson_url ? toEmbeddableUrl(activeLesson.lesson_url) : null;
+  const quizAttempts = quizAttemptsQuery.data ?? [];
+  const activeQuizAttempt = getActiveQuizAttempt(quizAttempts);
+  const latestQuizAttempt = getLatestQuizAttempt(quizAttempts);
+  const cooldownDeadline = getQuizCooldownDeadline(latestQuizAttempt);
+  const cooldownDeadlineMs = cooldownDeadline?.getTime() ?? null;
+  const remainingCooldownMs =
+    cooldownDeadlineMs !== null ? Math.max(cooldownDeadlineMs - nowMs, 0) : null;
+  const isCooldownActive = remainingCooldownMs !== null && remainingCooldownMs > 0;
+  const canStartSelectedQuiz = canStartQuizFromLearn(selectedQuiz, quizAttempts, isCooldownActive);
+  const quizActionLabel =
+    activeQuizAttempt
+      ? "Lanjutkan Quiz"
+      : canStartSelectedQuiz
+        ? quizAttempts.length
+          ? "Mulai Quiz Lagi"
+          : "Mulai Quiz"
+        : null;
+  const cooldownLabel = remainingCooldownMs !== null ? formatCountdown(remainingCooldownMs) : null;
+
+  useEffect(() => {
+    if (!isCooldownActive) {
+      return undefined;
+    }
+
+    const timerId = window.setInterval(() => {
+      setNowMs(Date.now());
+    }, 1000);
+
+    return () => {
+      window.clearInterval(timerId);
+    };
+  }, [isCooldownActive]);
 
   if (curriculumQuery.isLoading) {
     return <p className="text-sm text-muted-foreground">Memuat materi course...</p>;
@@ -381,7 +554,7 @@ export default function StudentEnrollmentLearnPage() {
               <div>
                 <h2 className="text-2xl font-semibold text-[var(--foreground)]">{selectedQuiz.title}</h2>
                 <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-                  Quiz - Durasi: {formatLessonDuration(selectedQuiz.duration)}
+                  Quiz - Durasi: {formatQuizDuration(selectedQuiz.duration)}
                 </p>
               </div>
 
@@ -395,6 +568,82 @@ export default function StudentEnrollmentLearnPage() {
                   <p>Max attempts: {selectedQuiz.max_attempts ?? "-"}</p>
                   <p>Status: {selectedQuiz.is_active ? "Aktif" : "Nonaktif"}</p>
                 </div>
+              </div>
+
+              {quizAttemptsQuery.isSuccess ? (
+                <div className="rounded-md border border-[var(--border)] bg-[var(--card)] p-4 text-sm text-[var(--foreground)]">
+                  <p className="font-medium">Riwayat Attempt</p>
+                  {quizAttemptsQuery.data.length ? (
+                    <div className="mt-3 space-y-2">
+                      {quizAttemptsQuery.data.map((attempt, index) => (
+                        <div
+                          key={attempt.id}
+                          className="rounded-lg border border-[var(--border)] bg-[var(--muted)]/30 px-3 py-3"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <p className="font-medium text-[var(--foreground)]">
+                              Attempt #{quizAttemptsQuery.data.length - index}
+                            </p>
+                            <div className="flex flex-wrap items-center gap-2">
+                              {index === 0 ? (
+                                <span className="inline-flex rounded-full bg-[var(--secondary)] px-2 py-0.5 text-[11px] font-semibold text-[var(--secondary-foreground)]">
+                                  Terbaru
+                                </span>
+                              ) : null}
+                              <Link
+                                href={buildStudentQuizAttemptHref(enrollmentId, selectedQuiz.id, attempt.id)}
+                                className={getStudentQuizAttemptLinkClass(
+                                  attempt,
+                                  selectedQuiz.passing_score,
+                                )}
+                              >
+                                {getStudentQuizAttemptLinkLabel(attempt)}
+                              </Link>
+                            </div>
+                          </div>
+                          <div className="mt-2 grid gap-1 text-xs text-[var(--muted-foreground)] sm:grid-cols-3">
+                            <p>Status: {formatQuizAttemptStatus(attempt.status)}</p>
+                            <p>
+                              Score: {attempt.total_score}
+                              {selectedQuiz.passing_score ? ` / ${selectedQuiz.passing_score}` : ""}
+                            </p>
+                            <p>
+                              Waktu: {formatUtcDateTimeToJakarta(attempt.submitted_at ?? attempt.started_at)}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-[var(--muted-foreground)]">Belum ada attempt untuk quiz ini.</p>
+                  )}
+                </div>
+              ) : null}
+
+              <div className="flex flex-wrap gap-3">
+                {quizAttemptsQuery.isLoading ? (
+                  <span className="inline-flex h-10 items-center rounded-md bg-[var(--secondary)] px-4 text-sm font-medium text-[var(--secondary-foreground)] opacity-70">
+                    Memuat Quiz...
+                  </span>
+                ) : null}
+                {quizActionLabel === "Mulai Quiz" || quizActionLabel === "Mulai Quiz Lagi" ? (
+                  <button
+                    type="button"
+                    onClick={() => selectedQuiz && startQuizMutation.mutate(selectedQuiz.id)}
+                    disabled={startQuizMutation.isPending}
+                    className="inline-flex h-10 items-center rounded-md bg-[var(--secondary)] px-4 text-sm font-medium text-[var(--secondary-foreground)] transition hover:opacity-90 disabled:opacity-70"
+                  >
+                    {startQuizMutation.isPending ? "Menyiapkan Quiz..." : quizActionLabel}
+                  </button>
+                ) : null}
+                {quizAttemptsQuery.isError ? (
+                  <p className="text-sm text-red-600">Status attempt quiz belum bisa dimuat.</p>
+                ) : null}
+                {isCooldownActive ? (
+                  <p className="text-sm text-[var(--muted-foreground)]">
+                    Quiz bisa dimulai lagi dalam {cooldownLabel}.
+                  </p>
+                ) : null}
               </div>
             </div>
           ) : (
