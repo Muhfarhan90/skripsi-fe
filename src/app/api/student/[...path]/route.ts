@@ -31,6 +31,15 @@ function resolveTargetPath(pathSegments: string[] | undefined): string | null {
     if (pathSegments.length === 4 && second && third === "lessons" && fourth) {
       return `/enrollments/${second}/lessons/${fourth}`;
     }
+    if (pathSegments.length === 3 && second && third === "assignments") {
+      return `/enrollments/${second}/assignments`;
+    }
+    if (pathSegments.length === 4 && second && third === "assignments" && fourth) {
+      return `/enrollments/${second}/assignments/${fourth}`;
+    }
+    if (pathSegments.length === 5 && second && third === "assignments" && fourth && fifth === "submit") {
+      return `/enrollments/${second}/assignments/${fourth}/submit`;
+    }
     if (pathSegments.length === 4 && second && third === "quizzes" && fourth) {
       return `/enrollments/${second}/quizzes/${fourth}`;
     }

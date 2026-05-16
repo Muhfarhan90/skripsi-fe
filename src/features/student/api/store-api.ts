@@ -1,5 +1,7 @@
 import { ApiError } from "@/lib/api/client";
 import type {
+  StoreAssignment,
+  StoreAssignmentSubmission,
   StoreCourse,
   StoreCourseCurriculum,
   StoreEnrollment,
@@ -148,6 +150,37 @@ export function getStudentEnrollmentLessonDetail(enrollmentId: number, lessonId:
   return studentRequest<StoreEnrollmentLessonDetail>(
     `/api/student/enrollments/${enrollmentId}/lessons/${lessonId}`,
     { method: "GET" },
+  );
+}
+
+export function getStudentEnrollmentAssignments(enrollmentId: number) {
+  return studentRequest<StoreAssignment[]>(
+    `/api/student/enrollments/${enrollmentId}/assignments`,
+    { method: "GET" },
+  );
+}
+
+export function getStudentEnrollmentAssignmentDetail(enrollmentId: number, assignmentId: number) {
+  return studentRequest<StoreAssignment>(
+    `/api/student/enrollments/${enrollmentId}/assignments/${assignmentId}`,
+    { method: "GET" },
+  );
+}
+
+export function submitStudentAssignment(
+  enrollmentId: number,
+  assignmentId: number,
+  payload: {
+    submission_text?: string;
+    attachment_url?: string;
+  },
+) {
+  return studentRequest<StoreAssignmentSubmission>(
+    `/api/student/enrollments/${enrollmentId}/assignments/${assignmentId}/submit`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
   );
 }
 

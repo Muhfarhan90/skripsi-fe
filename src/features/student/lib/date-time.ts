@@ -45,3 +45,29 @@ export function formatUtcDateTimeToJakarta(value: string | null | undefined): st
     timeZone: JAKARTA_TIME_ZONE,
   }).format(parsed);
 }
+
+export function formatRemainingAccessTime(value: string | null | undefined): string {
+  const parsed = parseUtcDateTime(value);
+  if (!parsed) {
+    return "Tidak dibatasi";
+  }
+
+  const remainingMs = parsed.getTime() - Date.now();
+  if (remainingMs <= 0) {
+    return "Akses kelas sudah berakhir";
+  }
+
+  const totalMinutes = Math.ceil(remainingMs / 60_000);
+  const totalHours = Math.ceil(remainingMs / 3_600_000);
+  const totalDays = Math.ceil(remainingMs / 86_400_000);
+
+  if (totalDays >= 1) {
+    return `${totalDays} hari`;
+  }
+
+  if (totalHours >= 1) {
+    return `${totalHours} jam`;
+  }
+
+  return `${Math.max(totalMinutes, 1)} menit`;
+}

@@ -78,6 +78,8 @@ export interface StoreEnrollment {
   status: "active" | "completed" | "cancelled" | string;
   course?: StoreCourse | null;
   order?: StoreOrder | null;
+  started_at?: string | null;
+  ended_at?: string | null;
   completed_at: string | null;
   expired_at: string | null;
   created_at: string;
@@ -91,7 +93,11 @@ export interface StoreEnrollmentProgressSummary {
   remaining_lessons: number;
   progress: number;
   status: string;
+  has_certificate?: boolean;
   completed_at: string | null;
+  started_at?: string | null;
+  ended_at?: string | null;
+  assignment_requirement?: StoreAssignmentRequirementSummary;
 }
 
 export interface StoreLesson {
@@ -183,6 +189,50 @@ export interface StoreQuizDetail extends StoreQuiz {
   unsupported_question_types: string[];
 }
 
+export interface StoreAssignmentSubmission {
+  id: number;
+  assignment_id: number;
+  enrollment_id: number;
+  user_id: number;
+  attempt_no: number;
+  submission_text: string | null;
+  attachment_url: string | null;
+  status: "submitted" | "revision_required" | "approved" | string;
+  review_notes: string | null;
+  reviewed_by: number | null;
+  reviewer_name: string | null;
+  submitted_at: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StoreAssignment {
+  id: number;
+  course_id: number;
+  section_id: number | null;
+  created_by: number | null;
+  title: string;
+  description: string | null;
+  instructions: string | null;
+  due_at: string | null;
+  is_required_for_certificate: boolean;
+  allow_resubmission: boolean;
+  max_attempts: number | null;
+  status: string;
+  section?: StoreSectionSummary | null;
+  latest_submission?: StoreAssignmentSubmission | null;
+  submissions?: StoreAssignmentSubmission[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StoreAssignmentRequirementSummary {
+  required_assignments: number;
+  approved_assignments: number;
+  is_satisfied: boolean;
+}
+
 export interface StoreCurriculumSection {
   id: number;
   course_id: number;
@@ -190,6 +240,7 @@ export interface StoreCurriculumSection {
   sort_order: number | null;
   lessons: StoreLesson[];
   quizzes?: StoreQuiz[];
+  assignments?: StoreAssignment[];
 }
 
 export interface StoreCourseCurriculum extends StoreCourse {

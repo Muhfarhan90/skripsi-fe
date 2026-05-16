@@ -12,6 +12,10 @@ import {
   getStudentEnrollmentNextLesson,
   getStudentEnrollmentProgressSummary,
 } from "@/features/student/api/store-api";
+import {
+  formatRemainingAccessTime,
+  formatUtcDateTimeToJakarta,
+} from "@/features/student/lib/date-time";
 
 function toPercent(value: number | null | undefined): string {
   return `${Math.max(0, Math.min(100, Number(value ?? 0)))}%`;
@@ -115,6 +119,8 @@ export default function StudentEnrollmentDetailPage() {
   const requirementItems = parseTextItems(course?.requirements);
   const outcomeItems = parseTextItems(course?.outcomes);
   const descriptionText = course?.description?.trim() || "Deskripsi kelas belum tersedia.";
+  const assignmentRequirement = summary?.assignment_requirement;
+  const accessEndAt = summary?.ended_at ?? enrollment.ended_at ?? enrollment.expired_at;
 
   return (
     <section className="space-y-5">
@@ -164,6 +170,13 @@ export default function StudentEnrollmentDetailPage() {
                 Berikutnya: <span className="font-medium text-[var(--foreground)]">{nextLesson.title}</span>
               </p>
             ) : null}
+
+            <p className="mt-3 text-sm text-[var(--muted-foreground)]">
+              Sisa akses:{" "}
+              <span className="font-medium text-[var(--foreground)]">
+                {formatRemainingAccessTime(accessEndAt)}
+              </span>
+            </p>
 
             <Link
               href={`/student/enrollments/${enrollment.id}/learn`}
@@ -238,6 +251,36 @@ export default function StudentEnrollmentDetailPage() {
             </p>
             <p>
               Progress: <span className="font-medium text-[var(--foreground)]">{toPercent(progressValue)}</span>
+            </p>
+            <p>
+              Akses berakhir:{" "}
+              <span className="font-medium text-[var(--foreground)]">
+                {formatUtcDateTimeToJakarta(accessEndAt)}
+              </span>
+            </p>
+            <p>
+              Sisa akses:{" "}
+              <span className="font-medium text-[var(--foreground)]">
+                {formatRemainingAccessTime(accessEndAt)}
+              </span>
+            </p>
+            <p>
+              Assignment wajib:{" "}
+              <span className="font-medium text-[var(--foreground)]">
+                {assignmentRequirement
+                  ? `${assignmentRequirement.approved_assignments} / ${assignmentRequirement.required_assignments}`
+                  : "-"}
+              </span>
+            </p>
+            <p>
+              Status sertifikat:{" "}
+              <span className="font-medium text-[var(--foreground)]">
+                {assignmentRequirement
+                  ? assignmentRequirement.is_satisfied
+                    ? "Syarat assignment terpenuhi"
+                    : "Masih menunggu approval assignment"
+                  : "-"}
+              </span>
             </p>
           </div>
         </article>

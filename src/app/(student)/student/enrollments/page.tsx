@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { getStudentEnrollments } from "@/features/student/api/store-api";
+import { formatRemainingAccessTime } from "@/features/student/lib/date-time";
 
 function toPercent(value: number | null | undefined): string {
   return `${Math.max(0, Math.min(100, Number(value ?? 0)))}%`;
@@ -83,6 +84,12 @@ export default function StudentEnrollmentsPage() {
                     Instructor: {enrollment.course.instructor_name}
                   </p>
                 ) : null}
+                <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+                  Sisa akses:{" "}
+                  <span className="font-medium text-[var(--foreground)]">
+                    {formatRemainingAccessTime(enrollment.ended_at ?? enrollment.expired_at)}
+                  </span>
+                </p>
               </div>
 
               <div>
