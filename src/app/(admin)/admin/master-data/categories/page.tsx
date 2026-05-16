@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Pencil, Plus, Save, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { AdminModal } from "@/features/admin/components/admin-modal";
+import { AdminPagination } from "@/features/admin/components/admin-pagination";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmAlertDialog } from "@/components/ui/confirm-alert-dialog";
@@ -15,8 +16,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api/client";
 import {
   createAdminCategory,
+  createEmptyAdminPaginationMeta,
   deleteAdminCategory,
-  getAdminCategories,
+  listAdminCategories,
   updateAdminCategory,
   type AdminCategory,
 } from "@/features/admin/api/master-api";
@@ -33,34 +35,22 @@ export default function AdminCategoriesPage() {
   const [confirmDeleteCategory, setConfirmDeleteCategory] = useState<AdminCategory | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
+  const [page, setPage] = useState(1);
   const [form, setForm] = useState({
     name: "",
     description: "",
   });
 
   const categoryQuery = useQuery({
-    queryKey: ["admin", "categories"],
-    queryFn: getAdminCategories,
+    queryKey: ["admin", "categories", "list", page, searchKeyword],
+    queryFn: () =>
+      listAdminCategories({
+        page,
+        search: searchKeyword.trim() || undefined,
+      }),
   });
-
-  const sortedCategories = useMemo(
-    () => [...(categoryQuery.data ?? [])].sort((a, b) => b.id - a.id),
-    [categoryQuery.data],
-  );
-
-  const filteredCategories = useMemo(() => {
-    const keyword = searchKeyword.trim().toLowerCase();
-
-    if (!keyword) {
-      return sortedCategories;
-    }
-
-    return sortedCategories.filter((category) =>
-      [category.name, category.slug, category.description ?? ""].some((value) =>
-        value.toLowerCase().includes(keyword),
-      ),
-    );
-  }, [searchKeyword, sortedCategories]);
+  const categories = categoryQuery.data?.items ?? [];
+  const categoryMeta = categoryQuery.data?.meta ?? createEmptyAdminPaginationMeta(page);
 
   const resetForm = () => {
     setEditingId(null);
@@ -146,7 +136,7 @@ export default function AdminCategoriesPage() {
                 Tambah, edit, dan hapus kategori dari satu tabel manajemen.
               </p>
               <span className="mt-2 inline-flex rounded-md border border-[var(--border)] bg-[var(--muted)] px-2 py-0.5 text-xs font-medium text-[var(--muted-foreground)]">
-                {filteredCategories.length} data
+                {categoryMeta.total} data
               </span>
             </div>
 
@@ -165,7 +155,10 @@ export default function AdminCategoriesPage() {
             <Search className="pointer-events-none absolute top-2.5 left-3 size-4 text-[var(--muted-foreground)]" />
             <Input
               value={searchKeyword}
-              onChange={(event) => setSearchKeyword(event.target.value)}
+              onChange={(event) => {
+                setSearchKeyword(event.target.value);
+                setPage(1);
+              }}
               placeholder="Cari category..."
               className="h-9 border-[var(--border)] bg-[var(--surface-soft)] pl-9 text-[var(--foreground)]"
             />
@@ -204,8 +197,8 @@ export default function AdminCategoriesPage() {
                       Gagal memuat categories. Coba refresh halaman.
                     </td>
                   </tr>
-                ) : filteredCategories.length > 0 ? (
-                  filteredCategories.map((category) => (
+                ) : categories.length > 0 ? (
+                  categories.map((category) => (
                     <tr key={category.id} className="hover:bg-[var(--surface-hover)]">
                       <td className="px-4 py-3 text-sm font-medium text-[var(--foreground)]">{category.name}</td>
                       <td className="px-4 py-3 text-sm text-[var(--muted-foreground)]">{category.slug}</td>
@@ -250,6 +243,7 @@ export default function AdminCategoriesPage() {
               </tbody>
             </table>
           </div>
+          <AdminPagination meta={categoryMeta} isLoading={categoryQuery.isLoading} onPageChange={setPage} />
         </CardContent>
       </Card>
 

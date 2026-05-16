@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Pencil, Plus, Save, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { AdminModal } from "@/features/admin/components/admin-modal";
+import { AdminPagination } from "@/features/admin/components/admin-pagination";
 import { StatusBadge } from "@/features/admin/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,8 +25,9 @@ import {
 import { ApiError } from "@/lib/api/client";
 import {
   createAdminVoucher,
+  createEmptyAdminPaginationMeta,
   deleteAdminVoucher,
-  getAdminVouchers,
+  listAdminVouchers,
   updateAdminVoucher,
   type AdminVoucher,
   type VoucherPayload,
@@ -88,36 +90,19 @@ export default function AdminVouchersPage() {
   const [confirmDeleteVoucher, setConfirmDeleteVoucher] = useState<AdminVoucher | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
+  const [page, setPage] = useState(1);
   const [form, setForm] = useState<VoucherFormState>(defaultForm);
 
   const voucherQuery = useQuery({
-    queryKey: ["admin", "vouchers"],
-    queryFn: getAdminVouchers,
+    queryKey: ["admin", "vouchers", "list", page, searchKeyword],
+    queryFn: () =>
+      listAdminVouchers({
+        page,
+        search: searchKeyword.trim() || undefined,
+      }),
   });
-
-  const sortedVouchers = useMemo(
-    () => [...(voucherQuery.data ?? [])].sort((a, b) => b.id - a.id),
-    [voucherQuery.data],
-  );
-
-  const filteredVouchers = useMemo(() => {
-    const keyword = searchKeyword.trim().toLowerCase();
-
-    if (!keyword) {
-      return sortedVouchers;
-    }
-
-    return sortedVouchers.filter((voucher) => {
-      const labelParts = [
-        voucher.code,
-        voucher.discount_type,
-        formatDiscount(voucher),
-        voucher.is_active ? "aktif" : "nonaktif",
-      ];
-
-      return labelParts.some((value) => value.toLowerCase().includes(keyword));
-    });
-  }, [searchKeyword, sortedVouchers]);
+  const vouchers = voucherQuery.data?.items ?? [];
+  const voucherMeta = voucherQuery.data?.meta ?? createEmptyAdminPaginationMeta(page);
 
   const resetForm = () => {
     setEditingId(null);
@@ -208,7 +193,7 @@ export default function AdminVouchersPage() {
                 Kelola voucher aktif/nonaktif beserta parameter diskon.
               </p>
               <span className="mt-2 inline-flex rounded-md border border-[var(--border)] bg-[var(--muted)] px-2 py-0.5 text-xs font-medium text-[var(--muted-foreground)]">
-                {filteredVouchers.length} data
+                {voucherMeta.total} data
               </span>
             </div>
 
@@ -227,7 +212,10 @@ export default function AdminVouchersPage() {
             <Search className="pointer-events-none absolute top-2.5 left-3 size-4 text-[var(--muted-foreground)]" />
             <Input
               value={searchKeyword}
-              onChange={(event) => setSearchKeyword(event.target.value)}
+              onChange={(event) => {
+                setSearchKeyword(event.target.value);
+                setPage(1);
+              }}
               placeholder="Cari voucher..."
               className="h-9 border-[var(--border)] bg-[var(--surface-soft)] pl-9 text-[var(--foreground)]"
             />
@@ -268,8 +256,8 @@ export default function AdminVouchersPage() {
                       Gagal memuat vouchers. Coba refresh halaman.
                     </td>
                   </tr>
-                ) : filteredVouchers.length > 0 ? (
-                  filteredVouchers.map((voucher) => (
+                ) : vouchers.length > 0 ? (
+                  vouchers.map((voucher) => (
                     <tr key={voucher.id} className="hover:bg-[var(--surface-hover)]">
                       <td className="px-4 py-3 text-sm font-medium text-[var(--foreground)]">{voucher.code}</td>
                       <td className="px-4 py-3 text-sm text-[var(--muted-foreground)]">
@@ -319,6 +307,7 @@ export default function AdminVouchersPage() {
               </tbody>
             </table>
           </div>
+          <AdminPagination meta={voucherMeta} isLoading={voucherQuery.isLoading} onPageChange={setPage} />
         </CardContent>
       </Card>
 

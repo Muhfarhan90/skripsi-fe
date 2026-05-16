@@ -565,17 +565,17 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
   // SECTION 2: Reference data and curriculum detail.
   const categoryQuery = useQuery({
     queryKey: ["admin", "categories"],
-    queryFn: getAdminCategories,
+    queryFn: () => getAdminCategories(),
   });
 
   const userQuery = useQuery({
     queryKey: ["admin", "users"],
-    queryFn: getAdminUsers,
+    queryFn: () => getAdminUsers(),
   });
 
   const skillQuery = useQuery({
     queryKey: ["admin", "skills", "options"],
-    queryFn: () => getAdminSkills({ per_page: 1000 }),
+    queryFn: () => getAdminSkills(),
   });
 
   const curriculumQuery = useQuery({

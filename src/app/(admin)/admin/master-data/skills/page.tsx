@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Pencil, Plus, Save, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { AdminModal } from "@/features/admin/components/admin-modal";
+import { AdminPagination } from "@/features/admin/components/admin-pagination";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmAlertDialog } from "@/components/ui/confirm-alert-dialog";
@@ -17,8 +18,9 @@ import { ApiError } from "@/lib/api/client";
 import { StatusBadge } from "@/features/admin/components/status-badge";
 import {
   createAdminSkill,
+  createEmptyAdminPaginationMeta,
   deleteAdminSkill,
-  getAdminSkills,
+  listAdminSkills,
   updateAdminSkill,
   type AdminSkill,
 } from "@/features/admin/api/master-api";
@@ -35,32 +37,22 @@ export default function AdminSkillsPage() {
   const [confirmDeleteSkill, setConfirmDeleteSkill] = useState<AdminSkill | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
+  const [page, setPage] = useState(1);
   const [form, setForm] = useState({
     name: "",
     is_active: true,
   });
 
   const skillQuery = useQuery({
-    queryKey: ["admin", "skills"],
-    queryFn: () => getAdminSkills({ per_page: 1000 }),
+    queryKey: ["admin", "skills", "list", page, searchKeyword],
+    queryFn: () =>
+      listAdminSkills({
+        page,
+        search: searchKeyword.trim() || undefined,
+      }),
   });
-
-  const sortedSkills = useMemo(
-    () => [...(skillQuery.data ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
-    [skillQuery.data],
-  );
-
-  const filteredSkills = useMemo(() => {
-    const keyword = searchKeyword.trim().toLowerCase();
-
-    if (!keyword) {
-      return sortedSkills;
-    }
-
-    return sortedSkills.filter((skill) =>
-      [skill.name, skill.slug].some((value) => value.toLowerCase().includes(keyword)),
-    );
-  }, [searchKeyword, sortedSkills]);
+  const skills = skillQuery.data?.items ?? [];
+  const skillMeta = skillQuery.data?.meta ?? createEmptyAdminPaginationMeta(page);
 
   const resetForm = () => {
     setEditingSkill(null);
@@ -147,7 +139,7 @@ export default function AdminSkillsPage() {
                 Tambah, edit, nonaktifkan, dan hapus master skill untuk badge course.
               </p>
               <span className="mt-2 inline-flex rounded-md border border-[var(--border)] bg-[var(--muted)] px-2 py-0.5 text-xs font-medium text-[var(--muted-foreground)]">
-                {filteredSkills.length} data
+                {skillMeta.total} data
               </span>
             </div>
 
@@ -166,7 +158,10 @@ export default function AdminSkillsPage() {
             <Search className="pointer-events-none absolute top-2.5 left-3 size-4 text-[var(--muted-foreground)]" />
             <Input
               value={searchKeyword}
-              onChange={(event) => setSearchKeyword(event.target.value)}
+              onChange={(event) => {
+                setSearchKeyword(event.target.value);
+                setPage(1);
+              }}
               placeholder="Cari skill..."
               className="h-9 border-[var(--border)] bg-[var(--surface-soft)] pl-9 text-[var(--foreground)]"
             />
@@ -197,8 +192,8 @@ export default function AdminSkillsPage() {
                     Gagal memuat skills. Coba refresh halaman.
                   </TableCell>
                 </TableRow>
-              ) : filteredSkills.length > 0 ? (
-                filteredSkills.map((skill) => (
+              ) : skills.length > 0 ? (
+                skills.map((skill) => (
                   <TableRow key={skill.id}>
                     <TableCell className="text-sm font-medium text-[var(--foreground)]">{skill.name}</TableCell>
                     <TableCell className="text-sm text-[var(--muted-foreground)]">{skill.slug}</TableCell>
@@ -241,6 +236,7 @@ export default function AdminSkillsPage() {
               )}
             </TableBody>
           </Table>
+          <AdminPagination meta={skillMeta} isLoading={skillQuery.isLoading} onPageChange={setPage} />
         </CardContent>
       </Card>
 

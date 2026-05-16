@@ -1,15 +1,20 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Search } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
+import { AdminPagination } from "@/features/admin/components/admin-pagination";
 import { StatusBadge } from "@/features/admin/components/status-badge";
 import { ApiError } from "@/lib/api/client";
-import { getAdminOrders, updateAdminTransaction } from "@/features/admin/api/master-api";
+import {
+  createEmptyAdminPaginationMeta,
+  listAdminOrders,
+  updateAdminTransaction,
+} from "@/features/admin/api/master-api";
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("id-ID", {
@@ -40,12 +45,19 @@ function isHttpUrl(value: string): boolean {
 
 export default function AdminOrdersPage() {
   const [searchKeyword, setSearchKeyword] = useState("");
+  const [page, setPage] = useState(1);
   const queryClient = useQueryClient();
 
   const ordersQuery = useQuery({
-    queryKey: ["admin", "orders"],
-    queryFn: getAdminOrders,
+    queryKey: ["admin", "orders", "list", page, searchKeyword],
+    queryFn: () =>
+      listAdminOrders({
+        page,
+        search: searchKeyword.trim() || undefined,
+      }),
   });
+  const orders = ordersQuery.data?.items ?? [];
+  const orderMeta = ordersQuery.data?.meta ?? createEmptyAdminPaginationMeta(page);
 
   const updateTransactionMutation = useMutation({
     mutationFn: ({ transactionId, status }: { transactionId: number; status: "success" | "failed" }) =>
@@ -68,18 +80,6 @@ export default function AdminOrdersPage() {
     },
   });
 
-  const filteredOrders = useMemo(() => {
-    const keyword = searchKeyword.trim().toLowerCase();
-    if (!keyword) return ordersQuery.data ?? [];
-
-    return (ordersQuery.data ?? []).filter((order) => {
-      const studentName = (order.user?.fullname ?? "").toLowerCase();
-      const orderCode = order.order_code.toLowerCase();
-      const status = normalizeOrderStatus(order.status).toLowerCase();
-      return studentName.includes(keyword) || orderCode.includes(keyword) || status.includes(keyword);
-    });
-  }, [ordersQuery.data, searchKeyword]);
-
   return (
     <section className="space-y-5">
       <AdminPageHeader
@@ -94,7 +94,10 @@ export default function AdminOrdersPage() {
             <Search className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-[var(--muted-foreground)]" />
             <Input
               value={searchKeyword}
-              onChange={(event) => setSearchKeyword(event.target.value)}
+              onChange={(event) => {
+                setSearchKeyword(event.target.value);
+                setPage(1);
+              }}
               placeholder="Cari order code atau nama student..."
               className="h-9 border-[var(--border)] bg-[var(--surface-soft)] pl-9 text-[var(--foreground)]"
             />
@@ -134,8 +137,8 @@ export default function AdminOrdersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border)] bg-[var(--card)]">
-                {filteredOrders.length > 0 ? (
-                  filteredOrders.map((order) => (
+                {orders.length > 0 ? (
+                  orders.map((order) => (
                     <tr key={order.id} className="hover:bg-[var(--surface-hover)]">
                       <td className="px-4 py-3 text-sm text-[var(--foreground)]">{order.order_code}</td>
                       <td className="px-4 py-3 text-sm text-[var(--foreground)]">
@@ -226,6 +229,7 @@ export default function AdminOrdersPage() {
               </tbody>
             </table>
           </div>
+          <AdminPagination meta={orderMeta} isLoading={ordersQuery.isLoading} onPageChange={setPage} />
         </CardContent>
       </Card>
     </section>

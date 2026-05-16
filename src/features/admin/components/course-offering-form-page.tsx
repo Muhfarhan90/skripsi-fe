@@ -213,7 +213,7 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
 
   const coursesQuery = useQuery({
     queryKey: ["admin", "courses"],
-    queryFn: () => getAdminCourses({ per_page: 1000 }),
+    queryFn: () => getAdminCourses(),
   });
 
   const periodsQuery = useQuery({

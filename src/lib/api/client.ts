@@ -1,4 +1,4 @@
-import type { ApiEnvelope } from "@/types/auth";
+import type { ApiEnvelope, ApiPaginationMeta } from "@/types/auth";
 import { getApiBaseUrl } from "@/lib/env";
 
 export class ApiError extends Error {
@@ -31,6 +31,11 @@ function resolveRequestUrl(endpoint: string): string {
 
 interface ApiRequestOptions extends RequestInit {
   token?: string | null;
+}
+
+export interface PaginatedApiResponse<T> {
+  data: T;
+  meta: ApiPaginationMeta;
 }
 
 function buildRequestHeaders(
@@ -83,6 +88,49 @@ export async function apiRequest<T>(
   }
 
   return (payload.data as T) ?? ({} as T);
+}
+
+function resolvePaginationMeta<T>(payload: ApiEnvelope<T> | null): ApiPaginationMeta {
+  const fallbackCount = Array.isArray(payload?.data) ? payload.data.length : 0;
+
+  return {
+    current_page: payload?.meta?.current_page ?? 1,
+    last_page: payload?.meta?.last_page ?? 1,
+    per_page: payload?.meta?.per_page ?? fallbackCount,
+    total: payload?.meta?.total ?? fallbackCount,
+  };
+}
+
+export async function apiPaginatedRequest<T>(
+  endpoint: string,
+  options: ApiRequestOptions = {},
+): Promise<PaginatedApiResponse<T>> {
+  const { token, headers, body, ...rest } = options;
+  const url = resolveRequestUrl(endpoint);
+
+  const response = await fetch(url, {
+    ...rest,
+    body,
+    headers: buildRequestHeaders(headers, token, body),
+  });
+
+  const payload = (await response
+    .json()
+    .catch(() => null)) as ApiEnvelope<T> | null;
+
+  if (!response.ok || !payload?.success) {
+    const fallbackMessage = `Request failed with status ${response.status}`;
+    throw new ApiError(
+      payload?.message ?? fallbackMessage,
+      response.status,
+      payload?.errors,
+    );
+  }
+
+  return {
+    data: (payload.data as T) ?? ({} as T),
+    meta: resolvePaginationMeta(payload),
+  };
 }
 
 export async function apiMessageOnly(

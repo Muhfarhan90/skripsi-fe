@@ -21,6 +21,14 @@ export interface ApiEnvelope<T> {
   message: string;
   data?: T;
   errors?: Record<string, string[] | number[]>;
+  meta?: ApiPaginationMeta;
+}
+
+export interface ApiPaginationMeta {
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
 }
 
 export interface LoginRequest {

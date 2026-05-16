@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
+import { AdminPagination } from "@/features/admin/components/admin-pagination";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,10 +14,9 @@ import { ConfirmAlertDialog } from "@/components/ui/confirm-alert-dialog";
 import { Input } from "@/components/ui/input";
 import { ApiError } from "@/lib/api/client";
 import {
+  createEmptyAdminPaginationMeta,
   deleteAdminCourse,
-  getAdminCategories,
-  getAdminCourses,
-  getAdminUsers,
+  listAdminCourses,
 } from "@/features/admin/api/master-api";
 
 function normalizeError(error: unknown): string {
@@ -29,50 +29,20 @@ export default function AdminCoursesPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [searchKeyword, setSearchKeyword] = useState("");
+  const [page, setPage] = useState(1);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [confirmDeleteCourse, setConfirmDeleteCourse] = useState<{ id: number; title: string } | null>(null);
 
   const courseQuery = useQuery({
-    queryKey: ["admin", "courses"],
-    queryFn: () => getAdminCourses(),
+    queryKey: ["admin", "courses", "list", page, searchKeyword],
+    queryFn: () =>
+      listAdminCourses({
+        page,
+        search: searchKeyword.trim() || undefined,
+      }),
   });
-
-  const categoryQuery = useQuery({
-    queryKey: ["admin", "categories"],
-    queryFn: getAdminCategories,
-  });
-
-  const userQuery = useQuery({
-    queryKey: ["admin", "users"],
-    queryFn: getAdminUsers,
-  });
-
-  const categoryMap = useMemo(
-    () => new Map((categoryQuery.data ?? []).map((category) => [category.id, category.name])),
-    [categoryQuery.data],
-  );
-
-  const userMap = useMemo(() => new Map((userQuery.data ?? []).map((user) => [user.id, user.fullname])), [userQuery.data]);
-
-  const sortedCourses = useMemo(
-    () => [...(courseQuery.data ?? [])].sort((a, b) => b.id - a.id),
-    [courseQuery.data],
-  );
-
-  const filteredCourses = useMemo(() => {
-    const keyword = searchKeyword.trim().toLowerCase();
-    if (!keyword) return sortedCourses;
-
-    return sortedCourses.filter((course) => {
-      const categoryName = categoryMap.get(course.category_id) ?? "";
-      const instructorName = userMap.get(course.instructor_id) ?? "";
-      const skillNames = course.skills.map((skill) => skill.name).join(" ");
-
-      return [course.title, categoryName, instructorName, skillNames].some((value) =>
-        value.toLowerCase().includes(keyword),
-      );
-    });
-  }, [categoryMap, searchKeyword, sortedCourses, userMap]);
+  const courses = courseQuery.data?.items ?? [];
+  const courseMeta = courseQuery.data?.meta ?? createEmptyAdminPaginationMeta(page);
 
   const deleteMutation = useMutation({
     mutationFn: deleteAdminCourse,
@@ -106,7 +76,7 @@ export default function AdminCoursesPage() {
               <CardTitle className="text-base font-semibold text-[var(--foreground)]">Daftar Course Master</CardTitle>
               <p className="mt-1 text-sm text-[var(--muted-foreground)]">Kelola metadata course master dari satu tabel.</p>
               <span className="mt-2 inline-flex rounded-md border border-[var(--border)] bg-[var(--muted)] px-2 py-0.5 text-xs font-medium text-[var(--muted-foreground)]">
-                {filteredCourses.length} data
+                {courseMeta.total} data
               </span>
             </div>
 
@@ -125,7 +95,10 @@ export default function AdminCoursesPage() {
             <Search className="pointer-events-none absolute top-2.5 left-3 size-4 text-[var(--muted-foreground)]" />
             <Input
               value={searchKeyword}
-              onChange={(event) => setSearchKeyword(event.target.value)}
+              onChange={(event) => {
+                setSearchKeyword(event.target.value);
+                setPage(1);
+              }}
               placeholder="Cari course..."
               className="h-9 border-[var(--border)] bg-[var(--surface-soft)] pl-9 text-[var(--foreground)]"
             />
@@ -171,8 +144,8 @@ export default function AdminCoursesPage() {
                       Gagal memuat courses. Coba refresh halaman.
                     </td>
                   </tr>
-                ) : filteredCourses.length > 0 ? (
-                  filteredCourses.map((course) => (
+                ) : courses.length > 0 ? (
+                  courses.map((course) => (
                     <tr key={course.id} className="align-top hover:bg-[var(--surface-hover)]">
                       <td className="px-4 py-3">
                         <div className="flex h-14 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md border border-[var(--border)] bg-[var(--muted)]">
@@ -192,7 +165,7 @@ export default function AdminCoursesPage() {
                       </td>
                       <td className="px-4 py-3 text-sm font-semibold text-[var(--foreground)]">{course.title}</td>
                       <td className="px-4 py-3 text-sm text-[var(--muted-foreground)]">
-                        {categoryMap.get(course.category_id) ?? "-"}
+                        {course.category_name ?? "-"}
                       </td>
                       <td className="px-4 py-3">
                         {course.skills.length > 0 ? (
@@ -208,7 +181,7 @@ export default function AdminCoursesPage() {
                         )}
                       </td>
                       <td className="px-4 py-3 text-sm text-[var(--muted-foreground)]">
-                        {userMap.get(course.instructor_id) ?? "-"}
+                        {course.instructor_name ?? "-"}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-2">
@@ -257,6 +230,7 @@ export default function AdminCoursesPage() {
               </tbody>
             </table>
           </div>
+          <AdminPagination meta={courseMeta} isLoading={courseQuery.isLoading} onPageChange={setPage} />
         </CardContent>
       </Card>
 

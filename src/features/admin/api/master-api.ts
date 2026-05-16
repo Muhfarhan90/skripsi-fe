@@ -1,4 +1,5 @@
-import { apiMessageOnly, apiRequest } from "@/lib/api/client";
+import { apiMessageOnly, apiPaginatedRequest, apiRequest } from "@/lib/api/client";
+import type { ApiPaginationMeta } from "@/types/auth";
 
 export interface AdminRole {
   id: number;
@@ -305,6 +306,15 @@ export interface AdminOrderTransaction {
   expired_at: string | null;
 }
 
+export interface AdminPaginatedResponse<T> {
+  items: T[];
+  meta: ApiPaginationMeta;
+}
+
+export const ADMIN_PAGE_SIZE = 10;
+
+const ADMIN_OPTION_PAGE_SIZE = 100;
+
 export interface CategoryPayload {
   name: string;
   description?: string | null;
@@ -349,24 +359,32 @@ export interface AssignmentPayload {
   status?: "draft" | "published" | "archived";
 }
 
-export interface AdminCourseOfferingQuery {
+export interface AdminPaginatedQuery {
+  page?: number;
+  per_page?: number;
+  search?: string;
+}
+
+export interface AdminCourseOfferingQuery extends AdminPaginatedQuery {
   is_active?: boolean | string;
   academic_period_id?: number | string;
-  search?: string;
 }
 
-export interface AdminAcademicPeriodQuery {
+export interface AdminAcademicPeriodQuery extends AdminPaginatedQuery {
   is_active?: boolean | string;
-  search?: string;
 }
 
-export interface AdminCourseQuery {
-  per_page?: number;
-}
+export type AdminCourseQuery = AdminPaginatedQuery;
 
-export interface AdminSkillQuery {
-  per_page?: number;
-}
+export type AdminSkillQuery = AdminPaginatedQuery;
+
+export type AdminCategoryQuery = AdminPaginatedQuery;
+
+export type AdminUserQuery = AdminPaginatedQuery;
+
+export type AdminVoucherQuery = AdminPaginatedQuery;
+
+export type AdminOrderQuery = AdminPaginatedQuery;
 
 export interface AcademicPeriodPayload {
   code: string;
@@ -494,16 +512,81 @@ function normalizePayload<T extends object>(payload: T): Record<string, unknown>
   return normalized;
 }
 
+type QueryValue = string | number | boolean | undefined | null;
+
+type QueryParams = Record<string, QueryValue>;
+
+function buildQuerySuffix(query: QueryParams): string {
+  const params = new URLSearchParams();
+
+  Object.entries(query).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "") {
+      return;
+    }
+
+    params.set(key, String(value));
+  });
+
+  const serialized = params.toString();
+  return serialized ? `?${serialized}` : "";
+}
+
+function withListPagination(query: AdminPaginatedQuery = {}): QueryParams {
+  return {
+    ...query,
+    page: query.page ?? 1,
+    per_page: query.per_page ?? ADMIN_PAGE_SIZE,
+  };
+}
+
+function withOptionPagination(query: AdminPaginatedQuery = {}): QueryParams {
+  return {
+    ...query,
+    per_page: query.per_page ?? ADMIN_OPTION_PAGE_SIZE,
+  };
+}
+
+function getAdminCollection<T>(endpoint: string, query: QueryParams = {}) {
+  return apiRequest<T[]>(`${endpoint}${buildQuerySuffix(query)}`, {
+    method: "GET",
+  });
+}
+
+async function listAdminCollection<T>(
+  endpoint: string,
+  query: QueryParams = {},
+): Promise<AdminPaginatedResponse<T>> {
+  const response = await apiPaginatedRequest<T[]>(`${endpoint}${buildQuerySuffix(query)}`, {
+    method: "GET",
+  });
+
+  return {
+    items: response.data,
+    meta: response.meta,
+  };
+}
+
+export function createEmptyAdminPaginationMeta(page: number): ApiPaginationMeta {
+  return {
+    current_page: page,
+    last_page: 1,
+    per_page: ADMIN_PAGE_SIZE,
+    total: 0,
+  };
+}
+
 export function getAdminRoles() {
   return apiRequest<AdminRole[]>("/api/admin/roles", {
     method: "GET",
   });
 }
 
-export function getAdminUsers() {
-  return apiRequest<AdminUser[]>("/api/admin/users", {
-    method: "GET",
-  });
+export function getAdminUsers(query: AdminUserQuery = {}) {
+  return getAdminCollection<AdminUser>("/api/admin/users", withOptionPagination(query));
+}
+
+export async function listAdminUsers(query: AdminUserQuery = {}): Promise<AdminPaginatedResponse<AdminUser>> {
+  return listAdminCollection<AdminUser>("/api/admin/users", withListPagination(query));
 }
 
 export function getAdminUserById(id: number) {
@@ -532,20 +615,22 @@ export function deleteAdminUser(id: number) {
   });
 }
 
-export function getAdminCategories() {
-  return apiRequest<AdminCategory[]>("/api/admin/categories", {
-    method: "GET",
-  });
+export function getAdminCategories(query: AdminCategoryQuery = {}) {
+  return getAdminCollection<AdminCategory>("/api/admin/categories", withOptionPagination(query));
+}
+
+export async function listAdminCategories(
+  query: AdminCategoryQuery = {},
+): Promise<AdminPaginatedResponse<AdminCategory>> {
+  return listAdminCollection<AdminCategory>("/api/admin/categories", withListPagination(query));
 }
 
 export function getAdminSkills(query: AdminSkillQuery = {}) {
-  const params = new URLSearchParams();
-  if (query.per_page) params.set("per_page", String(query.per_page));
+  return getAdminCollection<AdminSkill>("/api/admin/skills", withOptionPagination(query));
+}
 
-  const suffix = params.toString() ? `?${params.toString()}` : "";
-  return apiRequest<AdminSkill[]>(`/api/admin/skills${suffix}`, {
-    method: "GET",
-  });
+export async function listAdminSkills(query: AdminSkillQuery = {}): Promise<AdminPaginatedResponse<AdminSkill>> {
+  return listAdminCollection<AdminSkill>("/api/admin/skills", withListPagination(query));
 }
 
 export function createAdminSkill(payload: SkillPayload) {
@@ -589,27 +674,15 @@ export function deleteAdminCategory(id: number) {
 }
 
 export function getAdminCourses(query: AdminCourseQuery = {}) {
-  const params = new URLSearchParams();
-  if (query.per_page) params.set("per_page", String(query.per_page));
+  return getAdminCollection<AdminCourse>("/api/admin/courses", withOptionPagination(query));
+}
 
-  const suffix = params.toString() ? `?${params.toString()}` : "";
-  return apiRequest<AdminCourse[]>(`/api/admin/courses${suffix}`, {
-    method: "GET",
-  });
+export async function listAdminCourses(query: AdminCourseQuery = {}): Promise<AdminPaginatedResponse<AdminCourse>> {
+  return listAdminCollection<AdminCourse>("/api/admin/courses", withListPagination(query));
 }
 
 export function getAdminCourseOfferings(query: AdminCourseOfferingQuery = {}) {
-  const params = new URLSearchParams();
-  if (query.is_active !== undefined) params.set("is_active", String(query.is_active));
-  if (query.academic_period_id !== undefined && query.academic_period_id !== null) {
-    params.set("academic_period_id", String(query.academic_period_id));
-  }
-  if (query.search) params.set("search", query.search);
-
-  const suffix = params.toString() ? `?${params.toString()}` : "";
-  return apiRequest<AdminCourseOffering[]>(`/api/admin/course-offerings${suffix}`, {
-    method: "GET",
-  });
+  return getAdminCollection<AdminCourseOffering>("/api/admin/course-offerings", withOptionPagination(query));
 }
 
 export function getAdminCourseOfferingById(id: number) {
@@ -639,14 +712,13 @@ export function deleteAdminCourseOffering(id: number) {
 }
 
 export function getAdminAcademicPeriods(query: AdminAcademicPeriodQuery = {}) {
-  const params = new URLSearchParams();
-  if (query.is_active !== undefined) params.set("is_active", String(query.is_active));
-  if (query.search) params.set("search", query.search);
+  return getAdminCollection<AdminAcademicPeriod>("/api/admin/academic-periods", withOptionPagination(query));
+}
 
-  const suffix = params.toString() ? `?${params.toString()}` : "";
-  return apiRequest<AdminAcademicPeriod[]>(`/api/admin/academic-periods${suffix}`, {
-    method: "GET",
-  });
+export async function listAdminAcademicPeriods(
+  query: AdminAcademicPeriodQuery = {},
+): Promise<AdminPaginatedResponse<AdminAcademicPeriod>> {
+  return listAdminCollection<AdminAcademicPeriod>("/api/admin/academic-periods", withListPagination(query));
 }
 
 export function getAdminAcademicPeriodById(id: number) {
@@ -962,16 +1034,22 @@ export function deleteAdminQuestionOption(questionId: number, optionId: number) 
   });
 }
 
-export function getAdminVouchers() {
-  return apiRequest<AdminVoucher[]>("/api/admin/vouchers", {
-    method: "GET",
-  });
+export function getAdminVouchers(query: AdminVoucherQuery = {}) {
+  return getAdminCollection<AdminVoucher>("/api/admin/vouchers", withOptionPagination(query));
 }
 
-export function getAdminOrders() {
-  return apiRequest<AdminOrder[]>("/api/admin/orders", {
-    method: "GET",
-  });
+export async function listAdminVouchers(
+  query: AdminVoucherQuery = {},
+): Promise<AdminPaginatedResponse<AdminVoucher>> {
+  return listAdminCollection<AdminVoucher>("/api/admin/vouchers", withListPagination(query));
+}
+
+export function getAdminOrders(query: AdminOrderQuery = {}) {
+  return getAdminCollection<AdminOrder>("/api/admin/orders", withListPagination(query));
+}
+
+export async function listAdminOrders(query: AdminOrderQuery = {}): Promise<AdminPaginatedResponse<AdminOrder>> {
+  return listAdminCollection<AdminOrder>("/api/admin/orders", withListPagination(query));
 }
 
 export function updateAdminTransaction(

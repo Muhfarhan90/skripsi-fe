@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { AdminPagination } from "@/features/admin/components/admin-pagination";
 import type { DataTableDefinition } from "@/features/admin/data/master-data";
 import { StatusBadge } from "@/features/admin/components/status-badge";
 
@@ -21,6 +22,8 @@ interface DataTableCardProps {
 export function DataTableCard({ data }: DataTableCardProps) {
   const [searchKeyword, setSearchKeyword] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
 
   const filteredRows = useMemo(() => {
     const keyword = searchKeyword.trim().toLowerCase();
@@ -43,6 +46,23 @@ export function DataTableCard({ data }: DataTableCardProps) {
       return data.columns.some((column) => row[column.key].toLowerCase().includes(keyword));
     });
   }, [data.columns, data.rows, data.statusKey, searchKeyword, selectedStatus]);
+  const lastPage = Math.max(Math.ceil(filteredRows.length / pageSize), 1);
+  const currentPage = Math.min(Math.max(page, 1), lastPage);
+
+  const paginatedRows = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredRows.slice(start, start + pageSize);
+  }, [currentPage, filteredRows]);
+
+  const paginationMeta = useMemo(
+    () => ({
+      current_page: currentPage,
+      last_page: lastPage,
+      per_page: pageSize,
+      total: filteredRows.length,
+    }),
+    [currentPage, filteredRows.length, lastPage],
+  );
 
   return (
     <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
@@ -69,7 +89,10 @@ export function DataTableCard({ data }: DataTableCardProps) {
             <Search className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-[var(--muted-foreground)]" />
             <Input
               value={searchKeyword}
-              onChange={(event) => setSearchKeyword(event.target.value)}
+              onChange={(event) => {
+                setSearchKeyword(event.target.value);
+                setPage(1);
+              }}
               placeholder={data.searchPlaceholder}
               className="h-9 border-[var(--border)] bg-[var(--surface-soft)] pl-9 text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]"
             />
@@ -78,7 +101,10 @@ export function DataTableCard({ data }: DataTableCardProps) {
           {data.statusKey && data.statusOptions ? (
             <Select
               value={selectedStatus}
-              onValueChange={(value) => setSelectedStatus(value ?? "all")}
+              onValueChange={(value) => {
+                setSelectedStatus(value ?? "all");
+                setPage(1);
+              }}
             >
               <SelectTrigger className="h-9 w-full border-[var(--border)] bg-[var(--surface-soft)] text-[var(--foreground)]">
                 <SelectValue placeholder="Filter status" />
@@ -112,8 +138,8 @@ export function DataTableCard({ data }: DataTableCardProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border)] bg-[var(--card)]">
-              {filteredRows.length > 0 ? (
-                filteredRows.map((row) => (
+              {paginatedRows.length > 0 ? (
+                paginatedRows.map((row) => (
                   <tr key={row.id} className="hover:bg-[var(--surface-hover)]">
                     {data.columns.map((column) => (
                       <td key={`${row.id}-${column.key}`} className="px-4 py-3 text-sm text-[var(--foreground)]">
@@ -132,6 +158,7 @@ export function DataTableCard({ data }: DataTableCardProps) {
             </tbody>
           </table>
         </div>
+        <AdminPagination meta={paginationMeta} onPageChange={setPage} />
       </CardContent>
     </Card>
   );

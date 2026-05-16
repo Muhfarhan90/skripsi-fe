@@ -6,13 +6,19 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
+import { AdminPagination } from "@/features/admin/components/admin-pagination";
 import { StatusBadge } from "@/features/admin/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmAlertDialog } from "@/components/ui/confirm-alert-dialog";
 import { Input } from "@/components/ui/input";
 import { ApiError } from "@/lib/api/client";
-import { deleteAdminUser, getAdminRoles, getAdminUsers } from "@/features/admin/api/master-api";
+import {
+  createEmptyAdminPaginationMeta,
+  deleteAdminUser,
+  getAdminRoles,
+  listAdminUsers,
+} from "@/features/admin/api/master-api";
 
 function normalizeError(error: unknown): string {
   if (error instanceof ApiError) return error.message;
@@ -24,12 +30,17 @@ export default function AdminUsersPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [searchKeyword, setSearchKeyword] = useState("");
+  const [page, setPage] = useState(1);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [confirmDeleteUser, setConfirmDeleteUser] = useState<{ id: number; fullname: string } | null>(null);
 
   const usersQuery = useQuery({
-    queryKey: ["admin", "users"],
-    queryFn: getAdminUsers,
+    queryKey: ["admin", "users", "list", page, searchKeyword],
+    queryFn: () =>
+      listAdminUsers({
+        page,
+        search: searchKeyword.trim() || undefined,
+      }),
   });
 
   const rolesQuery = useQuery({
@@ -41,27 +52,8 @@ export default function AdminUsersPage() {
     () => new Map((rolesQuery.data ?? []).map((role) => [role.id, role.name])),
     [rolesQuery.data],
   );
-
-  const sortedUsers = useMemo(() => [...(usersQuery.data ?? [])].sort((a, b) => b.id - a.id), [usersQuery.data]);
-
-  const filteredUsers = useMemo(() => {
-    const keyword = searchKeyword.trim().toLowerCase();
-    if (!keyword) return sortedUsers;
-
-    return sortedUsers.filter((user) => {
-      const roleLabel = roleNameMap.get(user.role_id) ?? "";
-      const searchableParts = [
-        user.fullname,
-        user.email,
-        user.nisn ?? "",
-        user.phone ?? "",
-        roleLabel,
-        user.is_active ? "aktif" : "nonaktif",
-      ];
-
-      return searchableParts.some((value) => value.toLowerCase().includes(keyword));
-    });
-  }, [roleNameMap, searchKeyword, sortedUsers]);
+  const users = usersQuery.data?.items ?? [];
+  const userMeta = usersQuery.data?.meta ?? createEmptyAdminPaginationMeta(page);
 
   const deleteMutation = useMutation({
     mutationFn: deleteAdminUser,
@@ -97,7 +89,7 @@ export default function AdminUsersPage() {
                 Kelola profil user dan role akses dari satu modul.
               </p>
               <span className="mt-2 inline-flex rounded-md border border-[var(--border)] bg-[var(--muted)] px-2 py-0.5 text-xs font-medium text-[var(--muted-foreground)]">
-                {filteredUsers.length} data
+                {userMeta.total} data
               </span>
             </div>
 
@@ -116,7 +108,10 @@ export default function AdminUsersPage() {
             <Search className="pointer-events-none absolute top-2.5 left-3 size-4 text-[var(--muted-foreground)]" />
             <Input
               value={searchKeyword}
-              onChange={(event) => setSearchKeyword(event.target.value)}
+              onChange={(event) => {
+                setSearchKeyword(event.target.value);
+                setPage(1);
+              }}
               placeholder="Cari user..."
               className="h-9 border-[var(--border)] bg-[var(--surface-soft)] pl-9 text-[var(--foreground)]"
             />
@@ -159,8 +154,8 @@ export default function AdminUsersPage() {
                       Gagal memuat users. Coba refresh halaman.
                     </td>
                   </tr>
-                ) : filteredUsers.length > 0 ? (
-                  filteredUsers.map((user) => (
+                ) : users.length > 0 ? (
+                  users.map((user) => (
                     <tr key={user.id} className="hover:bg-[var(--surface-hover)]">
                       <td className="px-4 py-3 text-sm font-medium text-[var(--foreground)]">{user.fullname}</td>
                       <td className="px-4 py-3 text-sm text-[var(--muted-foreground)]">{user.email}</td>
@@ -213,6 +208,7 @@ export default function AdminUsersPage() {
               </tbody>
             </table>
           </div>
+          <AdminPagination meta={userMeta} isLoading={usersQuery.isLoading} onPageChange={setPage} />
         </CardContent>
       </Card>
 

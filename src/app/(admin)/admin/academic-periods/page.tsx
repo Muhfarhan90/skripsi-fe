@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Pencil, Plus, RotateCcw, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
+import { AdminPagination } from "@/features/admin/components/admin-pagination";
 import { StatusBadge } from "@/features/admin/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +15,11 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ApiError } from "@/lib/api/client";
-import { deleteAdminAcademicPeriod, getAdminAcademicPeriods } from "@/features/admin/api/master-api";
+import {
+  createEmptyAdminPaginationMeta,
+  deleteAdminAcademicPeriod,
+  listAdminAcademicPeriods,
+} from "@/features/admin/api/master-api";
 import { formatDate } from "@/features/admin/lib/offering-utils";
 
 function normalizeError(error: unknown): string {
@@ -27,12 +32,14 @@ export default function AdminAcademicPeriodsPage() {
   const queryClient = useQueryClient();
   const [activityFilter, setActivityFilter] = useState<string>("all");
   const [searchKeyword, setSearchKeyword] = useState("");
+  const [page, setPage] = useState(1);
   const [confirmDeletePeriod, setConfirmDeletePeriod] = useState<{ id: number; label: string } | null>(null);
 
   const periodQuery = useQuery({
-    queryKey: ["admin", "academic-periods", activityFilter, searchKeyword],
+    queryKey: ["admin", "academic-periods", "list", page, activityFilter, searchKeyword],
     queryFn: () =>
-      getAdminAcademicPeriods({
+      listAdminAcademicPeriods({
+        page,
         is_active: activityFilter === "all" ? undefined : activityFilter === "active",
         search: searchKeyword.trim() || undefined,
       }),
@@ -50,7 +57,8 @@ export default function AdminAcademicPeriodsPage() {
     },
   });
 
-  const periods = useMemo(() => [...(periodQuery.data ?? [])].sort((a, b) => b.id - a.id), [periodQuery.data]);
+  const periods = periodQuery.data?.items ?? [];
+  const periodMeta = periodQuery.data?.meta ?? createEmptyAdminPaginationMeta(page);
   const hasActiveFilters = activityFilter !== "all" || searchKeyword.trim().length > 0;
   const activityOptions = useMemo(
     () => [
@@ -95,7 +103,13 @@ export default function AdminAcademicPeriodsPage() {
             <div className="grid grid-cols-1 gap-3 xl:grid-cols-12">
               <div className="space-y-1 xl:col-span-3">
                 <p className="text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">Aktivasi</p>
-                <Select value={activityFilter} onValueChange={(value) => setActivityFilter(value ?? "all")}>
+                <Select
+                  value={activityFilter}
+                  onValueChange={(value) => {
+                    setActivityFilter(value ?? "all");
+                    setPage(1);
+                  }}
+                >
                   <SelectTrigger className="h-10 w-full rounded-xl border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] shadow-xs">
                     <SelectValue>{selectedActivityLabel}</SelectValue>
                   </SelectTrigger>
@@ -115,7 +129,10 @@ export default function AdminAcademicPeriodsPage() {
                   <Search className="pointer-events-none absolute top-3 left-3 size-4 text-[var(--muted-foreground)]" />
                   <Input
                     value={searchKeyword}
-                    onChange={(event) => setSearchKeyword(event.target.value)}
+                    onChange={(event) => {
+                      setSearchKeyword(event.target.value);
+                      setPage(1);
+                    }}
                     placeholder="Cari kode atau nama periode..."
                     className="h-10 rounded-xl border-[var(--border)] bg-[var(--card)] pl-10 text-[var(--foreground)]"
                   />
@@ -131,6 +148,7 @@ export default function AdminAcademicPeriodsPage() {
                   onClick={() => {
                     setActivityFilter("all");
                     setSearchKeyword("");
+                    setPage(1);
                   }}
                   disabled={!hasActiveFilters}
                 >
@@ -227,6 +245,7 @@ export default function AdminAcademicPeriodsPage() {
               )}
             </TableBody>
           </Table>
+          <AdminPagination meta={periodMeta} isLoading={periodQuery.isLoading} onPageChange={setPage} />
         </CardContent>
       </Card>
 
