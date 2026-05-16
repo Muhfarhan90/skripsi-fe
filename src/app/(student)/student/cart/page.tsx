@@ -7,10 +7,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ApiError } from "@/lib/api/client";
 import {
+  applyStudentCartVoucher,
   checkoutCart,
   getStudentCart,
   removeCourseFromCart,
 } from "@/features/student/api/store-api";
+import type { StoreOrderItem } from "@/types/store";
 
 function formatCurrency(amount: number | null | undefined): string {
   const value = Number(amount ?? 0);
@@ -21,11 +23,21 @@ function formatCurrency(amount: number | null | undefined): string {
   }).format(value);
 }
 
+function hasItemDiscount(item: StoreOrderItem): boolean {
+  const originalPrice = Number(item.course_offering?.price ?? 0);
+  const discountPrice = Number(item.course_offering?.discount_price ?? 0);
+  const paidPrice = Number(item.price ?? 0);
+
+  return originalPrice > 0 && discountPrice > 0 && discountPrice < originalPrice && paidPrice === discountPrice;
+}
+
 export default function StudentCartPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [voucherCode, setVoucherCode] = useState("");
   const [note, setNote] = useState("");
+  const [paymentReference, setPaymentReference] = useState("");
+  const [paymentProof, setPaymentProof] = useState("");
 
   const cartQuery = useQuery({
     queryKey: ["student", "cart"],
@@ -47,17 +59,35 @@ export default function StudentCartPage() {
     },
   });
 
+  const applyVoucherMutation = useMutation({
+    mutationFn: () => applyStudentCartVoucher(voucherCode.trim()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["student", "cart"] });
+      toast.success("Voucher berhasil diterapkan");
+    },
+    onError: (error) => {
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+        return;
+      }
+
+      toast.error("Voucher belum bisa diterapkan");
+    },
+  });
+
   const checkoutMutation = useMutation({
     mutationFn: () =>
       checkoutCart({
         voucher_code: voucherCode || undefined,
         note: note || undefined,
+        payment_reference: paymentReference || undefined,
+        payment_proof: paymentProof.trim() || undefined,
         payment_method: "manual",
       }),
     onSuccess: (order) => {
       queryClient.invalidateQueries({ queryKey: ["student", "cart"] });
       queryClient.invalidateQueries({ queryKey: ["student", "orders"] });
-      toast.success("Checkout berhasil. Silakan lanjutkan pembayaran.");
+      toast.success("Checkout berhasil. Bukti pembayaran dikirim untuk verifikasi.");
       router.push(`/student/orders/${order.id}`);
     },
     onError: (error) => {
@@ -70,7 +100,6 @@ export default function StudentCartPage() {
   });
 
   const cart = cartQuery.data;
-
   return (
     <section className="space-y-5">
       <header className="rounded-lg border border-border bg-card p-5 shadow-sm">
@@ -94,16 +123,28 @@ export default function StudentCartPage() {
         <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
           <div className="space-y-3">
             {cart.items.map((item) => (
-              <article key={item.course_id} className="rounded-lg border border-border bg-card p-4 shadow-sm">
+              <article
+                key={item.course_offering_id ?? item.course_id ?? item.price}
+                className="rounded-lg border border-border bg-card p-4 shadow-sm"
+              >
                 <h2 className="text-base font-semibold text-foreground">
                   {item.course?.title ?? `Course #${item.course_id}`}
                 </h2>
-                <p className="mt-1 text-sm text-muted-foreground">{formatCurrency(item.price)}</p>
+                <div className="mt-1 space-y-1">
+                  {hasItemDiscount(item) ? (
+                    <p className="text-sm text-muted-foreground line-through">
+                      {formatCurrency(item.course_offering?.price)}
+                    </p>
+                  ) : null}
+                  <p className="text-sm font-medium text-foreground">
+                    {formatCurrency(item.price)}
+                  </p>
+                </div>
 
                 <button
                   type="button"
-                  onClick={() => removeMutation.mutate(item.course_id)}
-                  disabled={removeMutation.isPending}
+                  onClick={() => removeMutation.mutate(item.course_offering_id ?? 0)}
+                  disabled={removeMutation.isPending || !item.course_offering_id}
                   className="mt-3 inline-flex h-8 items-center rounded-md border border-red-200 px-3 text-xs text-red-700 transition hover:bg-red-50 disabled:opacity-70"
                 >
                   Hapus
@@ -134,13 +175,62 @@ export default function StudentCartPage() {
               <label className="text-xs text-muted-foreground" htmlFor="voucher">
                 Kode Voucher
               </label>
+              <form
+                className="flex items-center gap-2"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (!voucherCode.trim()) {
+                    toast.error("Kode voucher wajib diisi");
+                    return;
+                  }
+
+                  applyVoucherMutation.mutate();
+                }}
+              >
+                <input
+                  id="voucher"
+                  value={voucherCode}
+                  onChange={(event) => setVoucherCode(event.target.value)}
+                  placeholder="Contoh: HEMAT10"
+                  className="h-9 min-w-0 flex-1 rounded-md border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+                />
+                <button
+                  type="submit"
+                  disabled={applyVoucherMutation.isPending}
+                  className="inline-flex h-9 shrink-0 items-center rounded-md bg-[#0F7A5A] px-4 text-sm font-medium text-white transition hover:bg-[#0d6b4f] disabled:opacity-70"
+                >
+                  {applyVoucherMutation.isPending ? "Memproses..." : "Klaim"}
+                </button>
+              </form>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs text-muted-foreground" htmlFor="payment-reference">
+                Referensi Pembayaran (Opsional)
+              </label>
               <input
-                id="voucher"
-                value={voucherCode}
-                onChange={(event) => setVoucherCode(event.target.value)}
-                placeholder="Contoh: HEMAT10"
+                id="payment-reference"
+                value={paymentReference}
+                onChange={(event) => setPaymentReference(event.target.value)}
+                placeholder="Contoh: Transfer BCA 1234"
                 className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/30"
               />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs text-muted-foreground" htmlFor="payment-proof">
+                Bukti Pembayaran (Link/File Path)
+              </label>
+              <input
+                id="payment-proof"
+                value={paymentProof}
+                onChange={(event) => setPaymentProof(event.target.value)}
+                placeholder="Tempel link atau path gambar bukti pembayaran"
+                className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+              />
+              <p className="text-xs text-muted-foreground">
+                Untuk sementara bukti pembayaran boleh dikosongkan saat testing.
+              </p>
             </div>
 
             <div className="space-y-2">

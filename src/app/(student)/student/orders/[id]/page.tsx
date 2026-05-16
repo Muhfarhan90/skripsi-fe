@@ -1,12 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { ApiError } from "@/lib/api/client";
-import { getStudentOrderById, submitStudentPayment } from "@/features/student/api/store-api";
+import { useQuery } from "@tanstack/react-query";
+import { getStudentOrderById } from "@/features/student/api/store-api";
+import type { StoreOrderItem } from "@/types/store";
 
 function formatCurrency(amount: number | null | undefined): string {
   const value = Number(amount ?? 0);
@@ -17,41 +15,22 @@ function formatCurrency(amount: number | null | undefined): string {
   }).format(value);
 }
 
+function hasItemDiscount(item: StoreOrderItem): boolean {
+  const originalPrice = Number(item.course_offering?.price ?? 0);
+  const discountPrice = Number(item.course_offering?.discount_price ?? 0);
+  const paidPrice = Number(item.price ?? 0);
+
+  return originalPrice > 0 && discountPrice > 0 && discountPrice < originalPrice && paidPrice === discountPrice;
+}
+
 export default function StudentOrderDetailPage() {
   const params = useParams<{ id: string }>();
-  const queryClient = useQueryClient();
-  const [paymentReference, setPaymentReference] = useState("");
-  const [paymentProof, setPaymentProof] = useState("");
-
   const orderId = Number(params.id);
 
   const orderQuery = useQuery({
     queryKey: ["student", "order", orderId],
     queryFn: () => getStudentOrderById(orderId),
     enabled: Number.isFinite(orderId) && orderId > 0,
-  });
-
-  const submitMutation = useMutation({
-    mutationFn: () =>
-      submitStudentPayment(orderId, {
-        payment_reference: paymentReference || undefined,
-        payment_proof: paymentProof || undefined,
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["student", "order", orderId] });
-      queryClient.invalidateQueries({ queryKey: ["student", "orders"] });
-      toast.success("Bukti pembayaran berhasil dikirim");
-      setPaymentReference("");
-      setPaymentProof("");
-    },
-    onError: (error) => {
-      if (error instanceof ApiError) {
-        toast.error(error.message);
-        return;
-      }
-
-      toast.error("Gagal mengirim bukti pembayaran");
-    },
   });
 
   if (orderQuery.isLoading) {
@@ -79,9 +58,21 @@ export default function StudentOrderDetailPage() {
         <h2 className="text-sm font-semibold text-foreground">Item Pembelian</h2>
         <div className="mt-3 space-y-2">
           {order.items.map((item) => (
-            <div key={item.course_id} className="flex items-center justify-between text-sm">
+            <div
+              key={item.course_offering_id ?? item.course_id ?? item.price}
+              className="flex items-center justify-between gap-4 text-sm"
+            >
               <span className="text-muted-foreground">{item.course?.title ?? `Course #${item.course_id}`}</span>
-              <span className="font-medium text-foreground">{formatCurrency(item.price)}</span>
+              <div className="text-right">
+                {hasItemDiscount(item) ? (
+                  <p className="text-xs text-muted-foreground line-through">
+                    {formatCurrency(item.course_offering?.price)}
+                  </p>
+                ) : null}
+                <p className="font-medium text-foreground">
+                  {formatCurrency(item.price)}
+                </p>
+              </div>
             </div>
           ))}
         </div>
@@ -102,53 +93,33 @@ export default function StudentOrderDetailPage() {
         </div>
       </article>
 
-      {order.status === "pending" ? (
+      {latestTransaction ? (
         <article className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
           <h2 className="text-sm font-semibold text-foreground">Pembayaran Manual</h2>
           <p className="text-sm text-muted-foreground">
-            Silakan transfer sesuai nominal total. Setelah itu kirim referensi pembayaran dan bukti transfer.
+            Bukti pembayaran sudah dikirim saat checkout dan sekarang menunggu verifikasi admin.
           </p>
-
-          <div className="space-y-2">
-            <label htmlFor="reference" className="text-xs text-muted-foreground">
-              Referensi Pembayaran (Opsional)
-            </label>
-            <input
-              id="reference"
-              value={paymentReference}
-              onChange={(event) => setPaymentReference(event.target.value)}
-              className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-            />
+          <div className="space-y-2 text-sm text-muted-foreground">
+            <p>Invoice: {latestTransaction.invoice_code}</p>
+            <p>Status transaksi: {latestTransaction.status}</p>
+            <p>Metode: {latestTransaction.payment_method ?? "-"}</p>
+            <p>Referensi: {latestTransaction.payment_reference ?? "-"}</p>
+            <p className="break-all">
+              Bukti pembayaran:{" "}
+              {latestTransaction.payment_proof ? (
+                <a
+                  href={latestTransaction.payment_proof}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  {latestTransaction.payment_proof}
+                </a>
+              ) : (
+                "-"
+              )}
+            </p>
           </div>
-
-          <div className="space-y-2">
-            <label htmlFor="proof" className="text-xs text-muted-foreground">
-              Bukti Pembayaran (Link/File Path)
-            </label>
-            <input
-              id="proof"
-              value={paymentProof}
-              onChange={(event) => setPaymentProof(event.target.value)}
-              className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-            />
-          </div>
-
-          <button
-            type="button"
-            onClick={() => submitMutation.mutate()}
-            disabled={submitMutation.isPending}
-            className="inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:opacity-90 disabled:opacity-70"
-          >
-            Kirim Bukti Pembayaran
-          </button>
-        </article>
-      ) : null}
-
-      {latestTransaction ? (
-        <article className="rounded-lg border border-border bg-card p-5 shadow-sm text-sm text-muted-foreground">
-          <p>Invoice: {latestTransaction.invoice_code}</p>
-          <p>Status transaksi: {latestTransaction.status}</p>
-          <p>Metode: {latestTransaction.payment_method ?? "-"}</p>
         </article>
       ) : null}
 
