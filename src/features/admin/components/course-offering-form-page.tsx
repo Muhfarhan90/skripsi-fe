@@ -1334,8 +1334,17 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
               </div>
 
               <Select value={reviewAssignmentId} onValueChange={(value) => handleReviewAssignmentFilterChange(value ?? "all")}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Semua assignment" />
+                <SelectTrigger className="w-full min-w-[12rem]">
+                  <SelectValue>
+                    {() => (
+                      <span>
+                        {reviewAssignmentId === "all"
+                          ? "Semua assignment"
+                          : curriculumAssignments.find((assignment) => String(assignment.id) === reviewAssignmentId)?.title ??
+                            "Semua assignment"}
+                      </span>
+                    )}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Semua assignment</SelectItem>
@@ -1348,8 +1357,20 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
               </Select>
 
               <Select value={reviewStatusFilter} onValueChange={(value) => handleReviewStatusFilterChange(value ?? "all")}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Semua status" />
+                <SelectTrigger className="w-full min-w-[12rem]">
+                  <SelectValue>
+                    {() => (
+                      <span>
+                        {reviewStatusFilter === "all"
+                          ? "Semua status"
+                          : reviewStatusFilter === "submitted"
+                            ? "Submitted"
+                            : reviewStatusFilter === "revision_required"
+                              ? "Revision Required"
+                              : "Approved"}
+                      </span>
+                    )}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Semua status</SelectItem>
