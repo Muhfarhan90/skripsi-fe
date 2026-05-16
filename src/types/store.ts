@@ -7,6 +7,7 @@ export interface StoreCourse {
   category_name?: string | null;
   instructor_id: number | null;
   instructor_name?: string | null;
+  course_offering_id?: number | null;
   price: number | null;
   discount_price: number | null;
   thumbnail: string | null;
@@ -16,10 +17,23 @@ export interface StoreCourse {
   created_at: string;
 }
 
-export interface StoreOrderItem {
+export interface StoreCourseOfferingSummary {
+  id: number;
   course_id: number;
+  academic_period_id: number | null;
+  title: string;
+  capacity: number | null;
+  price: number | null;
+  discount_price: number | null;
+  is_active: boolean;
+}
+
+export interface StoreOrderItem {
+  course_id: number | null;
+  course_offering_id: number | null;
   price: number;
   course?: StoreCourse;
+  course_offering?: StoreCourseOfferingSummary | null;
 }
 
 export interface StoreTransaction {
@@ -106,8 +120,67 @@ export interface StoreQuiz {
   is_active: boolean;
   is_random: boolean;
   max_attempts: number | null;
+  open_at: string | null;
+  close_at: string | null;
+  questions?: StoreQuizQuestion[];
+  is_supported?: boolean;
+  unsupported_question_types?: string[];
   created_at: string;
   updated_at: string;
+}
+
+export interface StoreQuizOption {
+  id: number;
+  question_id: number;
+  option_text: string;
+  image_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StoreQuizQuestion {
+  id: number;
+  quiz_id: number;
+  question_text: string;
+  image_url: string | null;
+  type: string;
+  score: number;
+  sort_order: number | null;
+  is_active: boolean;
+  options: StoreQuizOption[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StoreQuizAnswer {
+  id: number;
+  attempt_id: number;
+  question_id: number;
+  selected_option_id: number | null;
+  answer_text: string | null;
+  is_correct: boolean | null;
+  score: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StoreQuizAttempt {
+  id: number;
+  enrollment_id: number;
+  quiz_id: number;
+  total_score: number;
+  status: "in_progress" | "submitted" | "graded" | string;
+  started_at: string | null;
+  submitted_at: string | null;
+  answers?: StoreQuizAnswer[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StoreQuizDetail extends StoreQuiz {
+  questions: StoreQuizQuestion[];
+  is_supported: boolean;
+  unsupported_question_types: string[];
 }
 
 export interface StoreCurriculumSection {

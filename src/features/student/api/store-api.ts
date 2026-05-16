@@ -8,6 +8,9 @@ import type {
   StoreLesson,
   StoreLessonProgress,
   StoreOrder,
+  StoreQuizAnswer,
+  StoreQuizAttempt,
+  StoreQuizDetail,
 } from "@/types/store";
 
 interface StudentApiEnvelope<T> {
@@ -54,6 +57,13 @@ export function getStudentCart() {
   return studentRequest<StoreOrder | null>("/api/student/cart", { method: "GET" });
 }
 
+export function applyStudentCartVoucher(voucherCode: string) {
+  return studentRequest<StoreOrder>("/api/student/cart/apply-voucher", {
+    method: "POST",
+    body: JSON.stringify({ voucher_code: voucherCode }),
+  });
+}
+
 export function addCourseToCart(courseId: number) {
   return studentRequest<StoreOrder>("/api/student/cart/items", {
     method: "POST",
@@ -70,6 +80,8 @@ export function removeCourseFromCart(courseId: number) {
 export function checkoutCart(payload: {
   voucher_code?: string;
   note?: string;
+  payment_reference?: string;
+  payment_proof?: string;
   payment_method: "manual";
 }) {
   return studentRequest<StoreOrder>("/api/student/cart/checkout", {
@@ -136,6 +148,59 @@ export function getStudentEnrollmentLessonDetail(enrollmentId: number, lessonId:
   return studentRequest<StoreEnrollmentLessonDetail>(
     `/api/student/enrollments/${enrollmentId}/lessons/${lessonId}`,
     { method: "GET" },
+  );
+}
+
+export function getStudentEnrollmentQuizDetail(enrollmentId: number, quizId: number) {
+  return studentRequest<StoreQuizDetail>(
+    `/api/student/enrollments/${enrollmentId}/quizzes/${quizId}`,
+    { method: "GET" },
+  );
+}
+
+export function getStudentQuizAttempts(enrollmentId: number, quizId: number) {
+  return studentRequest<StoreQuizAttempt[]>(
+    `/api/student/enrollments/${enrollmentId}/quizzes/${quizId}/attempts`,
+    { method: "GET" },
+  );
+}
+
+export function startStudentQuizAttempt(enrollmentId: number, quizId: number) {
+  return studentRequest<StoreQuizAttempt>(
+    `/api/student/enrollments/${enrollmentId}/quizzes/${quizId}/attempts`,
+    { method: "POST" },
+  );
+}
+
+export function getStudentQuizAttempt(enrollmentId: number, quizId: number, attemptId: number) {
+  return studentRequest<StoreQuizAttempt>(
+    `/api/student/enrollments/${enrollmentId}/quizzes/${quizId}/attempts/${attemptId}`,
+    { method: "GET" },
+  );
+}
+
+export function upsertStudentQuizAnswer(
+  enrollmentId: number,
+  quizId: number,
+  attemptId: number,
+  questionId: number,
+  payload: {
+    selected_option_id: number;
+  },
+) {
+  return studentRequest<StoreQuizAnswer>(
+    `/api/student/enrollments/${enrollmentId}/quizzes/${quizId}/attempts/${attemptId}/answers/${questionId}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export function submitStudentQuizAttempt(enrollmentId: number, quizId: number, attemptId: number) {
+  return studentRequest<StoreQuizAttempt>(
+    `/api/student/enrollments/${enrollmentId}/quizzes/${quizId}/attempts/${attemptId}/submit`,
+    { method: "POST" },
   );
 }
 

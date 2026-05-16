@@ -13,6 +13,7 @@ function resolveTargetPath(pathSegments: string[] | undefined): string | null {
     if (pathSegments.length === 1) return "/cart";
     if (pathSegments.length === 2 && second === "items") return "/cart/items";
     if (pathSegments.length === 3 && second === "items" && third) return `/cart/items/${third}`;
+    if (pathSegments.length === 2 && second === "apply-voucher") return "/cart/apply-voucher";
     if (pathSegments.length === 2 && second === "checkout") return "/cart/checkout";
   }
 
@@ -29,6 +30,9 @@ function resolveTargetPath(pathSegments: string[] | undefined): string | null {
     if (pathSegments.length === 2 && second) return `/enrollments/${second}`;
     if (pathSegments.length === 4 && second && third === "lessons" && fourth) {
       return `/enrollments/${second}/lessons/${fourth}`;
+    }
+    if (pathSegments.length === 4 && second && third === "quizzes" && fourth) {
+      return `/enrollments/${second}/quizzes/${fourth}`;
     }
     if (pathSegments.length === 3 && second && third === "progress-summary") {
       return `/enrollments/${second}/progress-summary`;
