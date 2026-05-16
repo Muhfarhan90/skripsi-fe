@@ -526,6 +526,8 @@ Preferred modules:
 
 ## UI / UX Rules
 
+For detailed visual identity, design tokens, layout guidance, and component-level rules, use `DESIGN.md` as the design system source of truth. Keep `src/app/globals.css` aligned with the tokens documented there.
+
 ### Design Philosophy
 
 The UI should feel:

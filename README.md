@@ -226,5 +226,6 @@ npx tsc --noEmit
 ## 13. Related Docs
 
 - AGENTS guide: see AGENTS.md
+- Design system: see DESIGN.md
 
 If you change auth flow, API layer, enrollment flow, route structure, shadcn usage direction, color tokens, or shared providers, update both AGENTS.md and this README.
