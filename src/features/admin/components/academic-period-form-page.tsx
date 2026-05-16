@@ -361,22 +361,6 @@ export function AcademicPeriodFormPage({ mode, periodId }: AcademicPeriodFormPag
       />
 
       <div className="flex flex-wrap justify-end gap-2">
-        {isEditing && periodId ? (
-          <Button
-            render={<Link href={`/admin/academic-periods/${periodId}/offerings/new`} />}
-            type="button"
-            size="lg"
-            className="h-10 rounded-xl bg-[var(--primary)] px-4 text-[var(--primary-foreground)] hover:brightness-95"
-            onClick={(event) => {
-              if (confirmLeave()) return;
-              event.preventDefault();
-            }}
-          >
-            <Plus className="size-4" />
-            <span>Tambah Offering di Period Ini</span>
-          </Button>
-        ) : null}
-
         <Button
           render={<Link href={periodHubHref} />}
           type="button"
@@ -542,8 +526,7 @@ export function AcademicPeriodFormPage({ mode, periodId }: AcademicPeriodFormPag
             <Button
               render={<Link href={`/admin/academic-periods/${periodId}/offerings/new`} />}
               type="button"
-              variant="outline"
-              className="border-[var(--border)] bg-[var(--card)]"
+              className="bg-[var(--primary)] text-[var(--primary-foreground)] hover:brightness-95"
               onClick={(event) => {
                 if (confirmLeave()) return;
                 event.preventDefault();
@@ -608,9 +591,6 @@ export function AcademicPeriodFormPage({ mode, periodId }: AcademicPeriodFormPag
                                 </p>
                               ) : null}
                               <p className="font-semibold text-[var(--foreground)]">{formatCurrency(finalPrice)}</p>
-                              <p className="text-xs text-[var(--muted-foreground)]">
-                                {hasDiscount ? "Diskon aktif" : "Harga normal"}
-                              </p>
                             </div>
                           ) : (
                             <span className="text-[var(--muted-foreground)]">-</span>
@@ -669,8 +649,7 @@ export function AcademicPeriodFormPage({ mode, periodId }: AcademicPeriodFormPag
                           <Button
                             render={<Link href={`/admin/academic-periods/${periodId}/offerings/new`} />}
                             type="button"
-                            variant="outline"
-                            className="border-[var(--border)] bg-[var(--card)]"
+                            className="bg-[var(--primary)] text-[var(--primary-foreground)] hover:brightness-95"
                             onClick={(event) => {
                               if (confirmLeave()) return;
                               event.preventDefault();
