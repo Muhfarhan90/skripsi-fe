@@ -10,8 +10,13 @@ import {
   BookmarkCheck,
   CalendarDays,
   CheckCircle2,
+  ClipboardList,
+  GraduationCap,
+  Layers3,
   Loader2,
+  RefreshCcw,
   Save,
+  Search,
   Trash2,
   Users,
 } from "lucide-react";
@@ -23,28 +28,37 @@ import { CurrencyInput } from "@/components/ui/currency-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
-import { StatusBadge } from "@/features/admin/components/status-badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
 import {
   createAdminCourseOffering,
+  createEmptyAdminPaginationMeta,
   deleteAdminCourseOffering,
   getAdminAcademicPeriods,
+  getAdminCourseCurriculum,
   getAdminCourseOfferingById,
   getAdminCourses,
+  listAdminCourseOfferingAssignmentSubmissions,
+  listAdminCourseOfferingEnrollments,
+  reviewAdminAssignmentSubmission,
   updateAdminCourseOffering,
   type AdminAcademicPeriod,
+  type AdminAssignment,
   type AdminCourse,
+  type AdminCourseCurriculum,
   type AdminCourseOffering,
+  type AdminOfferingEnrollment,
   type CourseOfferingPayload,
 } from "@/features/admin/api/master-api";
+import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
+import { AdminPagination } from "@/features/admin/components/admin-pagination";
+import { StatusBadge } from "@/features/admin/components/status-badge";
 import { useUnsavedChangesGuard } from "@/features/admin/hooks/use-unsaved-changes-guard";
-import {
-  formatCurrency,
-  formatDate,
-} from "@/features/admin/lib/offering-utils";
+import { formatCurrency, formatDate, formatDateTime, toStatusLabel } from "@/features/admin/lib/offering-utils";
 import { ApiError } from "@/lib/api/client";
 
 type CourseOfferingFormMode = "create" | "edit";
+type CourseOfferingTab = "overview" | "curriculum" | "students" | "assignment-review";
 
 interface CourseOfferingFormPageProps {
   mode: CourseOfferingFormMode;
@@ -73,6 +87,13 @@ const defaultForm: CourseOfferingFormState = {
   discount_price: "",
   is_active: false,
 };
+
+const offeringTabs: Array<{ id: CourseOfferingTab; label: string }> = [
+  { id: "overview", label: "Overview" },
+  { id: "curriculum", label: "Curriculum" },
+  { id: "students", label: "Students" },
+  { id: "assignment-review", label: "Assignment Review" },
+];
 
 function mapOfferingToFormState(offering: AdminCourseOffering): CourseOfferingFormState {
   return {
@@ -202,14 +223,80 @@ function buildPeriodLabel(period: AdminAcademicPeriod): string {
   return labelChunks.length > 0 ? labelChunks.join(" - ") : `Periode #${period.id}`;
 }
 
+function buildOfferingTabClass(isActive: boolean): string {
+  return [
+    "rounded-xl border px-4 py-2 text-sm font-semibold transition-colors",
+    isActive
+      ? "border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+      : "border-[var(--border)] bg-[var(--card)] text-[var(--muted-foreground)] hover:bg-[var(--surface-soft)]",
+  ].join(" ");
+}
+
+function formatProgress(progress: number | null | undefined): string {
+  return `${Math.max(0, Number(progress ?? 0))}%`;
+}
+
+function formatAssignmentRequirementSummary(
+  requirement: AdminOfferingEnrollment["assignment_requirement"] | null | undefined,
+): string {
+  if (!requirement) return "-";
+
+  return `${requirement.approved_assignments}/${requirement.required_assignments}`;
+}
+
+function flattenAssignments(curriculum: AdminCourseCurriculum | undefined): AdminAssignment[] {
+  if (!curriculum) return [];
+
+  const map = new Map<number, AdminAssignment>();
+  curriculum.sections.forEach((section) => {
+    (section.assignments ?? []).forEach((assignment) => {
+      if (assignment.id) {
+        map.set(assignment.id, assignment);
+      }
+    });
+  });
+
+  return Array.from(map.values()).sort((left, right) => {
+    const leftTitle = left.title ?? "";
+    const rightTitle = right.title ?? "";
+    return leftTitle.localeCompare(rightTitle);
+  });
+}
+
+function formatAssignmentReviewStatus(value?: string | null): string {
+  return value ? toStatusLabel(value) : "-";
+}
+
+function formatRequirementStatus(
+  requirement: AdminOfferingEnrollment["assignment_requirement"] | null | undefined,
+): string {
+  if (!requirement) return "Belum Ada";
+  return requirement.is_satisfied ? "Terpenuhi" : "Belum Terpenuhi";
+}
+
 export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodId }: CourseOfferingFormPageProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const isEditing = mode === "edit";
   const isAcademicPeriodLocked = typeof lockedAcademicPeriodId === "number" && lockedAcademicPeriodId > 0;
+  const [activeTab, setActiveTab] = useState<CourseOfferingTab>("overview");
   const [draftForm, setDraftForm] = useState<CourseOfferingFormState | null>(null);
   const [formErrors, setFormErrors] = useState<CourseOfferingFormErrors>({});
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [studentsSearch, setStudentsSearch] = useState("");
+  const [studentsPage, setStudentsPage] = useState(1);
+  const [reviewSearch, setReviewSearch] = useState("");
+  const [reviewPage, setReviewPage] = useState(1);
+  const [reviewStatusFilter, setReviewStatusFilter] = useState("all");
+  const [reviewAssignmentId, setReviewAssignmentId] = useState("all");
+  const [selectedSubmissionId, setSelectedSubmissionId] = useState<number | null>(null);
+  const [reviewDraft, setReviewDraft] = useState<{
+    submissionId: number | null;
+    value: string;
+  }>({
+    submissionId: null,
+    value: "",
+  });
 
   const coursesQuery = useQuery({
     queryKey: ["admin", "courses"],
@@ -227,6 +314,49 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
     enabled: isEditing && Boolean(offeringId),
   });
 
+  const showOperationalTabs = isEditing && Boolean(offeringDetailQuery.data);
+  const offeringCourseId = offeringDetailQuery.data?.course_id ?? null;
+  const courseMasterHref = offeringCourseId
+    ? `/admin/master-data/courses/${offeringCourseId}?step=curriculum`
+    : "/admin/master-data/courses";
+
+  const curriculumQuery = useQuery({
+    queryKey: ["admin", "courses", offeringCourseId, "curriculum"],
+    queryFn: () => getAdminCourseCurriculum(offeringCourseId as number),
+    enabled: showOperationalTabs && Boolean(offeringCourseId) && activeTab !== "overview" && activeTab !== "students",
+  });
+
+  const studentsQuery = useQuery({
+    queryKey: ["admin", "course-offerings", offeringId, "students", studentsSearch, studentsPage],
+    queryFn: () =>
+      listAdminCourseOfferingEnrollments(offeringId as number, {
+        search: studentsSearch,
+        page: studentsPage,
+      }),
+    enabled: showOperationalTabs && activeTab === "students" && Boolean(offeringId),
+  });
+
+  const assignmentSubmissionsQuery = useQuery({
+    queryKey: [
+      "admin",
+      "course-offerings",
+      offeringId,
+      "assignment-submissions",
+      reviewAssignmentId,
+      reviewStatusFilter,
+      reviewSearch,
+      reviewPage,
+    ],
+    queryFn: () =>
+      listAdminCourseOfferingAssignmentSubmissions(offeringId as number, {
+        assignment_id: reviewAssignmentId === "all" ? undefined : reviewAssignmentId,
+        status: reviewStatusFilter === "all" ? undefined : reviewStatusFilter,
+        search: reviewSearch,
+        page: reviewPage,
+      }),
+    enabled: showOperationalTabs && activeTab === "assignment-review" && Boolean(offeringId),
+  });
+
   const baseForm = useMemo<CourseOfferingFormState>(() => {
     if (isEditing && offeringDetailQuery.data) {
       return mapOfferingToFormState(offeringDetailQuery.data);
@@ -239,10 +369,12 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
   }, [lockedAcademicPeriodId, isEditing, offeringDetailQuery.data]);
 
   const form = draftForm ?? baseForm;
+
   const sortedCourses = useMemo(
     () => [...(coursesQuery.data ?? [])].sort((a, b) => a.title.localeCompare(b.title)),
     [coursesQuery.data],
   );
+
   const sortedPeriods = useMemo(
     () =>
       [...(periodsQuery.data ?? [])].sort((a, b) => {
@@ -257,6 +389,7 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
     () => sortedCourses.find((course) => String(course.id) === form.course_id) ?? null,
     [form.course_id, sortedCourses],
   );
+
   const selectedPeriod = useMemo(
     () => sortedPeriods.find((period) => String(period.id) === form.academic_period_id) ?? null,
     [form.academic_period_id, sortedPeriods],
@@ -264,7 +397,8 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
 
   const selectedCourseLabel = selectedCourse ? buildCourseLabel(selectedCourse) : undefined;
   const selectedPeriodLabel = selectedPeriod ? buildPeriodLabel(selectedPeriod) : undefined;
-  const resolvedPeriodId = offeringDetailQuery.data?.academic_period_id ?? lockedAcademicPeriodId ?? Number(form.academic_period_id);
+  const resolvedPeriodId =
+    offeringDetailQuery.data?.academic_period_id ?? lockedAcademicPeriodId ?? Number(form.academic_period_id);
   const returnHref =
     resolvedPeriodId && Number.isInteger(resolvedPeriodId) && resolvedPeriodId > 0
       ? `/admin/academic-periods/${resolvedPeriodId}`
@@ -286,10 +420,34 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
     isEditing &&
     Boolean(offeringDetailQuery.data) &&
     offeringDetailQuery.data?.academic_period_id !== lockedAcademicPeriodId;
-  const hasMissingLockedPeriod =
-    isAcademicPeriodLocked && periodsQuery.isSuccess && !selectedPeriod;
+  const hasMissingLockedPeriod = isAcademicPeriodLocked && periodsQuery.isSuccess && !selectedPeriod;
   const isDirty = useMemo(() => JSON.stringify(form) !== JSON.stringify(baseForm), [baseForm, form]);
   const { confirmLeave } = useUnsavedChangesGuard(isDirty);
+
+  const curriculumAssignments = useMemo(() => flattenAssignments(curriculumQuery.data), [curriculumQuery.data]);
+  const studentRows = studentsQuery.data?.items ?? [];
+  const studentMeta = studentsQuery.data?.meta ?? createEmptyAdminPaginationMeta(studentsPage);
+  const submissionRows = useMemo(
+    () => assignmentSubmissionsQuery.data?.items ?? [],
+    [assignmentSubmissionsQuery.data?.items],
+  );
+  const submissionMeta = assignmentSubmissionsQuery.data?.meta ?? createEmptyAdminPaginationMeta(reviewPage);
+  const effectiveSelectedSubmissionId = useMemo(() => {
+    if (submissionRows.length === 0) {
+      return null;
+    }
+
+    const stillExists = submissionRows.some((submission) => submission.id === selectedSubmissionId);
+    return stillExists ? selectedSubmissionId : submissionRows[0]?.id ?? null;
+  }, [selectedSubmissionId, submissionRows]);
+  const selectedSubmission = useMemo(
+    () => submissionRows.find((submission) => submission.id === effectiveSelectedSubmissionId) ?? null,
+    [effectiveSelectedSubmissionId, submissionRows],
+  );
+  const reviewNotes =
+    reviewDraft.submissionId === effectiveSelectedSubmissionId
+      ? reviewDraft.value
+      : selectedSubmission?.review_notes ?? "";
 
   const setForm = (updater: (prev: CourseOfferingFormState) => CourseOfferingFormState) => {
     setDraftForm((prev) => updater(prev ?? baseForm));
@@ -346,6 +504,35 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
     },
   });
 
+  const reviewMutation = useMutation({
+    mutationFn: ({
+      submissionId,
+      status,
+      notes,
+    }: {
+      submissionId: number;
+      status: "approved" | "revision_required";
+      notes: string;
+    }) =>
+      reviewAdminAssignmentSubmission(submissionId, {
+        status,
+        review_notes: notes.trim() ? notes.trim() : null,
+      }),
+    onSuccess: () => {
+      toast.success("Review submission berhasil disimpan");
+      queryClient.invalidateQueries({
+        queryKey: ["admin", "course-offerings", offeringId, "assignment-submissions"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["admin", "course-offerings", offeringId, "students"],
+      });
+    },
+    onError: (error) => {
+      const nextErrors = mapApiError(error);
+      toast.error(nextErrors.form ?? "Gagal menyimpan review submission");
+    },
+  });
+
   const persistForm = (nextIsActive?: boolean) => {
     const nextForm = nextIsActive === undefined ? form : { ...form, is_active: nextIsActive };
     const validationErrors = validateForm(nextForm);
@@ -381,6 +568,45 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
       ...prev,
       academic_period_id: value,
     }));
+  };
+
+  const handleReviewStatusFilterChange = (value: string) => {
+    setReviewStatusFilter(value);
+    setReviewPage(1);
+  };
+
+  const handleReviewAssignmentFilterChange = (value: string) => {
+    setReviewAssignmentId(value);
+    setReviewPage(1);
+  };
+
+  const handleStudentsSearchChange = (value: string) => {
+    setStudentsSearch(value);
+    setStudentsPage(1);
+  };
+
+  const handleReviewSearchChange = (value: string) => {
+    setReviewSearch(value);
+    setReviewPage(1);
+  };
+
+  const resetReviewFilters = () => {
+    setReviewAssignmentId("all");
+    setReviewStatusFilter("all");
+    setReviewSearch("");
+    setReviewPage(1);
+  };
+
+  const handleSubmitReview = (status: "approved" | "revision_required") => {
+    if (!selectedSubmission) {
+      return;
+    }
+
+    reviewMutation.mutate({
+      submissionId: selectedSubmission.id,
+      status,
+      notes: reviewNotes,
+    });
   };
 
   if (isEditing && offeringDetailQuery.isLoading) {
@@ -529,218 +755,820 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm xl:col-span-2">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-semibold text-[var(--foreground)]">Informasi Offering</CardTitle>
-            <p className="text-xs text-[var(--muted-foreground)]">
-              {isAcademicPeriodLocked
-                ? "Atur detail offering yang berada di dalam academic period ini."
-                : "Atur detail umum untuk batch atau offering ini."}
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {formErrors.form ? (
-              <div className="flex items-start gap-2 rounded-md border border-[var(--danger-soft-border)] bg-[var(--danger-soft-bg)] px-3 py-2 text-sm text-[var(--danger-soft-foreground)]">
-                <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-                <span>{formErrors.form}</span>
-              </div>
-            ) : null}
+      {showOperationalTabs ? (
+        <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
+          <CardContent className="flex flex-wrap gap-2 p-4">
+            {offeringTabs.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                className={buildOfferingTabClass(activeTab === tab.id)}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
 
-            {hasReferenceError ? (
-              <div className="rounded-md border border-[var(--danger-soft-border)] bg-[var(--danger-soft-bg)] px-3 py-2 text-sm text-[var(--danger-soft-foreground)]">
-                Gagal memuat daftar course atau academic period. Refresh halaman sebelum menyimpan offering.
-              </div>
-            ) : null}
-
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              {isAcademicPeriodLocked ? (
-                <div className="space-y-1.5 md:col-span-2">
-                  <Label>Academic Period</Label>
-                  <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-4 py-3">
-                    <p className="text-sm font-medium text-[var(--foreground)]">{selectedPeriodLabel ?? "-"}</p>
-                    <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-                      Offering ini dibuat dari detail academic period, jadi period tidak bisa diubah di form ini.
-                    </p>
+      {activeTab === "overview" || !showOperationalTabs ? (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+            <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm xl:col-span-2">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base font-semibold text-[var(--foreground)]">Informasi Offering</CardTitle>
+                <p className="text-xs text-[var(--muted-foreground)]">
+                  {isAcademicPeriodLocked
+                    ? "Atur detail offering yang berada di dalam academic period ini."
+                    : "Atur detail umum untuk batch atau offering ini."}
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {formErrors.form ? (
+                  <div className="flex items-start gap-2 rounded-md border border-[var(--danger-soft-border)] bg-[var(--danger-soft-bg)] px-3 py-2 text-sm text-[var(--danger-soft-foreground)]">
+                    <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+                    <span>{formErrors.form}</span>
                   </div>
-                  {formErrors.academic_period_id ? (
-                    <p className="text-xs text-red-600">{formErrors.academic_period_id}</p>
-                  ) : null}
+                ) : null}
+
+                {hasReferenceError ? (
+                  <div className="rounded-md border border-[var(--danger-soft-border)] bg-[var(--danger-soft-bg)] px-3 py-2 text-sm text-[var(--danger-soft-foreground)]">
+                    Gagal memuat daftar course atau academic period. Refresh halaman sebelum menyimpan offering.
+                  </div>
+                ) : null}
+
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  {isAcademicPeriodLocked ? (
+                    <div className="space-y-1.5 md:col-span-2">
+                      <Label>Academic Period</Label>
+                      <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-4 py-3">
+                        <p className="text-sm font-medium text-[var(--foreground)]">{selectedPeriodLabel ?? "-"}</p>
+                        <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+                          Offering ini dibuat dari detail academic period, jadi period tidak bisa diubah di form ini.
+                        </p>
+                      </div>
+                      {formErrors.academic_period_id ? (
+                        <p className="text-xs text-red-600">{formErrors.academic_period_id}</p>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5 md:col-span-2">
+                      <Label>Academic Period</Label>
+                      <Select value={form.academic_period_id} onValueChange={(value) => handlePeriodChange(value ?? "")}>
+                        <SelectTrigger className="w-full border-[var(--border)] bg-[var(--card)]">
+                          <SelectValue>
+                            {() => {
+                              const label = selectedPeriodLabel ?? "Pilih academic period";
+                              return (
+                                <span className={selectedPeriodLabel ? undefined : "text-[var(--muted-foreground)]"}>
+                                  {label}
+                                </span>
+                              );
+                            }}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent align="start" className="max-w-[min(32rem,calc(100vw-2rem))]">
+                          {sortedPeriods.map((period) => (
+                            <SelectItem key={period.id} value={String(period.id)}>
+                              {buildPeriodLabel(period)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {formErrors.academic_period_id ? (
+                        <p className="text-xs text-red-600">{formErrors.academic_period_id}</p>
+                      ) : null}
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5 md:col-span-2">
+                    <Label>Course (Master)</Label>
+                    <Select value={form.course_id} onValueChange={(value) => handleCourseChange(value ?? "")}>
+                      <SelectTrigger className="w-full border-[var(--border)] bg-[var(--card)]">
+                        <SelectValue>
+                          {() => {
+                            const label = selectedCourseLabel ?? "Pilih course";
+                            return (
+                              <span className={selectedCourseLabel ? undefined : "text-[var(--muted-foreground)]"}>
+                                {label}
+                              </span>
+                            );
+                          }}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent align="start" className="max-w-[min(40rem,calc(100vw-2rem))]">
+                        {sortedCourses.map((course) => (
+                          <SelectItem key={course.id} value={String(course.id)}>
+                            {buildCourseLabel(course)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {formErrors.course_id ? <p className="text-xs text-red-600">{formErrors.course_id}</p> : null}
+                  </div>
+
+                  <div className="space-y-1.5 md:col-span-2">
+                    <Label htmlFor="offering-title">Judul Offering</Label>
+                    <Input
+                      id="offering-title"
+                      value={form.title}
+                      onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
+                      placeholder="Contoh: Intro Programming - Cohort A 2026"
+                      className="border-[var(--border)] bg-[var(--card)]"
+                    />
+                    {formErrors.title ? <p className="text-xs text-red-600">{formErrors.title}</p> : null}
+                  </div>
+
+                  <div className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-4 md:col-span-2">
+                    <div>
+                      <p className="text-sm font-medium text-[var(--foreground)]">Jadwal Mengikuti Academic Period</p>
+                      <p className="text-xs text-[var(--muted-foreground)]">
+                        Offering ini otomatis memakai window pendaftaran dan window belajar dari period yang dipilih.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                      <div className="rounded-md border border-[var(--border)] bg-[var(--card)] px-3 py-2">
+                        <p className="text-xs text-[var(--muted-foreground)]">Window Belajar</p>
+                        <p className="mt-1 text-sm font-medium text-[var(--foreground)]">
+                          {formatDate(selectedPeriod?.start_at)} - {formatDate(selectedPeriod?.end_at)}
+                        </p>
+                      </div>
+
+                      <div className="rounded-md border border-[var(--border)] bg-[var(--card)] px-3 py-2">
+                        <p className="text-xs text-[var(--muted-foreground)]">Window Pendaftaran</p>
+                        <p className="mt-1 text-sm font-medium text-[var(--foreground)]">
+                          {formatDate(selectedPeriod?.enrollment_open_at)} - {formatDate(selectedPeriod?.enrollment_close_at)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="offering-capacity">Capacity (Kapasitas)</Label>
+                    <Input
+                      id="offering-capacity"
+                      type="number"
+                      min={1}
+                      value={form.capacity}
+                      onChange={(event) => setForm((prev) => ({ ...prev, capacity: event.target.value }))}
+                      className="border-[var(--border)] bg-[var(--card)]"
+                    />
+                    {formErrors.capacity ? <p className="text-xs text-red-600">{formErrors.capacity}</p> : null}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="offering-price">Price (Harga)</Label>
+                    <CurrencyInput
+                      id="offering-price"
+                      value={form.price}
+                      onValueChange={(value) => setForm((prev) => ({ ...prev, price: value }))}
+                      placeholder="0"
+                      className="border-[var(--border)] bg-[var(--card)]"
+                    />
+                    {formErrors.price ? <p className="text-xs text-red-600">{formErrors.price}</p> : null}
+                  </div>
+
+                  <div className="space-y-1.5 md:col-span-2">
+                    <Label htmlFor="offering-discount">Discount (Diskon)</Label>
+                    <CurrencyInput
+                      id="offering-discount"
+                      value={form.discount_price}
+                      onValueChange={(value) => setForm((prev) => ({ ...prev, discount_price: value }))}
+                      placeholder="0"
+                      className="border-[var(--border)] bg-[var(--card)]"
+                    />
+                    {formErrors.discount_price ? <p className="text-xs text-red-600">{formErrors.discount_price}</p> : null}
+                  </div>
                 </div>
-              ) : (
-                <div className="space-y-1.5 md:col-span-2">
-                  <Label>Academic Period</Label>
-                  <Select value={form.academic_period_id} onValueChange={(value) => handlePeriodChange(value ?? "")}>
-                    <SelectTrigger className="w-full border-[var(--border)] bg-[var(--card)]">
-                      <SelectValue>
-                        {() => {
-                          const label = selectedPeriodLabel ?? "Pilih academic period";
-                          return (
-                            <span className={selectedPeriodLabel ? undefined : "text-[var(--muted-foreground)]"}>
-                              {label}
-                            </span>
-                          );
-                        }}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent align="start" className="max-w-[min(32rem,calc(100vw-2rem))]">
-                      {sortedPeriods.map((period) => (
-                        <SelectItem key={period.id} value={String(period.id)}>
-                          {buildPeriodLabel(period)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {formErrors.academic_period_id ? (
-                    <p className="text-xs text-red-600">{formErrors.academic_period_id}</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base font-semibold text-[var(--foreground)]">Ringkasan Offering</CardTitle>
+                <p className="text-xs text-[var(--muted-foreground)]">Snapshot cepat untuk validasi sebelum aktivasi.</p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="rounded-md border border-[var(--border)] bg-[var(--surface-soft)] p-3">
+                  <p className="text-xs text-[var(--muted-foreground)]">Final Price</p>
+                  {hasActiveDiscount ? (
+                    <p className="text-xs text-[var(--muted-foreground)] line-through">{formatCurrency(normalPrice)}</p>
                   ) : null}
+                  <p className="text-lg font-semibold text-[var(--foreground)]">{formatCurrency(finalPrice)}</p>
                 </div>
-              )}
 
-              <div className="space-y-1.5 md:col-span-2">
-                <Label>Course (Master)</Label>
-                <Select value={form.course_id} onValueChange={(value) => handleCourseChange(value ?? "")}>
-                  <SelectTrigger className="w-full border-[var(--border)] bg-[var(--card)]">
-                    <SelectValue>
-                      {() => {
-                        const label = selectedCourseLabel ?? "Pilih course";
-                        return (
-                          <span className={selectedCourseLabel ? undefined : "text-[var(--muted-foreground)]"}>
-                            {label}
-                          </span>
-                        );
-                      }}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent align="start" className="max-w-[min(40rem,calc(100vw-2rem))]">
-                    {sortedCourses.map((course) => (
-                      <SelectItem key={course.id} value={String(course.id)}>
-                        {buildCourseLabel(course)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {formErrors.course_id ? <p className="text-xs text-red-600">{formErrors.course_id}</p> : null}
-              </div>
-
-              <div className="space-y-1.5 md:col-span-2">
-                <Label htmlFor="offering-title">Judul Offering</Label>
-                <Input
-                  id="offering-title"
-                  value={form.title}
-                  onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
-                  placeholder="Contoh: Intro Programming - Cohort A 2026"
-                  className="border-[var(--border)] bg-[var(--card)]"
-                />
-                {formErrors.title ? <p className="text-xs text-red-600">{formErrors.title}</p> : null}
-              </div>
-
-              <div className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-4 md:col-span-2">
-                <div>
-                  <p className="text-sm font-medium text-[var(--foreground)]">Jadwal Mengikuti Academic Period</p>
+                <div className="rounded-md border border-[var(--border)] bg-[var(--surface-soft)] p-3">
+                  <p className="text-xs text-[var(--muted-foreground)]">Course Terpilih</p>
+                  <p className="text-sm font-medium text-[var(--foreground)]">{selectedCourse?.title ?? "-"}</p>
                   <p className="text-xs text-[var(--muted-foreground)]">
-                    Offering ini otomatis memakai window pendaftaran dan window belajar dari period yang dipilih.
+                    {[selectedCourse?.category_name, selectedCourse?.instructor_name].filter(Boolean).join(" | ") || "-"}
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  <div className="rounded-md border border-[var(--border)] bg-[var(--card)] px-3 py-2">
-                    <p className="text-xs text-[var(--muted-foreground)]">Window Belajar</p>
-                    <p className="mt-1 text-sm font-medium text-[var(--foreground)]">
-                      {formatDate(selectedPeriod?.start_at)} - {formatDate(selectedPeriod?.end_at)}
-                    </p>
-                  </div>
-
-                  <div className="rounded-md border border-[var(--border)] bg-[var(--card)] px-3 py-2">
-                    <p className="text-xs text-[var(--muted-foreground)]">Window Pendaftaran</p>
-                    <p className="mt-1 text-sm font-medium text-[var(--foreground)]">
-                      {formatDate(selectedPeriod?.enrollment_open_at)} - {formatDate(selectedPeriod?.enrollment_close_at)}
-                    </p>
-                  </div>
+                <div className="rounded-md border border-[var(--border)] bg-[var(--surface-soft)] p-3">
+                  <p className="text-xs text-[var(--muted-foreground)]">Periode Terpilih</p>
+                  <p className="text-sm font-medium text-[var(--foreground)]">{selectedPeriod?.name ?? "-"}</p>
+                  <p className="text-xs text-[var(--muted-foreground)]">{selectedPeriod?.code ?? "-"}</p>
+                  <p className="mt-2 text-xs text-[var(--muted-foreground)]">
+                    Window period: {formatDate(selectedPeriod?.enrollment_open_at)} -{" "}
+                    {formatDate(selectedPeriod?.enrollment_close_at)}
+                  </p>
                 </div>
-              </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="offering-capacity">Capacity (Kapasitas)</Label>
-                <Input
-                  id="offering-capacity"
-                  type="number"
-                  min={1}
-                  value={form.capacity}
-                  onChange={(event) => setForm((prev) => ({ ...prev, capacity: event.target.value }))}
-                  className="border-[var(--border)] bg-[var(--card)]"
-                />
-                {formErrors.capacity ? <p className="text-xs text-red-600">{formErrors.capacity}</p> : null}
-              </div>
+                <div className="rounded-md border border-[var(--border)] bg-[var(--surface-soft)] p-3">
+                  <p className="text-xs text-[var(--muted-foreground)]">Kapasitas</p>
+                  <p className="text-sm font-medium text-[var(--foreground)]">
+                    {enrolledCount} siswa terdaftar dari {parsedCapacity} seat
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="offering-price">Price (Harga)</Label>
-                <CurrencyInput
-                  id="offering-price"
-                  value={form.price}
-                  onValueChange={(value) => setForm((prev) => ({ ...prev, price: value }))}
-                  placeholder="0"
-                  className="border-[var(--border)] bg-[var(--card)]"
-                />
-                {formErrors.price ? <p className="text-xs text-red-600">{formErrors.price}</p> : null}
-              </div>
-
-              <div className="space-y-1.5 md:col-span-2">
-                <Label htmlFor="offering-discount">Discount (Diskon)</Label>
-                <CurrencyInput
-                  id="offering-discount"
-                  value={form.discount_price}
-                  onValueChange={(value) => setForm((prev) => ({ ...prev, discount_price: value }))}
-                  placeholder="0"
-                  className="border-[var(--border)] bg-[var(--card)]"
-                />
-                {formErrors.discount_price ? <p className="text-xs text-red-600">{formErrors.discount_price}</p> : null}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-semibold text-[var(--foreground)]">Ringkasan Offering</CardTitle>
-            <p className="text-xs text-[var(--muted-foreground)]">Snapshot cepat untuk validasi sebelum aktivasi.</p>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="rounded-md border border-[var(--border)] bg-[var(--surface-soft)] p-3">
-              <p className="text-xs text-[var(--muted-foreground)]">Final Price</p>
-              {hasActiveDiscount ? (
-                <p className="text-xs text-[var(--muted-foreground)] line-through">{formatCurrency(normalPrice)}</p>
-              ) : null}
-              <p className="text-lg font-semibold text-[var(--foreground)]">{formatCurrency(finalPrice)}</p>
-            </div>
-
-            <div className="rounded-md border border-[var(--border)] bg-[var(--surface-soft)] p-3">
-              <p className="text-xs text-[var(--muted-foreground)]">Course Terpilih</p>
-              <p className="text-sm font-medium text-[var(--foreground)]">{selectedCourse?.title ?? "-"}</p>
+          <div className="sticky bottom-4 z-20">
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-[var(--border)] bg-[var(--card)] p-3 shadow-lg">
               <p className="text-xs text-[var(--muted-foreground)]">
-                {[selectedCourse?.category_name, selectedCourse?.instructor_name].filter(Boolean).join(" | ") || "-"}
+                {isEditing
+                  ? "Perubahan akan memengaruhi batch yang sedang dipilih."
+                  : "Lengkapi data lalu simpan offering baru."}
               </p>
-            </div>
 
-            <div className="rounded-md border border-[var(--border)] bg-[var(--surface-soft)] p-3">
-              <p className="text-xs text-[var(--muted-foreground)]">Periode Terpilih</p>
-              <p className="text-sm font-medium text-[var(--foreground)]">{selectedPeriod?.name ?? "-"}</p>
-              <p className="text-xs text-[var(--muted-foreground)]">{selectedPeriod?.code ?? "-"}</p>
-              <p className="mt-2 text-xs text-[var(--muted-foreground)]">
-                Window period: {formatDate(selectedPeriod?.enrollment_open_at)} -{" "}
-                {formatDate(selectedPeriod?.enrollment_close_at)}
-              </p>
-            </div>
+              <div className="flex items-center gap-2">
+                {isEditing ? (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={() => setConfirmDeleteOpen(true)}
+                    disabled={saveMutation.isPending || deleteMutation.isPending}
+                    className="border-[var(--danger-soft-border)] bg-[var(--danger-soft-bg)] text-[var(--danger-soft-foreground)] hover:opacity-90"
+                  >
+                    <Trash2 className="size-4" />
+                    <span>Hapus</span>
+                  </Button>
+                ) : null}
 
-            <div className="rounded-md border border-[var(--border)] bg-[var(--surface-soft)] p-3">
-              <p className="text-xs text-[var(--muted-foreground)]">Kapasitas</p>
-              <p className="text-sm font-medium text-[var(--foreground)]">
-                {enrolledCount} siswa terdaftar dari {parsedCapacity} seat
-              </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => persistForm()}
+                  disabled={
+                    saveMutation.isPending || deleteMutation.isPending || coursesQuery.isLoading || periodsQuery.isLoading
+                  }
+                  className="border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                >
+                  {saveMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+                  <span>{isEditing ? "Simpan Perubahan" : "Simpan Nonaktif"}</span>
+                </Button>
+
+                <Button
+                  type="button"
+                  onClick={() => persistForm(!form.is_active)}
+                  disabled={
+                    saveMutation.isPending || deleteMutation.isPending || coursesQuery.isLoading || periodsQuery.isLoading
+                  }
+                  className={
+                    form.is_active
+                      ? "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                      : "bg-[var(--primary)] text-[var(--primary-foreground)] hover:brightness-95"
+                  }
+                >
+                  {saveMutation.isPending ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="size-4" />
+                  )}
+                  <span>{form.is_active ? "Nonaktifkan Offering" : "Aktifkan Offering"}</span>
+                </Button>
+              </div>
             </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showOperationalTabs && activeTab === "curriculum" ? (
+        <div className="space-y-4">
+          <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
+            <CardContent className="flex flex-col gap-3 p-5 md:flex-row md:items-center md:justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-[var(--foreground)]">Curriculum Read Only</p>
+                <p className="text-sm text-[var(--muted-foreground)]">
+                  Struktur lesson, quiz, dan assignment di offering ini mengikuti Course Master.
+                </p>
+              </div>
+              <Button render={<Link href={courseMasterHref} />} type="button" variant="outline">
+                <Layers3 className="size-4" />
+                <span>Buka Course Master</span>
+              </Button>
+            </CardContent>
+          </Card>
+
+          {curriculumQuery.isLoading ? (
+            <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
+              <CardContent className="flex items-center gap-2 p-5 text-sm text-[var(--muted-foreground)]">
+                <Loader2 className="size-4 animate-spin" />
+                Memuat curriculum course master...
+              </CardContent>
+            </Card>
+          ) : curriculumQuery.isError ? (
+            <Card className="border border-[var(--danger-soft-border)] bg-[var(--danger-soft-bg)] shadow-sm">
+              <CardContent className="p-5 text-sm text-[var(--danger-soft-foreground)]">
+                Gagal memuat curriculum course master untuk offering ini.
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {(curriculumQuery.data?.sections ?? []).map((section) => (
+                <Card key={section.id} className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-3 text-base font-semibold text-[var(--foreground)]">
+                      <span>{section.title}</span>
+                      <span className="rounded-full border border-[var(--border)] bg-[var(--surface-soft)] px-2 py-0.5 text-xs font-medium text-[var(--muted-foreground)]">
+                        Section #{section.sort_order}
+                      </span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                      <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">
+                          Lessons
+                        </p>
+                        <p className="mt-1 text-lg font-semibold text-[var(--foreground)]">{section.lessons.length}</p>
+                      </div>
+                      <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">
+                          Quizzes
+                        </p>
+                        <p className="mt-1 text-lg font-semibold text-[var(--foreground)]">{section.quizzes.length}</p>
+                      </div>
+                      <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">
+                          Assignments
+                        </p>
+                        <p className="mt-1 text-lg font-semibold text-[var(--foreground)]">
+                          {(section.assignments ?? []).length}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+                      <div className="space-y-2 rounded-lg border border-[var(--border)] p-4">
+                        <p className="text-sm font-semibold text-[var(--foreground)]">Lessons</p>
+                        {section.lessons.length === 0 ? (
+                          <p className="text-sm text-[var(--muted-foreground)]">Belum ada lesson pada section ini.</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {section.lessons.map((lesson) => (
+                              <div
+                                key={lesson.id}
+                                className="rounded-md border border-[var(--border)] bg-[var(--surface-soft)] p-3"
+                              >
+                                <p className="text-sm font-medium text-[var(--foreground)]">{lesson.title}</p>
+                                <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+                                  {lesson.type} | Durasi: {lesson.duration} menit
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="space-y-2 rounded-lg border border-[var(--border)] p-4">
+                        <p className="text-sm font-semibold text-[var(--foreground)]">Quizzes</p>
+                        {section.quizzes.length === 0 ? (
+                          <p className="text-sm text-[var(--muted-foreground)]">Belum ada quiz pada section ini.</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {section.quizzes.map((quiz) => (
+                              <div
+                                key={quiz.id}
+                                className="rounded-md border border-[var(--border)] bg-[var(--surface-soft)] p-3"
+                              >
+                                <p className="text-sm font-medium text-[var(--foreground)]">{quiz.title}</p>
+                                <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+                                  Passing score: {quiz.passing_score ?? "-"} | Attempt: {quiz.max_attempts ?? "-"}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="space-y-2 rounded-lg border border-[var(--border)] p-4">
+                        <p className="text-sm font-semibold text-[var(--foreground)]">Assignments</p>
+                        {(section.assignments ?? []).length === 0 ? (
+                          <p className="text-sm text-[var(--muted-foreground)]">Belum ada assignment pada section ini.</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {(section.assignments ?? []).map((assignment) => (
+                              <div
+                                key={assignment.id}
+                                className="rounded-md border border-[var(--border)] bg-[var(--surface-soft)] p-3"
+                              >
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <p className="text-sm font-medium text-[var(--foreground)]">{assignment.title}</p>
+                                  <StatusBadge value={assignment.status ? toStatusLabel(assignment.status) : "-"} />
+                                </div>
+                                <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+                                  Deadline: {formatDateTime(assignment.due_at)} | Max attempt:{" "}
+                                  {assignment.max_attempts ?? "-"}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : null}
+
+      {showOperationalTabs && activeTab === "students" ? (
+        <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
+          <CardHeader className="gap-3 pb-2">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-base font-semibold text-[var(--foreground)]">
+                  <GraduationCap className="size-5" />
+                  <span>Students</span>
+                </CardTitle>
+                <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+                  Daftar siswa yang benar-benar sudah masuk ke offering ini.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <div className="relative min-w-[18rem]">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--muted-foreground)]" />
+                  <Input
+                    value={studentsSearch}
+                    onChange={(event) => handleStudentsSearchChange(event.target.value)}
+                    placeholder="Cari nama atau email siswa"
+                    className="pl-9"
+                  />
+                </div>
+                <Button type="button" variant="outline" onClick={() => studentsQuery.refetch()}>
+                  <RefreshCcw className="size-4" />
+                  <span>Refresh</span>
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent className="space-y-0 p-0">
+            {studentsQuery.isLoading ? (
+              <div className="flex items-center gap-2 p-5 text-sm text-[var(--muted-foreground)]">
+                <Loader2 className="size-4 animate-spin" />
+                Memuat daftar siswa...
+              </div>
+            ) : studentsQuery.isError ? (
+              <div className="p-5 text-sm text-[var(--danger-soft-foreground)]">
+                Gagal memuat daftar siswa untuk offering ini.
+              </div>
+            ) : (
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Student</TableHead>
+                      <TableHead>Progress</TableHead>
+                      <TableHead>Status Enrollment</TableHead>
+                      <TableHead>Requirement Assignment</TableHead>
+                      <TableHead>Sertifikat</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {studentRows.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="py-8 text-center text-sm text-[var(--muted-foreground)]">
+                          Belum ada siswa yang terdaftar pada offering ini.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      studentRows.map((enrollment) => (
+                        <TableRow key={enrollment.id}>
+                          <TableCell>
+                            <div className="space-y-1">
+                              <p className="font-medium text-[var(--foreground)]">{enrollment.user?.fullname ?? "-"}</p>
+                              <p className="text-xs text-[var(--muted-foreground)]">{enrollment.user?.email ?? "-"}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-1">
+                              <p className="font-medium text-[var(--foreground)]">{formatProgress(enrollment.progress)}</p>
+                              <p className="text-xs text-[var(--muted-foreground)]">
+                                Mulai: {formatDateTime(enrollment.started_at)}
+                              </p>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <StatusBadge value={enrollment.status ? toStatusLabel(enrollment.status) : "-"} />
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-1">
+                              <StatusBadge value={formatRequirementStatus(enrollment.assignment_requirement)} />
+                              <p className="text-xs text-[var(--muted-foreground)]">
+                                {formatAssignmentRequirementSummary(enrollment.assignment_requirement)}
+                              </p>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <StatusBadge value={enrollment.has_certificate ? "Sudah Ada" : "Belum Ada"} />
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+
+                {studentRows.length > 0 ? (
+                  <AdminPagination
+                    meta={studentMeta}
+                    isLoading={studentsQuery.isFetching}
+                    onPageChange={(page) => setStudentsPage(page)}
+                  />
+                ) : null}
+              </>
+            )}
           </CardContent>
         </Card>
-      </div>
+      ) : null}
+
+      {showOperationalTabs && activeTab === "assignment-review" ? (
+        <div className="space-y-4">
+          <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
+            <CardHeader className="gap-3 pb-2">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-base font-semibold text-[var(--foreground)]">
+                    <ClipboardList className="size-5" />
+                    <span>Assignment Review</span>
+                  </CardTitle>
+                  <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+                    Review submission assignment hanya untuk student di offering ini.
+                  </p>
+                </div>
+
+                <Button render={<Link href={courseMasterHref} />} type="button" variant="outline">
+                  <Layers3 className="size-4" />
+                  <span>Lihat Course Master</span>
+                </Button>
+              </div>
+            </CardHeader>
+
+            <CardContent className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_16rem_10rem_auto]">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--muted-foreground)]" />
+                <Input
+                  value={reviewSearch}
+                  onChange={(event) => handleReviewSearchChange(event.target.value)}
+                  placeholder="Cari student, assignment, atau isi submission"
+                  className="pl-9"
+                />
+              </div>
+
+              <Select value={reviewAssignmentId} onValueChange={(value) => handleReviewAssignmentFilterChange(value ?? "all")}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Semua assignment" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua assignment</SelectItem>
+                  {curriculumAssignments.map((assignment) => (
+                    <SelectItem key={assignment.id} value={String(assignment.id)}>
+                      {assignment.title ?? `Assignment #${assignment.id}`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={reviewStatusFilter} onValueChange={(value) => handleReviewStatusFilterChange(value ?? "all")}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Semua status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua status</SelectItem>
+                  <SelectItem value="submitted">Submitted</SelectItem>
+                  <SelectItem value="revision_required">Revision Required</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Button type="button" variant="outline" onClick={resetReviewFilters}>
+                Reset
+              </Button>
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+            <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base font-semibold text-[var(--foreground)]">Daftar Submission</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-0 p-0">
+                {assignmentSubmissionsQuery.isLoading ? (
+                  <div className="flex items-center gap-2 p-5 text-sm text-[var(--muted-foreground)]">
+                    <Loader2 className="size-4 animate-spin" />
+                    Memuat submission assignment...
+                  </div>
+                ) : assignmentSubmissionsQuery.isError ? (
+                  <div className="p-5 text-sm text-[var(--danger-soft-foreground)]">
+                    Gagal memuat daftar submission assignment.
+                  </div>
+                ) : (
+                  <>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Student</TableHead>
+                          <TableHead>Assignment</TableHead>
+                          <TableHead>Attempt</TableHead>
+                          <TableHead>Submitted At</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Reviewer</TableHead>
+                          <TableHead className="w-[7rem]">Aksi</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {submissionRows.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={7} className="py-8 text-center text-sm text-[var(--muted-foreground)]">
+                              Belum ada submission untuk filter yang dipilih.
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          submissionRows.map((submission) => (
+                            <TableRow
+                              key={submission.id}
+                              className={submission.id === selectedSubmissionId ? "bg-[var(--surface-soft)]" : undefined}
+                            >
+                              <TableCell>
+                                <div className="space-y-1">
+                                  <p className="font-medium text-[var(--foreground)]">{submission.user?.fullname ?? "-"}</p>
+                                  <p className="text-xs text-[var(--muted-foreground)]">{submission.user?.email ?? "-"}</p>
+                                </div>
+                              </TableCell>
+                              <TableCell>{submission.assignment?.title ?? "-"}</TableCell>
+                              <TableCell>Attempt #{submission.attempt_no ?? "-"}</TableCell>
+                              <TableCell>{formatDateTime(submission.submitted_at)}</TableCell>
+                              <TableCell>
+                                <StatusBadge value={formatAssignmentReviewStatus(submission.status)} />
+                              </TableCell>
+                              <TableCell>{submission.reviewer_name ?? "-"}</TableCell>
+                              <TableCell>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setSelectedSubmissionId(submission.id)}
+                                >
+                                  Pilih
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+
+                    {submissionRows.length > 0 ? (
+                      <AdminPagination
+                        meta={submissionMeta}
+                        isLoading={assignmentSubmissionsQuery.isFetching}
+                        onPageChange={(page) => setReviewPage(page)}
+                      />
+                    ) : null}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base font-semibold text-[var(--foreground)]">Panel Review</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {!selectedSubmission ? (
+                  <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-4 text-sm text-[var(--muted-foreground)]">
+                    Pilih submission dari daftar di kiri untuk melihat detail dan memberi review.
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                      <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3">
+                        <p className="text-xs text-[var(--muted-foreground)]">Student</p>
+                        <p className="mt-1 font-medium text-[var(--foreground)]">{selectedSubmission.user?.fullname ?? "-"}</p>
+                        <p className="text-xs text-[var(--muted-foreground)]">{selectedSubmission.user?.email ?? "-"}</p>
+                      </div>
+
+                      <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3">
+                        <p className="text-xs text-[var(--muted-foreground)]">Assignment</p>
+                        <p className="mt-1 font-medium text-[var(--foreground)]">
+                          {selectedSubmission.assignment?.title ?? "-"}
+                        </p>
+                        <p className="text-xs text-[var(--muted-foreground)]">
+                          Section: {selectedSubmission.assignment?.section_title ?? "-"}
+                        </p>
+                      </div>
+
+                      <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3">
+                        <p className="text-xs text-[var(--muted-foreground)]">Status Submission</p>
+                        <div className="mt-1">
+                          <StatusBadge value={formatAssignmentReviewStatus(selectedSubmission.status)} />
+                        </div>
+                        <p className="mt-2 text-xs text-[var(--muted-foreground)]">
+                          Attempt #{selectedSubmission.attempt_no ?? "-"} | Submitted{" "}
+                          {formatDateTime(selectedSubmission.submitted_at)}
+                        </p>
+                      </div>
+
+                      <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3">
+                        <p className="text-xs text-[var(--muted-foreground)]">Enrollment Snapshot</p>
+                        <p className="mt-1 font-medium text-[var(--foreground)]">
+                          Progress {formatProgress(selectedSubmission.enrollment?.progress)}
+                        </p>
+                        <p className="text-xs text-[var(--muted-foreground)]">
+                          Status: {selectedSubmission.enrollment?.status ? toStatusLabel(selectedSubmission.enrollment.status) : "-"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 rounded-lg border border-[var(--border)] p-4">
+                      <p className="text-sm font-semibold text-[var(--foreground)]">Isi Submission</p>
+                      <div className="rounded-md border border-[var(--border)] bg-[var(--surface-soft)] p-3 text-sm text-[var(--foreground)]">
+                        {selectedSubmission.submission_text?.trim() ? selectedSubmission.submission_text : "Tidak ada submission text."}
+                      </div>
+                      <div className="text-sm">
+                        <span className="font-medium text-[var(--foreground)]">Attachment:</span>{" "}
+                        {selectedSubmission.attachment_url ? (
+                          <a
+                            href={selectedSubmission.attachment_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[var(--primary)] underline-offset-2 hover:underline"
+                          >
+                            Buka lampiran
+                          </a>
+                        ) : (
+                          <span className="text-[var(--muted-foreground)]">Tidak ada lampiran.</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="review-notes">Catatan Review</Label>
+                      <Textarea
+                        id="review-notes"
+                        value={reviewNotes}
+                        onChange={(event) =>
+                          setReviewDraft({
+                            submissionId: effectiveSelectedSubmissionId,
+                            value: event.target.value,
+                          })
+                        }
+                        placeholder="Tulis feedback singkat untuk student..."
+                        className="min-h-28 border-[var(--border)] bg-[var(--card)]"
+                      />
+                      {selectedSubmission.review_notes ? (
+                        <p className="text-xs text-[var(--muted-foreground)]">
+                          Catatan sebelumnya: {selectedSubmission.review_notes}
+                        </p>
+                      ) : null}
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        onClick={() => handleSubmitReview("approved")}
+                        disabled={reviewMutation.isPending || selectedSubmission.status === "approved"}
+                        className="bg-emerald-600 text-white hover:bg-emerald-700"
+                      >
+                        {reviewMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
+                        <span>Approve</span>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => handleSubmitReview("revision_required")}
+                        disabled={reviewMutation.isPending}
+                        className="border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                      >
+                        {reviewMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
+                        <span>Perlu Revisi</span>
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      ) : null}
 
       <ConfirmAlertDialog
         open={confirmDeleteOpen}
@@ -758,54 +1586,6 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
           deleteMutation.mutate(offeringId);
         }}
       />
-
-      <div className="sticky bottom-4 z-20">
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-[var(--border)] bg-[var(--card)] p-3 shadow-lg">
-          <p className="text-xs text-[var(--muted-foreground)]">
-            {isEditing ? "Perubahan akan memengaruhi batch yang sedang dipilih." : "Lengkapi data lalu simpan offering baru."}
-          </p>
-
-          <div className="flex items-center gap-2">
-            {isEditing ? (
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={() => setConfirmDeleteOpen(true)}
-                disabled={saveMutation.isPending || deleteMutation.isPending}
-                className="border-[var(--danger-soft-border)] bg-[var(--danger-soft-bg)] text-[var(--danger-soft-foreground)] hover:opacity-90"
-              >
-                <Trash2 className="size-4" />
-                <span>Hapus</span>
-              </Button>
-            ) : null}
-
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => persistForm()}
-              disabled={saveMutation.isPending || deleteMutation.isPending || coursesQuery.isLoading || periodsQuery.isLoading}
-              className="border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100"
-            >
-              {saveMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-              <span>{isEditing ? "Simpan Perubahan" : "Simpan Nonaktif"}</span>
-            </Button>
-
-            <Button
-              type="button"
-              onClick={() => persistForm(!form.is_active)}
-              disabled={saveMutation.isPending || deleteMutation.isPending || coursesQuery.isLoading || periodsQuery.isLoading}
-              className={
-                form.is_active
-                  ? "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100"
-                  : "bg-[var(--primary)] text-[var(--primary-foreground)] hover:brightness-95"
-              }
-            >
-              {saveMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}
-              <span>{form.is_active ? "Nonaktifkan Offering" : "Aktifkan Offering"}</span>
-            </Button>
-          </div>
-        </div>
-      </div>
     </section>
   );
 }

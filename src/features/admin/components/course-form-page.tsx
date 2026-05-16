@@ -2446,38 +2446,15 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
         open={assignmentModalOpen}
         onClose={closeAssignmentModal}
         title={editingAssignmentId ? "Edit Assignment" : "Tambah Assignment"}
-        description="Assignment akan terhubung ke section yang dipilih dalam course ini."
+        description="Assignment akan otomatis terhubung ke section course yang sedang Anda kelola."
       >
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-4 rounded-lg border border-[var(--border)] bg-[var(--muted)] p-4 md:grid-cols-2">
             <div className="space-y-1.5 md:col-span-2">
               <Label>Section</Label>
-              <Select
-                value={assignmentForm.section_id}
-                onValueChange={(value) => setAssignmentForm((prev) => ({ ...prev, section_id: value ?? "" }))}
-              >
-                <SelectTrigger className="h-9 w-full border-[var(--border)] bg-[var(--card)]">
-                  <SelectValue>
-                    {() => {
-                      const label = selectedAssignmentSectionLabel ?? "Pilih section";
-                      return (
-                        <span className={selectedAssignmentSectionLabel ? undefined : "text-[var(--muted-foreground)]"}>
-                          {label}
-                        </span>
-                      );
-                    }}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {form.sections
-                    .filter((section) => section.id)
-                    .map((section, index) => (
-                      <SelectItem key={section.client_id} value={String(section.id)}>
-                        {getSectionDisplayLabel(section, index)}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+              <div className="flex min-h-9 items-center rounded-md border border-[var(--border)] bg-[var(--card)] px-3 text-sm text-[var(--foreground)]">
+                {selectedAssignmentSectionLabel ?? "Section belum tersedia"}
+              </div>
             </div>
 
             <div className="space-y-1.5 md:col-span-2">

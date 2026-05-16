@@ -145,6 +145,7 @@ export interface AdminCourseCurriculumSection {
   sort_order: number;
   lessons: AdminCourseCurriculumLesson[];
   quizzes: AdminQuiz[];
+  assignments: AdminAssignment[];
 }
 
 export interface AdminCourseCurriculum {
@@ -306,6 +307,68 @@ export interface AdminOrderTransaction {
   expired_at: string | null;
 }
 
+export interface AdminOfferingEnrollment {
+  id: number;
+  user_id: number;
+  course_offering_id: number;
+  order_id: number | null;
+  last_lesson_id: number | null;
+  progress: number | null;
+  status: string | null;
+  user: {
+    id: number;
+    fullname: string;
+    email: string;
+  } | null;
+  assignment_requirement: {
+    required_assignments: number;
+    approved_assignments: number;
+    is_satisfied: boolean;
+  } | null;
+  has_certificate: boolean;
+  started_at: string | null;
+  ended_at: string | null;
+  completed_at: string | null;
+  expired_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface AdminOfferingAssignmentSubmission {
+  id: number;
+  assignment_id: number;
+  enrollment_id: number;
+  user_id: number;
+  attempt_no: number | null;
+  submission_text: string | null;
+  attachment_url: string | null;
+  status: string | null;
+  review_notes: string | null;
+  reviewed_by: number | null;
+  assignment: {
+    id: number;
+    title: string | null;
+    section_id: number | null;
+    section_title: string | null;
+  } | null;
+  user: {
+    id: number;
+    fullname: string;
+    email: string;
+  } | null;
+  reviewer_name: string | null;
+  enrollment: {
+    id: number;
+    status: string | null;
+    progress: number | null;
+    course_offering_id: number | null;
+  } | null;
+  submitted_at: string | null;
+  reviewed_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
 export interface AdminPaginatedResponse<T> {
   items: T[];
   meta: ApiPaginationMeta;
@@ -359,6 +422,11 @@ export interface AssignmentPayload {
   status?: "draft" | "published" | "archived";
 }
 
+export interface AssignmentSubmissionReviewPayload {
+  status: "approved" | "revision_required";
+  review_notes?: string | null;
+}
+
 export interface AdminPaginatedQuery {
   page?: number;
   per_page?: number;
@@ -368,6 +436,13 @@ export interface AdminPaginatedQuery {
 export interface AdminCourseOfferingQuery extends AdminPaginatedQuery {
   is_active?: boolean | string;
   academic_period_id?: number | string;
+}
+
+export type AdminOfferingEnrollmentQuery = AdminPaginatedQuery;
+
+export interface AdminOfferingAssignmentSubmissionQuery extends AdminPaginatedQuery {
+  assignment_id?: number | string;
+  status?: string;
 }
 
 export interface AdminAcademicPeriodQuery extends AdminPaginatedQuery {
@@ -688,6 +763,36 @@ export function getAdminCourseOfferings(query: AdminCourseOfferingQuery = {}) {
 export function getAdminCourseOfferingById(id: number) {
   return apiRequest<AdminCourseOffering>(`/api/admin/course-offerings/${id}`, {
     method: "GET",
+  });
+}
+
+export async function listAdminCourseOfferingEnrollments(
+  offeringId: number,
+  query: AdminOfferingEnrollmentQuery = {},
+): Promise<AdminPaginatedResponse<AdminOfferingEnrollment>> {
+  return listAdminCollection<AdminOfferingEnrollment>(
+    `/api/admin/course-offerings/${offeringId}/enrollments`,
+    withListPagination(query),
+  );
+}
+
+export async function listAdminCourseOfferingAssignmentSubmissions(
+  offeringId: number,
+  query: AdminOfferingAssignmentSubmissionQuery = {},
+): Promise<AdminPaginatedResponse<AdminOfferingAssignmentSubmission>> {
+  return listAdminCollection<AdminOfferingAssignmentSubmission>(
+    `/api/admin/course-offerings/${offeringId}/assignment-submissions`,
+    withListPagination(query),
+  );
+}
+
+export function reviewAdminAssignmentSubmission(
+  submissionId: number,
+  payload: AssignmentSubmissionReviewPayload,
+) {
+  return apiRequest<AdminOfferingAssignmentSubmission>(`/api/admin/assignment-submissions/${submissionId}/review`, {
+    method: "PUT",
+    body: JSON.stringify(normalizePayload(payload)),
   });
 }
 

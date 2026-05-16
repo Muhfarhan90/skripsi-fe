@@ -19,6 +19,7 @@ const ALLOWED_ADMIN_RESOURCES = new Set([
   "transactions",
   "course-offerings",
   "academic-periods",
+  "assignment-submissions",
 ]);
 
 function resolveTargetPath(pathSegments: string[] | undefined): string | null {
@@ -37,6 +38,10 @@ function resolveTargetPath(pathSegments: string[] | undefined): string | null {
 
   if (pathSegments.length === 2 && maybeId) {
     return `/admin/${resource}/${maybeId}`;
+  }
+
+  if (resource === "assignment-submissions" && pathSegments.length === 3 && maybeId && action === "review") {
+    return `/admin/assignment-submissions/${maybeId}/review`;
   }
 
   // Allow selected nested actions for admin resources (strictly scoped).
@@ -71,6 +76,14 @@ function resolveTargetPath(pathSegments: string[] | undefined): string | null {
     if (sectionId && sectionAction === "quizzes" && quizId) {
       return `/admin/courses/${maybeId}/sections/${sectionId}/quizzes/${quizId}`;
     }
+  }
+
+  if (resource === "course-offerings" && pathSegments.length === 3 && maybeId && action === "enrollments") {
+    return `/admin/course-offerings/${maybeId}/enrollments`;
+  }
+
+  if (resource === "course-offerings" && pathSegments.length === 3 && maybeId && action === "assignment-submissions") {
+    return `/admin/course-offerings/${maybeId}/assignment-submissions`;
   }
 
   if (resource === "quizzes" && pathSegments.length === 3 && maybeId && action === "questions") {
