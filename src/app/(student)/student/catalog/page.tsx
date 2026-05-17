@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { MessageSquareText, Star } from "lucide-react";
 import { toast } from "sonner";
 import {
   addCourseToCart,
@@ -23,6 +24,11 @@ function hasValidDiscount(price: number | null | undefined, discountPrice: numbe
   const base = Number(price ?? 0);
   const discount = Number(discountPrice ?? 0);
   return discount > 0 && discount < base;
+}
+
+function formatReviewAverage(value: number | null | undefined): string {
+  const numeric = Number(value ?? 0);
+  return numeric > 0 ? numeric.toFixed(1) : "0.0";
 }
 
 export default function StudentCatalogPage() {
@@ -83,10 +89,10 @@ export default function StudentCatalogPage() {
       {!isLoading && !isError && visibleCourses.length === 0 ? (
         <article className="rounded-lg border border-border bg-card p-5 shadow-sm">
           <p className="text-sm text-muted-foreground">
-            Tidak ada course baru. Semua course yang tersedia sudah ada di enrollment Anda.
+            Tidak ada course baru. Semua course yang tersedia sudah ada di kelas Anda.
           </p>
           <Link href="/student/enrollments" className="mt-3 inline-flex text-sm text-primary hover:underline">
-            Lihat kelas aktif
+            Lihat Kelas Saya
           </Link>
         </article>
       ) : null}
@@ -104,6 +110,17 @@ export default function StudentCatalogPage() {
                 {course.description || "Deskripsi course belum tersedia."}
               </p>
 
+              <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+                <span className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-soft)] px-2.5 py-1">
+                  <Star className="size-4 fill-[var(--secondary)] text-[var(--secondary)]" />
+                  <span className="font-semibold text-foreground">{formatReviewAverage(course.reviews_avg_rating)}</span>
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <MessageSquareText className="size-4" />
+                  {course.reviews_count ?? 0} review
+                </span>
+              </div>
+
               <div className="mt-4 space-y-1">
                 {hasDiscount ? (
                   <p className="text-sm text-muted-foreground line-through">{formatCurrency(course.price)}</p>
@@ -113,7 +130,7 @@ export default function StudentCatalogPage() {
 
               <div className="mt-5 flex items-center gap-2">
                 <Link
-                  href={`/courses/${course.slug}`}
+                  href={`/student/catalog/${course.slug}`}
                   className="inline-flex h-9 items-center rounded-md border border-border bg-card px-3 text-sm text-foreground transition hover:bg-muted"
                 >
                   Detail
