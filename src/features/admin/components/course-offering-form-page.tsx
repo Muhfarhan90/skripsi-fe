@@ -7,10 +7,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   ArrowLeft,
+  Award,
   BookmarkCheck,
   CalendarDays,
   CheckCircle2,
   ClipboardList,
+  Download,
   GraduationCap,
   Layers3,
   Loader2,
@@ -35,19 +37,24 @@ import {
   createEmptyAdminPaginationMeta,
   deleteAdminCourseOffering,
   getAdminAcademicPeriods,
+  getAdminCertificateSettings,
   getAdminCourseCurriculum,
   getAdminCourseOfferingById,
   getAdminCourses,
+  generateAdminOfferingEnrollmentCertificate,
   listAdminCourseOfferingAssignmentSubmissions,
   listAdminCourseOfferingEnrollments,
   reviewAdminAssignmentSubmission,
+  updateAdminCertificateSettings,
   updateAdminCourseOffering,
   type AdminAcademicPeriod,
   type AdminAssignment,
+  type AdminCertificateSetting,
   type AdminCourse,
   type AdminCourseCurriculum,
   type AdminCourseOffering,
   type AdminOfferingEnrollment,
+  type CertificateSettingPayload,
   type CourseOfferingPayload,
 } from "@/features/admin/api/master-api";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
@@ -58,7 +65,7 @@ import { formatCurrency, formatDate, formatDateTime, toStatusLabel } from "@/fea
 import { ApiError } from "@/lib/api/client";
 
 type CourseOfferingFormMode = "create" | "edit";
-type CourseOfferingTab = "overview" | "curriculum" | "students" | "assignment-review";
+type CourseOfferingTab = "overview" | "curriculum" | "students" | "assignment-review" | "certificates";
 
 interface CourseOfferingFormPageProps {
   mode: CourseOfferingFormMode;
@@ -76,6 +83,18 @@ interface CourseOfferingFormState {
   is_active: boolean;
 }
 
+interface CertificateSettingFormState {
+  organization_name: string;
+  certificate_title: string;
+  certificate_prefix: string;
+  signatory_name: string;
+  signatory_title: string;
+  signature_image: string;
+  background_image: string;
+  footer_note: string;
+  expires_after_months: string;
+}
+
 type CourseOfferingFormErrors = Partial<Record<keyof CourseOfferingFormState | "form", string>>;
 
 const defaultForm: CourseOfferingFormState = {
@@ -88,11 +107,24 @@ const defaultForm: CourseOfferingFormState = {
   is_active: false,
 };
 
+const defaultCertificateSettingForm: CertificateSettingFormState = {
+  organization_name: "OpenLearning LMS",
+  certificate_title: "Certificate of Completion",
+  certificate_prefix: "CERT",
+  signatory_name: "",
+  signatory_title: "",
+  signature_image: "",
+  background_image: "",
+  footer_note: "This certificate is generated automatically by the system.",
+  expires_after_months: "",
+};
+
 const offeringTabs: Array<{ id: CourseOfferingTab; label: string }> = [
   { id: "overview", label: "Overview" },
   { id: "curriculum", label: "Curriculum" },
   { id: "students", label: "Students" },
   { id: "assignment-review", label: "Assignment Review" },
+  { id: "certificates", label: "Certificates" },
 ];
 
 function mapOfferingToFormState(offering: AdminCourseOffering): CourseOfferingFormState {
@@ -145,6 +177,45 @@ function buildPayload(form: CourseOfferingFormState): CourseOfferingPayload {
     price,
     discount_price: discountPrice,
     is_active: form.is_active,
+  };
+}
+
+function mapCertificateSettingToForm(setting: AdminCertificateSetting): CertificateSettingFormState {
+  return {
+    organization_name: setting.organization_name ?? "",
+    certificate_title: setting.certificate_title ?? "",
+    certificate_prefix: setting.certificate_prefix ?? "",
+    signatory_name: setting.signatory_name ?? "",
+    signatory_title: setting.signatory_title ?? "",
+    signature_image: setting.signature_image ?? "",
+    background_image: setting.background_image ?? "",
+    footer_note: setting.footer_note ?? "",
+    expires_after_months:
+      setting.expires_after_months !== null && setting.expires_after_months !== undefined
+        ? String(setting.expires_after_months)
+        : "",
+  };
+}
+
+function buildCertificateSettingPayload(form: CertificateSettingFormState): CertificateSettingPayload {
+  const expiresAfterMonths = form.expires_after_months.trim()
+    ? toPositiveInteger(form.expires_after_months)
+    : null;
+
+  if (form.expires_after_months.trim() && expiresAfterMonths === null) {
+    throw new Error("Masa berlaku sertifikat harus berupa angka minimal 1 bulan");
+  }
+
+  return {
+    organization_name: form.organization_name.trim(),
+    certificate_title: form.certificate_title.trim(),
+    certificate_prefix: form.certificate_prefix.trim(),
+    signatory_name: form.signatory_name.trim() || null,
+    signatory_title: form.signatory_title.trim() || null,
+    signature_image: form.signature_image.trim() || null,
+    background_image: form.background_image.trim() || null,
+    footer_note: form.footer_note.trim() || null,
+    expires_after_months: expiresAfterMonths,
   };
 }
 
@@ -285,11 +356,16 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [studentsSearch, setStudentsSearch] = useState("");
   const [studentsPage, setStudentsPage] = useState(1);
+  const [certificateSearch, setCertificateSearch] = useState("");
+  const [certificatePage, setCertificatePage] = useState(1);
+  const [draftCertificateSettingForm, setDraftCertificateSettingForm] =
+    useState<CertificateSettingFormState | null>(null);
   const [reviewSearch, setReviewSearch] = useState("");
   const [reviewPage, setReviewPage] = useState(1);
   const [reviewStatusFilter, setReviewStatusFilter] = useState("all");
   const [reviewAssignmentId, setReviewAssignmentId] = useState("all");
   const [selectedSubmissionId, setSelectedSubmissionId] = useState<number | null>(null);
+  const [activeCertificateEnrollmentId, setActiveCertificateEnrollmentId] = useState<number | null>(null);
   const [reviewDraft, setReviewDraft] = useState<{
     submissionId: number | null;
     value: string;
@@ -323,7 +399,10 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
   const curriculumQuery = useQuery({
     queryKey: ["admin", "courses", offeringCourseId, "curriculum"],
     queryFn: () => getAdminCourseCurriculum(offeringCourseId as number),
-    enabled: showOperationalTabs && Boolean(offeringCourseId) && activeTab !== "overview" && activeTab !== "students",
+    enabled:
+      showOperationalTabs &&
+      Boolean(offeringCourseId) &&
+      (activeTab === "curriculum" || activeTab === "assignment-review"),
   });
 
   const studentsQuery = useQuery({
@@ -334,6 +413,22 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
         page: studentsPage,
       }),
     enabled: showOperationalTabs && activeTab === "students" && Boolean(offeringId),
+  });
+
+  const certificateRowsQuery = useQuery({
+    queryKey: ["admin", "course-offerings", offeringId, "certificates", certificateSearch, certificatePage],
+    queryFn: () =>
+      listAdminCourseOfferingEnrollments(offeringId as number, {
+        search: certificateSearch,
+        page: certificatePage,
+      }),
+    enabled: showOperationalTabs && activeTab === "certificates" && Boolean(offeringId),
+  });
+
+  const certificateSettingsQuery = useQuery({
+    queryKey: ["admin", "certificate-settings"],
+    queryFn: getAdminCertificateSettings,
+    enabled: showOperationalTabs && activeTab === "certificates",
   });
 
   const assignmentSubmissionsQuery = useQuery({
@@ -427,6 +522,8 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
   const curriculumAssignments = useMemo(() => flattenAssignments(curriculumQuery.data), [curriculumQuery.data]);
   const studentRows = studentsQuery.data?.items ?? [];
   const studentMeta = studentsQuery.data?.meta ?? createEmptyAdminPaginationMeta(studentsPage);
+  const certificateRows = certificateRowsQuery.data?.items ?? [];
+  const certificateMeta = certificateRowsQuery.data?.meta ?? createEmptyAdminPaginationMeta(certificatePage);
   const submissionRows = useMemo(
     () => assignmentSubmissionsQuery.data?.items ?? [],
     [assignmentSubmissionsQuery.data?.items],
@@ -448,6 +545,18 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
     reviewDraft.submissionId === effectiveSelectedSubmissionId
       ? reviewDraft.value
       : selectedSubmission?.review_notes ?? "";
+
+  const certificateSettingForm =
+    draftCertificateSettingForm ??
+    (certificateSettingsQuery.data
+      ? mapCertificateSettingToForm(certificateSettingsQuery.data)
+      : defaultCertificateSettingForm);
+
+  const setCertificateSettingForm = (
+    updater: (prev: CertificateSettingFormState) => CertificateSettingFormState,
+  ) => {
+    setDraftCertificateSettingForm((prev) => updater(prev ?? certificateSettingForm));
+  };
 
   const setForm = (updater: (prev: CourseOfferingFormState) => CourseOfferingFormState) => {
     setDraftForm((prev) => updater(prev ?? baseForm));
@@ -526,10 +635,50 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
       queryClient.invalidateQueries({
         queryKey: ["admin", "course-offerings", offeringId, "students"],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["admin", "course-offerings", offeringId, "certificates"],
+      });
     },
     onError: (error) => {
       const nextErrors = mapApiError(error);
       toast.error(nextErrors.form ?? "Gagal menyimpan review submission");
+    },
+  });
+
+  const certificateMutation = useMutation({
+    mutationFn: (enrollmentId: number) =>
+      generateAdminOfferingEnrollmentCertificate(offeringId as number, enrollmentId),
+    onMutate: (enrollmentId) => {
+      setActiveCertificateEnrollmentId(enrollmentId);
+    },
+    onSuccess: () => {
+      toast.success("Certificate berhasil diproses");
+      queryClient.invalidateQueries({
+        queryKey: ["admin", "course-offerings", offeringId, "students"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["admin", "course-offerings", offeringId, "certificates"],
+      });
+    },
+    onError: (error) => {
+      const nextErrors = mapApiError(error);
+      toast.error(nextErrors.form ?? "Gagal memproses certificate");
+    },
+    onSettled: () => {
+      setActiveCertificateEnrollmentId(null);
+    },
+  });
+
+  const certificateSettingsMutation = useMutation({
+    mutationFn: (payload: CertificateSettingPayload) => updateAdminCertificateSettings(payload),
+    onSuccess: (settings) => {
+      queryClient.setQueryData(["admin", "certificate-settings"], settings);
+      setDraftCertificateSettingForm(null);
+      toast.success("Pengaturan sertifikat berhasil disimpan");
+    },
+    onError: (error) => {
+      const nextErrors = mapApiError(error);
+      toast.error(nextErrors.form ?? "Gagal menyimpan pengaturan sertifikat");
     },
   });
 
@@ -585,6 +734,11 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
     setStudentsPage(1);
   };
 
+  const handleCertificateSearchChange = (value: string) => {
+    setCertificateSearch(value);
+    setCertificatePage(1);
+  };
+
   const handleReviewSearchChange = (value: string) => {
     setReviewSearch(value);
     setReviewPage(1);
@@ -595,6 +749,18 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
     setReviewStatusFilter("all");
     setReviewSearch("");
     setReviewPage(1);
+  };
+
+  const handleGenerateCertificate = (enrollmentId: number) => {
+    certificateMutation.mutate(enrollmentId);
+  };
+
+  const handleSaveCertificateSettings = () => {
+    try {
+      certificateSettingsMutation.mutate(buildCertificateSettingPayload(certificateSettingForm));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Pengaturan sertifikat tidak valid");
+    }
   };
 
   const handleSubmitReview = (status: "approved" | "revision_required") => {
@@ -1292,6 +1458,275 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
                     meta={studentMeta}
                     isLoading={studentsQuery.isFetching}
                     onPageChange={(page) => setStudentsPage(page)}
+                  />
+                ) : null}
+              </>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {showOperationalTabs && activeTab === "certificates" ? (
+        <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
+          <CardHeader className="gap-3 pb-2">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-base font-semibold text-[var(--foreground)]">
+                  <Award className="size-5" />
+                  <span>Certificates</span>
+                </CardTitle>
+                <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+                  Generate, regenerate, dan unduh sertifikat student untuk offering ini.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <div className="relative min-w-[18rem]">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--muted-foreground)]" />
+                  <Input
+                    value={certificateSearch}
+                    onChange={(event) => handleCertificateSearchChange(event.target.value)}
+                    placeholder="Cari nama atau email student"
+                    className="pl-9"
+                  />
+                </div>
+                <Button type="button" variant="outline" onClick={() => certificateRowsQuery.refetch()}>
+                  <RefreshCcw className="size-4" />
+                  <span>Refresh</span>
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent className="space-y-5 p-0">
+            <div className="border-y border-[var(--border)] bg-[var(--muted)]/40 p-5">
+              <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-[var(--foreground)]">Pengaturan Sertifikat</h3>
+                  <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+                    Dipakai untuk sertifikat baru atau saat certificate di-regenerate.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  onClick={handleSaveCertificateSettings}
+                  disabled={certificateSettingsMutation.isPending || certificateSettingsQuery.isLoading}
+                >
+                  {certificateSettingsMutation.isPending ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Save className="size-4" />
+                  )}
+                  <span>Simpan Setting</span>
+                </Button>
+              </div>
+
+              {certificateSettingsQuery.isError ? (
+                <p className="text-sm text-[var(--danger-soft-foreground)]">Gagal memuat pengaturan sertifikat.</p>
+              ) : (
+                <>
+                <div className="grid gap-4 lg:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="certificate-organization">Nama Organisasi</Label>
+                    <Input
+                      id="certificate-organization"
+                      value={certificateSettingForm.organization_name}
+                      onChange={(event) =>
+                        setCertificateSettingForm((prev) => ({ ...prev, organization_name: event.target.value }))
+                      }
+                      placeholder="OpenLearning LMS"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="certificate-title">Judul Sertifikat</Label>
+                    <Input
+                      id="certificate-title"
+                      value={certificateSettingForm.certificate_title}
+                      onChange={(event) =>
+                        setCertificateSettingForm((prev) => ({ ...prev, certificate_title: event.target.value }))
+                      }
+                      placeholder="Certificate of Completion"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="certificate-prefix">Prefix Nomor</Label>
+                    <Input
+                      id="certificate-prefix"
+                      value={certificateSettingForm.certificate_prefix}
+                      onChange={(event) =>
+                        setCertificateSettingForm((prev) => ({ ...prev, certificate_prefix: event.target.value }))
+                      }
+                      placeholder="CERT"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="certificate-expiry">Masa Berlaku (bulan)</Label>
+                    <Input
+                      id="certificate-expiry"
+                      value={certificateSettingForm.expires_after_months}
+                      onChange={(event) =>
+                        setCertificateSettingForm((prev) => ({ ...prev, expires_after_months: event.target.value }))
+                      }
+                      placeholder="Kosongkan jika tidak expired"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="certificate-signatory-name">Nama Penandatangan</Label>
+                    <Input
+                      id="certificate-signatory-name"
+                      value={certificateSettingForm.signatory_name}
+                      onChange={(event) =>
+                        setCertificateSettingForm((prev) => ({ ...prev, signatory_name: event.target.value }))
+                      }
+                      placeholder="Nama pemberi sertifikat"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="certificate-signatory-title">Jabatan Penandatangan</Label>
+                    <Input
+                      id="certificate-signatory-title"
+                      value={certificateSettingForm.signatory_title}
+                      onChange={(event) =>
+                        setCertificateSettingForm((prev) => ({ ...prev, signatory_title: event.target.value }))
+                      }
+                      placeholder="Program Director"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="certificate-footer">Footer Note</Label>
+                    <Textarea
+                      id="certificate-footer"
+                      value={certificateSettingForm.footer_note}
+                      onChange={(event) =>
+                        setCertificateSettingForm((prev) => ({ ...prev, footer_note: event.target.value }))
+                      }
+                      placeholder="Catatan footer sertifikat"
+                      className="min-h-10"
+                    />
+                  </div>
+                </div>
+                <div className="mt-4 rounded-md border border-[var(--border)] bg-[var(--surface-soft)] p-3 text-sm text-[var(--muted-foreground)]">
+                  Background dan tanda tangan sertifikat diupload dari halaman{" "}
+                  <Link href="/admin/certificate-settings" className="font-medium text-[var(--primary)] underline underline-offset-2">
+                    Certificate Settings
+                  </Link>
+                  .
+                </div>
+                </>
+              )}
+            </div>
+
+            {certificateRowsQuery.isLoading ? (
+              <div className="flex items-center gap-2 p-5 text-sm text-[var(--muted-foreground)]">
+                <Loader2 className="size-4 animate-spin" />
+                Memuat data certificate...
+              </div>
+            ) : certificateRowsQuery.isError ? (
+              <div className="p-5 text-sm text-[var(--danger-soft-foreground)]">
+                Gagal memuat data certificate untuk offering ini.
+              </div>
+            ) : (
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Student</TableHead>
+                      <TableHead>Progress</TableHead>
+                      <TableHead>Requirement Assignment</TableHead>
+                      <TableHead>Status Certificate</TableHead>
+                      <TableHead>Nomor Certificate</TableHead>
+                      <TableHead>Issued At</TableHead>
+                      <TableHead className="w-[14rem]">Aksi</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {certificateRows.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="py-8 text-center text-sm text-[var(--muted-foreground)]">
+                          Belum ada student pada offering ini.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      certificateRows.map((enrollment) => {
+                        const isProcessing =
+                          certificateMutation.isPending && activeCertificateEnrollmentId === enrollment.id;
+                        const downloadHref = enrollment.certificate
+                          ? `/api/admin/course-offerings/${offeringId}/certificates/${enrollment.certificate.id}/download`
+                          : null;
+
+                        return (
+                          <TableRow key={enrollment.id}>
+                            <TableCell>
+                              <div className="space-y-1">
+                                <p className="font-medium text-[var(--foreground)]">{enrollment.user?.fullname ?? "-"}</p>
+                                <p className="text-xs text-[var(--muted-foreground)]">{enrollment.user?.email ?? "-"}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="space-y-1">
+                                <p className="font-medium text-[var(--foreground)]">{formatProgress(enrollment.progress)}</p>
+                                <p className="text-xs text-[var(--muted-foreground)]">
+                                  Status: {enrollment.status ? toStatusLabel(enrollment.status) : "-"}
+                                </p>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="space-y-1">
+                                <StatusBadge value={formatRequirementStatus(enrollment.assignment_requirement)} />
+                                <p className="text-xs text-[var(--muted-foreground)]">
+                                  {formatAssignmentRequirementSummary(enrollment.assignment_requirement)}
+                                </p>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="space-y-1">
+                                <StatusBadge value={enrollment.certificate_status || "Belum Ada"} />
+                                {enrollment.certificate_block_reason ? (
+                                  <p className="max-w-xs text-xs text-[var(--muted-foreground)]">
+                                    {enrollment.certificate_block_reason}
+                                  </p>
+                                ) : null}
+                              </div>
+                            </TableCell>
+                            <TableCell>{enrollment.certificate?.certificate_number ?? "-"}</TableCell>
+                            <TableCell>{formatDateTime(enrollment.certificate?.issued_at)}</TableCell>
+                            <TableCell>
+                              <div className="flex flex-wrap gap-2">
+                                {downloadHref ? (
+                                  <Button render={<a href={downloadHref} />} type="button" variant="outline" size="sm">
+                                    <Download className="size-4" />
+                                    <span>Download</span>
+                                  </Button>
+                                ) : null}
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant={enrollment.has_certificate ? "outline" : "default"}
+                                  onClick={() => handleGenerateCertificate(enrollment.id)}
+                                  disabled={isProcessing || !enrollment.can_generate_certificate}
+                                  className={
+                                    enrollment.has_certificate
+                                      ? "border-[var(--border)]"
+                                      : "bg-[var(--secondary)] text-[var(--secondary-foreground)] hover:opacity-90"
+                                  }
+                                >
+                                  {isProcessing ? <Loader2 className="size-4 animate-spin" /> : <BookmarkCheck className="size-4" />}
+                                  <span>{enrollment.has_certificate ? "Regenerate" : "Generate"}</span>
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+
+                {certificateRows.length > 0 ? (
+                  <AdminPagination
+                    meta={certificateMeta}
+                    isLoading={certificateRowsQuery.isFetching}
+                    onPageChange={(page) => setCertificatePage(page)}
                   />
                 ) : null}
               </>

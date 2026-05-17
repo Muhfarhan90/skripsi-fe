@@ -1,4 +1,5 @@
 import {
+  Award,
   BrainCircuit,
   BookOpenText,
   CalendarClock,
@@ -19,6 +20,7 @@ export type AdminNavIcon =
   | "courses"
   | "courseOfferings"
   | "academicPeriods"
+  | "certificates"
   | "vouchers"
   | "transactions"
   | "orders";
@@ -64,6 +66,7 @@ const ADMIN_ICON_MAP: Record<AdminNavIcon, LucideIcon> = {
   courses: BookOpenText,
   courseOfferings: CalendarRange,
   academicPeriods: CalendarClock,
+  certificates: Award,
   vouchers: TicketPercent,
   transactions: ReceiptText,
   orders: ReceiptText,
@@ -162,6 +165,13 @@ export const ADMIN_NAVIGATION: AdminNavigationGroup[] = [
         href: "/admin/academic-periods",
         description: "Kelola period dan offering course",
         icon: "academicPeriods",
+      },
+      {
+        key: "certificate-settings",
+        label: "Certificate Settings",
+        href: "/admin/certificate-settings",
+        description: "Atur template dan metadata sertifikat",
+        icon: "certificates",
       },
       {
         key: "master-data-vouchers",

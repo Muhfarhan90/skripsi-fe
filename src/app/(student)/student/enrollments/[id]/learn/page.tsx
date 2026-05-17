@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  Award,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
@@ -12,21 +13,28 @@ import {
   ClipboardList,
   FileText,
   HelpCircle,
+  Star,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ConfirmAlertDialog } from "@/components/ui/confirm-alert-dialog";
 import { ApiError } from "@/lib/api/client";
 import {
+  createStudentCourseReview,
+  generateStudentEnrollmentCertificate,
   getStudentEnrollmentAssignments,
   getStudentEnrollmentAssignmentDetail,
+  getStudentEnrollmentCertificate,
   getStudentEnrollmentCurriculum,
   getStudentEnrollmentLessonDetail,
   getStudentEnrollmentProgressSummary,
+  getStudentCourseReviews,
   getStudentLessonProgressList,
   getStudentQuizAttempts,
   startStudentQuizAttempt,
+  updateStudentCourseReview,
   upsertStudentLessonProgress,
 } from "@/features/student/api/store-api";
+import { useAuthStore } from "@/features/auth/store/auth-store";
 import {
   buildStudentAssignmentHref,
   canSubmitAssignment,
@@ -43,6 +51,7 @@ import {
   getStudentQuizAttemptLinkClass,
   getStudentQuizAttemptLinkLabel,
 } from "@/features/student/lib/quiz";
+import { printCertificatePreview } from "@/features/student/lib/certificate-print";
 import { formatUtcDateTimeToJakarta, parseUtcDateTime } from "@/features/student/lib/date-time";
 import type {
   StoreAssignment,
@@ -229,11 +238,20 @@ export default function StudentEnrollmentLearnPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+  const currentUser = useAuthStore((state) => state.user);
   const enrollmentId = Number(params.id);
-  const [expandedSectionId, setExpandedSectionId] = useState<number | null>(null);
+  const requestedPanel = searchParams.get("panel");
+  const [expandedSectionIds, setExpandedSectionIds] = useState<number[]>([]);
   const [selectedContent, setSelectedContent] = useState<SelectedContent | null>(null);
+  const [activePanel, setActivePanel] = useState<"content" | "certificate">(() =>
+    requestedPanel === "certificate" ? "certificate" : "content",
+  );
   const [showMarkCompleteConfirm, setShowMarkCompleteConfirm] = useState(false);
+  const [showClaimCertificateConfirm, setShowClaimCertificateConfirm] = useState(false);
+  const [isPrintingCertificate, setIsPrintingCertificate] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const [reviewRating, setReviewRating] = useState<number | null>(null);
+  const [reviewText, setReviewText] = useState<string | null>(null);
   const requestedLessonId = Number(searchParams.get("lessonId"));
   const requestedQuizId = Number(searchParams.get("quizId"));
   const requestedAssignmentId = Number(searchParams.get("assignmentId"));
@@ -259,6 +277,12 @@ export default function StudentEnrollmentLearnPage() {
     enabled: Number.isFinite(enrollmentId) && enrollmentId > 0,
   });
 
+  const certificateQuery = useQuery({
+    queryKey: ["student", "enrollment", enrollmentId, "certificate"],
+    queryFn: () => getStudentEnrollmentCertificate(enrollmentId),
+    enabled: Number.isFinite(enrollmentId) && enrollmentId > 0,
+  });
+
   const assignmentsQuery = useQuery({
     queryKey: ["student", "enrollment", enrollmentId, "assignments"],
     queryFn: () => getStudentEnrollmentAssignments(enrollmentId),
@@ -269,6 +293,13 @@ export default function StudentEnrollmentLearnPage() {
     () => curriculumQuery.data?.sections ?? [],
     [curriculumQuery.data?.sections],
   );
+  const courseId = curriculumQuery.data?.id ?? null;
+
+  const reviewsQuery = useQuery({
+    queryKey: ["student", "course", courseId, "reviews"],
+    queryFn: () => getStudentCourseReviews(courseId as number),
+    enabled: Boolean(courseId),
+  });
 
   const completedLessonIds = useMemo(
     () =>
@@ -437,8 +468,53 @@ export default function StudentEnrollmentLearnPage() {
     },
   });
 
-  const activeSelectedContent = hasSelectedContentInSections ? selectedContent : defaultSelectedContent;
-  const activeExpandedSectionId = expandedSectionId ?? activeSelectedContent?.sectionId ?? sections[0]?.id ?? null;
+  const assignmentRequirement = summaryQuery.data?.assignment_requirement;
+  const certificate = certificateQuery.data;
+  const progressValue = Number(summaryQuery.data?.progress ?? 0);
+  const hasCertificate = summaryQuery.data?.has_certificate ?? Boolean(certificate);
+  const certificatePreviewHref = certificate ? `/api/student/certificates/${certificate.id}/preview` : null;
+  const isCourseComplete = progressValue >= 100;
+  const isAssignmentRequirementSatisfied = !assignmentRequirement || assignmentRequirement.is_satisfied;
+  const canClaimCertificate = isCourseComplete && isAssignmentRequirementSatisfied;
+  const showCertificatePanel = activePanel === "certificate" && (hasCertificate || isCourseComplete);
+  const certificateStatus = hasCertificate
+    ? "Sertifikat tersedia"
+    : progressValue < 100
+      ? "Progress belum 100%"
+      : assignmentRequirement && !assignmentRequirement.is_satisfied
+        ? "Menunggu approval assignment"
+        : certificateQuery.isLoading
+          ? "Sertifikat sedang disiapkan"
+          : "Belum tersedia";
+  const currentUserReview =
+    reviewsQuery.data?.find((review) => review.user_id === currentUser?.id) ?? null;
+  const selectedReviewRating = reviewRating ?? currentUserReview?.rating ?? 0;
+  const selectedReviewText = reviewText ?? currentUserReview?.review ?? "";
+
+  const activeSelectedContent = showCertificatePanel
+    ? null
+    : hasSelectedContentInSections
+      ? selectedContent
+      : defaultSelectedContent;
+  const effectiveExpandedSectionIds = useMemo(() => {
+    const availableIds = new Set(sections.map((section) => section.id));
+    const currentIds = expandedSectionIds.filter((sectionId) => availableIds.has(sectionId));
+    const activeSectionId = activeSelectedContent?.sectionId ?? null;
+
+    if (currentIds.length) {
+      if (activeSectionId && !currentIds.includes(activeSectionId)) {
+        return [...currentIds, activeSectionId];
+      }
+
+      return currentIds;
+    }
+
+    if (activeSectionId) {
+      return [activeSectionId];
+    }
+
+    return sections[0]?.id ? [sections[0].id] : [];
+  }, [activeSelectedContent, expandedSectionIds, sections]);
   const selectedLessonId = activeSelectedContent?.kind === "lesson" ? activeSelectedContent.data.id : null;
 
   const selectedLesson = activeSelectedContent?.kind === "lesson" ? activeSelectedContent.data : null;
@@ -507,7 +583,67 @@ export default function StudentEnrollmentLearnPage() {
           : "Mulai Quiz"
         : null;
   const cooldownLabel = remainingCooldownMs !== null ? formatCountdown(remainingCooldownMs) : null;
-  const assignmentRequirement = summaryQuery.data?.assignment_requirement;
+  const generateCertificateMutation = useMutation({
+    mutationFn: () => generateStudentEnrollmentCertificate(enrollmentId),
+    onSuccess: () => {
+      setShowClaimCertificateConfirm(false);
+      queryClient.invalidateQueries({
+        queryKey: ["student", "enrollment", enrollmentId, "certificate"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["student", "enrollment", enrollmentId, "summary"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["student", "enrollment", enrollmentId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["student", "certificates"],
+      });
+      toast.success("Sertifikat berhasil diklaim dan siap diunduh.");
+    },
+    onError: (error) => {
+      setShowClaimCertificateConfirm(false);
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+        return;
+      }
+
+      toast.error("Sertifikat belum bisa diklaim.");
+    },
+  });
+
+  const reviewMutation = useMutation({
+    mutationFn: () => {
+      if (!courseId) {
+        throw new Error("Course tidak ditemukan.");
+      }
+
+      const payload = {
+        rating: selectedReviewRating,
+        review: selectedReviewText.trim() || null,
+      };
+
+      if (currentUserReview) {
+        return updateStudentCourseReview(courseId, currentUserReview.id, payload);
+      }
+
+      return createStudentCourseReview(courseId, payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["student", "course", courseId, "reviews"],
+      });
+      toast.success("Review kelas berhasil disimpan.");
+    },
+    onError: (error) => {
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+        return;
+      }
+
+      toast.error("Review kelas belum bisa disimpan.");
+    },
+  });
 
   useEffect(() => {
     if (!isCooldownActive) {
@@ -532,7 +668,74 @@ export default function StudentEnrollmentLearnPage() {
   }
 
   const toggleSection = (sectionId: number) => {
-    setExpandedSectionId((current) => (current === sectionId ? null : sectionId));
+    setExpandedSectionIds((current) =>
+      current.includes(sectionId)
+        ? current.filter((item) => item !== sectionId)
+        : [...current, sectionId],
+    );
+  };
+
+  const selectContent = (content: SelectedContent) => {
+    setActivePanel("content");
+    setExpandedSectionIds((current) =>
+      current.includes(content.sectionId) ? current : [...current, content.sectionId],
+    );
+    setSelectedContent(content);
+  };
+
+  const openCertificatePanel = () => {
+    if (!isCourseComplete && !hasCertificate) {
+      toast.error("Sertifikat baru bisa diakses setelah progress kelas mencapai 100%.");
+      return;
+    }
+
+    setActivePanel("certificate");
+    setSelectedContent(null);
+  };
+
+  const handlePrintCertificate = async () => {
+    if (!certificate) {
+      toast.error("Sertifikat belum tersedia.");
+      return;
+    }
+
+    setIsPrintingCertificate(true);
+
+    try {
+      await printCertificatePreview(`/api/student/certificates/${certificate.id}/preview`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Sertifikat tidak bisa dibuka.");
+    } finally {
+      setIsPrintingCertificate(false);
+    }
+  };
+
+  const requestCertificateClaim = () => {
+    if (!isCourseComplete) {
+      toast.error("Selesaikan seluruh materi kelas sampai 100% sebelum mengklaim sertifikat.");
+      return;
+    }
+
+    if (!isAssignmentRequirementSatisfied) {
+      toast.error("Assignment wajib masih menunggu approval, jadi sertifikat belum bisa diklaim.");
+      return;
+    }
+
+    setShowClaimCertificateConfirm(true);
+  };
+
+  const submitCourseReview = () => {
+    if (!isCourseComplete) {
+      toast.error("Review bisa dikirim setelah course selesai 100%.");
+      return;
+    }
+
+    if (selectedReviewRating < 1) {
+      toast.error("Pilih rating terlebih dahulu.");
+      return;
+    }
+
+    reviewMutation.mutate();
   };
 
   const renderSectionItems = (section: StoreCurriculumSection) => {
@@ -552,7 +755,7 @@ export default function StudentEnrollmentLearnPage() {
             <button
               key={`lesson-${lesson.id}`}
               type="button"
-              onClick={() => setSelectedContent({ kind: "lesson", sectionId: section.id, data: lesson })}
+              onClick={() => selectContent({ kind: "lesson", sectionId: section.id, data: lesson })}
               disabled={isLocked}
               className={[
                 "w-full rounded-xl border px-3 py-3 text-left transition",
@@ -600,7 +803,7 @@ export default function StudentEnrollmentLearnPage() {
             <button
               key={`quiz-${quiz.id}`}
               type="button"
-              onClick={() => setSelectedContent({ kind: "quiz", sectionId: section.id, data: quiz })}
+              onClick={() => selectContent({ kind: "quiz", sectionId: section.id, data: quiz })}
               className={[
                 "w-full rounded-xl border px-3 py-3 text-left transition",
                 isActive
@@ -636,9 +839,7 @@ export default function StudentEnrollmentLearnPage() {
             <button
               key={`assignment-${assignment.id}`}
               type="button"
-              onClick={() =>
-                setSelectedContent({ kind: "assignment", sectionId: section.id, data: assignment })
-              }
+              onClick={() => selectContent({ kind: "assignment", sectionId: section.id, data: assignment })}
               className={[
                 "w-full rounded-xl border px-3 py-3 text-left transition",
                 isActive
@@ -690,34 +891,6 @@ export default function StudentEnrollmentLearnPage() {
         </p>
       </header>
 
-      {summaryQuery.isSuccess ? (
-        <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
-          <p className="text-xs font-semibold tracking-[0.08em] text-[var(--muted-foreground)] uppercase">
-            Persyaratan Sertifikat
-          </p>
-          <div className="mt-3 grid gap-3 text-sm text-[var(--muted-foreground)] md:grid-cols-3">
-            <p>
-              Assignment wajib:{" "}
-              <span className="font-medium text-[var(--foreground)]">
-                {assignmentRequirement?.required_assignments ?? 0}
-              </span>
-            </p>
-            <p>
-              Sudah disetujui:{" "}
-              <span className="font-medium text-[var(--foreground)]">
-                {assignmentRequirement?.approved_assignments ?? 0}
-              </span>
-            </p>
-            <p>
-              Status:{" "}
-              <span className="font-medium text-[var(--foreground)]">
-                {assignmentRequirement?.is_satisfied ? "Terpenuhi" : "Belum terpenuhi"}
-              </span>
-            </p>
-          </div>
-        </div>
-      ) : null}
-
       <div className="grid gap-5 lg:grid-cols-[380px_1fr]">
         <aside className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
           <p className="text-xs font-semibold tracking-[0.08em] text-[var(--muted-foreground)] uppercase">
@@ -726,7 +899,7 @@ export default function StudentEnrollmentLearnPage() {
 
           <div className="mt-4 space-y-3">
             {sections.map((section) => {
-              const isExpanded = activeExpandedSectionId === section.id;
+              const isExpanded = effectiveExpandedSectionIds.includes(section.id);
 
               return (
                 <div key={section.id} className="rounded-xl border border-[var(--border)] bg-[var(--card)]">
@@ -743,6 +916,31 @@ export default function StudentEnrollmentLearnPage() {
                 </div>
               );
             })}
+            {isCourseComplete ? (
+              <button
+                type="button"
+                onClick={openCertificatePanel}
+                className={[
+                  "w-full rounded-xl border px-4 py-3 text-left transition",
+                  showCertificatePanel
+                    ? "border-[var(--secondary)] bg-[var(--secondary)]/10"
+                    : "border-[var(--border)] bg-[var(--muted)]/40 hover:bg-[var(--surface-hover)]",
+                ].join(" ")}
+              >
+                <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="flex items-center gap-2 text-sm font-medium text-[var(--foreground)]">
+                        <Award className="size-4" />
+                        Klaim Sertifikat
+                      </p>
+                      <p className="mt-1 text-xs text-[var(--muted-foreground)]">{certificateStatus}</p>
+                    </div>
+                    <span className="inline-flex rounded-full border border-[var(--border)] px-2 py-0.5 text-xs font-semibold text-[var(--muted-foreground)]">
+                      Selesai
+                    </span>
+                  </div>
+                </button>
+            ) : null}
             {!sections.length ? (
               <p className="text-sm text-[var(--muted-foreground)]">Belum ada section pada course ini.</p>
             ) : null}
@@ -750,7 +948,112 @@ export default function StudentEnrollmentLearnPage() {
         </aside>
 
         <article className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
-          {activeLesson ? (
+          {showCertificatePanel ? (
+            <div className="space-y-5">
+              <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-8 text-center">
+                <Award className="mx-auto size-14 text-[var(--primary)]" />
+                <h2 className="mt-4 text-3xl font-semibold text-[var(--foreground)]">Selamat!</h2>
+                <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-[var(--muted-foreground)]">
+                  Kamu sudah menyelesaikan kelas ini. Sebelum mengambil sertifikat, pastikan kamu benar-benar sudah
+                  memahami keseluruhan materi yang dipelajari di kelas ini.
+                </p>
+                <div className="mt-6 flex flex-wrap justify-center gap-3">
+                  <a
+                    href="#course-review-form"
+                    className="inline-flex h-10 items-center rounded-md border border-[var(--border)] bg-[var(--card)] px-4 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-hover)]"
+                  >
+                    Review Kelas
+                  </a>
+                  {certificatePreviewHref ? (
+                    <button
+                      type="button"
+                      onClick={handlePrintCertificate}
+                      disabled={isPrintingCertificate}
+                      className="inline-flex h-10 items-center rounded-md bg-[var(--secondary)] px-4 text-sm font-semibold text-[var(--secondary-foreground)] transition hover:opacity-90"
+                    >
+                      {isPrintingCertificate ? "Menyiapkan..." : "Cetak Sertifikat"}
+                    </button>
+                  ) : canClaimCertificate ? (
+                    <button
+                      type="button"
+                      onClick={requestCertificateClaim}
+                      disabled={generateCertificateMutation.isPending}
+                      className="inline-flex h-10 items-center rounded-md bg-[var(--secondary)] px-4 text-sm font-semibold text-[var(--secondary-foreground)] transition hover:opacity-90 disabled:opacity-70"
+                    >
+                      {generateCertificateMutation.isPending ? "Menyiapkan..." : "Klaim Sertifikat"}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled
+                      className="inline-flex h-10 items-center rounded-md border border-[var(--border)] px-4 text-sm font-semibold text-[var(--muted-foreground)] opacity-70"
+                    >
+                      Belum Bisa Klaim
+                    </button>
+                  )}
+                </div>
+              </section>
+
+              <form
+                id="course-review-form"
+                className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  submitCourseReview();
+                }}
+              >
+                <h3 className="text-xl font-semibold text-[var(--foreground)]">Berikan Ulasan Kelas</h3>
+                <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+                  Review ini membantu student lain memahami kualitas kelas.
+                </p>
+                <div className="mt-4 flex gap-2">
+                  {[1, 2, 3, 4, 5].map((rating) => (
+                    <button
+                      key={rating}
+                      type="button"
+                      onClick={() => setReviewRating(rating)}
+                      disabled={!isCourseComplete}
+                      className="rounded-md p-1 transition hover:scale-105 disabled:opacity-60"
+                      aria-label={`Rating ${rating}`}
+                    >
+                      <Star
+                        className={[
+                          "size-8",
+                          rating <= selectedReviewRating
+                            ? "fill-[var(--secondary)] text-[var(--secondary)]"
+                            : "text-zinc-300",
+                        ].join(" ")}
+                      />
+                    </button>
+                  ))}
+                </div>
+                <textarea
+                  value={selectedReviewText}
+                  onChange={(event) => setReviewText(event.target.value)}
+                  disabled={!isCourseComplete}
+                  rows={5}
+                  placeholder="Tulis pengalaman belajar kamu di kelas ini."
+                  className="mt-4 w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-3 text-sm outline-none transition focus:border-[var(--secondary)] disabled:opacity-70"
+                />
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  <button
+                    type="submit"
+                    disabled={!isCourseComplete || reviewMutation.isPending}
+                    className="inline-flex h-10 items-center rounded-md bg-[var(--secondary)] px-4 text-sm font-semibold text-[var(--secondary-foreground)] transition hover:opacity-90 disabled:opacity-70"
+                  >
+                    {reviewMutation.isPending
+                      ? "Menyimpan..."
+                      : currentUserReview
+                        ? "Update Review"
+                        : "Kirim Review"}
+                  </button>
+                  {currentUserReview ? (
+                    <span className="text-sm text-[var(--muted-foreground)]">Review sebelumnya akan diperbarui.</span>
+                  ) : null}
+                </div>
+              </form>
+            </div>
+          ) : activeLesson ? (
             <div className="space-y-4">
               <div>
                 <h2 className="text-2xl font-semibold text-[var(--foreground)]">{activeLesson.title}</h2>
@@ -1005,17 +1308,17 @@ export default function StudentEnrollmentLearnPage() {
 
       <div className="flex flex-wrap gap-3">
         <Link href={`/student/enrollments/${enrollmentId}`} className="text-sm text-primary hover:underline">
-          Kembali ke detail enrollment
+          Kembali ke detail kelas
         </Link>
         <Link href="/student/enrollments" className="text-sm text-primary hover:underline">
-          Kembali ke daftar enrollment
+          Kembali ke Kelas Saya
         </Link>
       </div>
 
       <ConfirmAlertDialog
         open={showMarkCompleteConfirm}
         title="Tandai lesson selesai?"
-        description="Progress lesson ini akan ditandai selesai untuk enrollment Anda."
+        description="Progress lesson ini akan ditandai selesai untuk kelas Anda."
         confirmLabel="Ya, tandai selesai"
         cancelLabel="Batal"
         isPending={markCompleteMutation.isPending}
@@ -1026,6 +1329,18 @@ export default function StudentEnrollmentLearnPage() {
           }
           markCompleteMutation.mutate(activeLesson.id);
         }}
+      />
+
+      <ConfirmAlertDialog
+        open={showClaimCertificateConfirm}
+        title="Klaim sertifikat sekarang?"
+        description="Pastikan Anda sudah memahami keseluruhan materi kelas. Setelah diklaim, sertifikat akan dibuat dan siap diunduh dari halaman ini."
+        confirmLabel="Ya, klaim sertifikat"
+        cancelLabel="Nanti saja"
+        confirmTone="primary"
+        isPending={generateCertificateMutation.isPending}
+        onClose={() => setShowClaimCertificateConfirm(false)}
+        onConfirm={() => generateCertificateMutation.mutate()}
       />
     </section>
   );

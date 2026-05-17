@@ -52,7 +52,7 @@ export default function StudentPage() {
           href="/student/enrollments"
           className="inline-flex h-9 items-center rounded-md border border-border bg-card px-4 text-sm text-muted-foreground transition hover:bg-muted hover:text-foreground"
         >
-          Enrollment Saya
+          Kelas Saya
         </Link>
       </div>
     </section>

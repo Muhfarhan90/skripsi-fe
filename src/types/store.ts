@@ -10,6 +10,8 @@ export interface StoreCourse {
   course_offering_id?: number | null;
   price: number | null;
   discount_price: number | null;
+  reviews_count?: number;
+  reviews_avg_rating?: number | null;
   thumbnail: string | null;
   status: string;
   requirements: string | null;
@@ -82,15 +84,61 @@ export interface StoreEnrollment {
   ended_at?: string | null;
   completed_at: string | null;
   expired_at: string | null;
+  has_certificate?: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StoreCertificate {
+  id: number;
+  user_id: number;
+  course_id: number;
+  enrollment_id: number;
+  certificate_number: string;
+  certificate_url: string | null;
+  status?: string | null;
+  template_version?: string | null;
+  verification_code?: string | null;
+  snapshot_data?: Record<string, unknown> | null;
+  issued_at: string | null;
+  expired_at: string | null;
+  revoked_at?: string | null;
+  revoked_reason?: string | null;
+  created_at: string;
+  updated_at: string;
+  course?: StoreCourse | null;
+}
+
+export interface StoreReview {
+  id: number;
+  user_id: number;
+  course_id: number;
+  enrollment_id: number | null;
+  rating: number;
+  review: string | null;
+  user?: {
+    id: number;
+    fullname: string;
+    avatar: string | null;
+  } | null;
   created_at: string;
   updated_at: string;
 }
 
 export interface StoreEnrollmentProgressSummary {
   enrollment_id: number;
+  total_items?: number;
+  completed_items?: number;
+  remaining_items?: number;
   total_lessons: number;
   completed_lessons: number;
   remaining_lessons: number;
+  total_quizzes?: number;
+  completed_quizzes?: number;
+  remaining_quizzes?: number;
+  total_assignments?: number;
+  completed_assignments?: number;
+  remaining_assignments?: number;
   progress: number;
   status: string;
   has_certificate?: boolean;

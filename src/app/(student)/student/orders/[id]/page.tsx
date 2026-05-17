@@ -129,7 +129,7 @@ export default function StudentOrderDetailPage() {
         </Link>
         {order.status === "completed" ? (
           <Link href="/student/enrollments" className="inline-flex text-sm text-primary hover:underline">
-            Lihat enrollment
+            Lihat kelas saya
           </Link>
         ) : null}
       </div>

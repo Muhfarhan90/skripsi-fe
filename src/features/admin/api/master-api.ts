@@ -326,6 +326,23 @@ export interface AdminOfferingEnrollment {
     is_satisfied: boolean;
   } | null;
   has_certificate: boolean;
+  certificate_status: string;
+  can_generate_certificate: boolean;
+  certificate_block_reason: string | null;
+  certificate: {
+    id: number;
+    certificate_number: string;
+    certificate_url: string | null;
+    status: string | null;
+    template_version: string | null;
+    verification_code: string | null;
+    issued_at: string | null;
+    expired_at: string | null;
+    revoked_at: string | null;
+    revoked_reason: string | null;
+    created_at: string | null;
+    updated_at: string | null;
+  } | null;
   started_at: string | null;
   ended_at: string | null;
   completed_at: string | null;
@@ -365,6 +382,21 @@ export interface AdminOfferingAssignmentSubmission {
   } | null;
   submitted_at: string | null;
   reviewed_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface AdminCertificateSetting {
+  id: number;
+  organization_name: string;
+  certificate_title: string;
+  certificate_prefix: string;
+  signatory_name: string | null;
+  signatory_title: string | null;
+  signature_image: string | null;
+  background_image: string | null;
+  footer_note: string | null;
+  expires_after_months: number | null;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -426,6 +458,8 @@ export interface AssignmentSubmissionReviewPayload {
   status: "approved" | "revision_required";
   review_notes?: string | null;
 }
+
+export type CertificateSettingPayload = Omit<AdminCertificateSetting, "id" | "created_at" | "updated_at">;
 
 export interface AdminPaginatedQuery {
   page?: number;
@@ -793,6 +827,52 @@ export function reviewAdminAssignmentSubmission(
   return apiRequest<AdminOfferingAssignmentSubmission>(`/api/admin/assignment-submissions/${submissionId}/review`, {
     method: "PUT",
     body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function getAdminCertificateSettings() {
+  return apiRequest<AdminCertificateSetting>("/api/admin/certificate-settings", {
+    method: "GET",
+  });
+}
+
+export function updateAdminCertificateSettings(payload: CertificateSettingPayload) {
+  return apiRequest<AdminCertificateSetting>("/api/admin/certificate-settings", {
+    method: "PUT",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function uploadAdminCertificateAsset(type: "background_image" | "signature_image", file: File) {
+  const formData = new FormData();
+  formData.set("type", type);
+  formData.set("file", file);
+
+  return apiRequest<{ path: string }>("/api/admin/certificate-settings/assets", {
+    method: "POST",
+    body: formData,
+  });
+}
+
+export function generateAdminOfferingEnrollmentCertificate(offeringId: number, enrollmentId: number) {
+  return apiRequest<{
+    id: number;
+    user_id: number;
+    course_id: number;
+    enrollment_id: number;
+    certificate_number: string;
+    certificate_url: string | null;
+    status: string | null;
+    template_version: string | null;
+    verification_code: string | null;
+    issued_at: string | null;
+    expired_at: string | null;
+    revoked_at: string | null;
+    revoked_reason: string | null;
+    created_at: string | null;
+    updated_at: string | null;
+  }>(`/api/admin/course-offerings/${offeringId}/enrollments/${enrollmentId}/certificate`, {
+    method: "POST",
   });
 }
 

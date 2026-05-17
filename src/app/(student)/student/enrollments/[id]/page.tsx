@@ -2,13 +2,11 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BookText, GraduationCap, ListChecks, Tags, UserRound } from "lucide-react";
-import { toast } from "sonner";
-import { ApiError } from "@/lib/api/client";
+import { useQuery } from "@tanstack/react-query";
+import { Award, BookText, GraduationCap, ListChecks, Tags, UserRound } from "lucide-react";
 import {
-  completeStudentEnrollment,
   getStudentEnrollmentById,
+  getStudentEnrollmentCertificate,
   getStudentEnrollmentNextLesson,
   getStudentEnrollmentProgressSummary,
 } from "@/features/student/api/store-api";
@@ -63,7 +61,6 @@ function parseTextItems(text: string | null | undefined): string[] {
 
 export default function StudentEnrollmentDetailPage() {
   const params = useParams<{ id: string }>();
-  const queryClient = useQueryClient();
   const enrollmentId = Number(params.id);
 
   const enrollmentQuery = useQuery({
@@ -84,50 +81,53 @@ export default function StudentEnrollmentDetailPage() {
     enabled: Number.isFinite(enrollmentId) && enrollmentId > 0,
   });
 
-  const completeMutation = useMutation({
-    mutationFn: () => completeStudentEnrollment(enrollmentId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["student", "enrollments"] });
-      queryClient.invalidateQueries({ queryKey: ["student", "enrollment", enrollmentId] });
-      queryClient.invalidateQueries({ queryKey: ["student", "enrollment", enrollmentId, "summary"] });
-      toast.success("Enrollment berhasil ditandai selesai.");
-    },
-    onError: (error) => {
-      if (error instanceof ApiError) {
-        toast.error(error.message);
-        return;
-      }
-
-      toast.error("Gagal menyelesaikan enrollment.");
-    },
+  const certificateQuery = useQuery({
+    queryKey: ["student", "enrollment", enrollmentId, "certificate"],
+    queryFn: () => getStudentEnrollmentCertificate(enrollmentId),
+    enabled: Number.isFinite(enrollmentId) && enrollmentId > 0,
   });
 
   if (enrollmentQuery.isLoading) {
-    return <p className="text-sm text-muted-foreground">Memuat detail enrollment...</p>;
+    return <p className="text-sm text-muted-foreground">Memuat detail kelas...</p>;
   }
 
   if (enrollmentQuery.isError || !enrollmentQuery.data) {
-    return <p className="text-sm text-red-600">Enrollment tidak ditemukan.</p>;
+    return <p className="text-sm text-red-600">Kelas tidak ditemukan.</p>;
   }
 
   const enrollment = enrollmentQuery.data;
   const course = enrollment.course;
   const summary = summaryQuery.data;
   const nextLesson = nextLessonQuery.data;
-  const canComplete = (summary?.progress ?? enrollment.progress ?? 0) >= 100 && enrollment.status !== "completed";
   const progressValue = toProgressValue(summary?.progress ?? enrollment.progress);
   const requirementItems = parseTextItems(course?.requirements);
   const outcomeItems = parseTextItems(course?.outcomes);
   const descriptionText = course?.description?.trim() || "Deskripsi kelas belum tersedia.";
   const assignmentRequirement = summary?.assignment_requirement;
   const accessEndAt = summary?.ended_at ?? enrollment.ended_at ?? enrollment.expired_at;
+  const certificate = certificateQuery.data;
+  const hasCertificate = summary?.has_certificate ?? enrollment.has_certificate ?? Boolean(certificate);
+  const isProgressComplete = progressValue >= 100;
+  const learnHref = isProgressComplete
+    ? `/student/enrollments/${enrollment.id}/learn?panel=certificate`
+    : `/student/enrollments/${enrollment.id}/learn`;
+  const primaryActionLabel = isProgressComplete ? "Lihat Sertifikat" : "Lanjut Belajar";
+  const certificateStatus = hasCertificate
+    ? "Sertifikat tersedia"
+    : !isProgressComplete
+      ? "Belum tersedia"
+      : assignmentRequirement && !assignmentRequirement.is_satisfied
+        ? "Menunggu approval assignment"
+        : certificateQuery.isLoading
+          ? "Sertifikat sedang disiapkan"
+          : "Belum tersedia";
 
   return (
     <section className="space-y-5">
       <header className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
         <div className="grid gap-6 bg-[linear-gradient(120deg,#17212e,#1f2937)] p-6 lg:grid-cols-[1fr_360px]">
           <div>
-            <p className="text-xs text-zinc-300">Enrollment #{enrollment.id}</p>
+            <p className="text-xs text-zinc-300">Kelas #{enrollment.id}</p>
             <h1 className="mt-2 text-4xl font-semibold leading-tight text-white">
               {course?.title ?? `Course #${enrollment.course_id}`}
             </h1>
@@ -178,11 +178,16 @@ export default function StudentEnrollmentDetailPage() {
               </span>
             </p>
 
+            <p className="mt-3 text-sm text-[var(--muted-foreground)]">
+              Status sertifikat:{" "}
+              <span className="font-medium text-[var(--foreground)]">{certificateStatus}</span>
+            </p>
+
             <Link
-              href={`/student/enrollments/${enrollment.id}/learn`}
+              href={learnHref}
               className="mt-5 inline-flex h-11 w-full items-center justify-center rounded-md bg-[var(--secondary)] px-4 text-sm font-semibold text-[var(--secondary-foreground)] transition hover:opacity-90"
             >
-              Lanjut Belajar
+              {primaryActionLabel}
             </Link>
           </aside>
         </div>
@@ -233,7 +238,7 @@ export default function StudentEnrollmentDetailPage() {
 
         <article className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm">
           <h2 className="flex items-center gap-2 text-2xl font-semibold text-[var(--foreground)]">
-            <UserRound className="size-5" />
+            <Award className="size-5" />
             Informasi Kelas
           </h2>
           <div className="mt-3 grid gap-2 text-lg text-[var(--muted-foreground)]">
@@ -274,32 +279,36 @@ export default function StudentEnrollmentDetailPage() {
             </p>
             <p>
               Status sertifikat:{" "}
-              <span className="font-medium text-[var(--foreground)]">
-                {assignmentRequirement
-                  ? assignmentRequirement.is_satisfied
-                    ? "Syarat assignment terpenuhi"
-                    : "Masih menunggu approval assignment"
-                  : "-"}
-              </span>
+              <span className="font-medium text-[var(--foreground)]">{certificateStatus}</span>
             </p>
+            {certificate ? (
+              <>
+                <p>
+                  Nomor sertifikat:{" "}
+                  <span className="font-medium text-[var(--foreground)]">{certificate.certificate_number}</span>
+                </p>
+                <p>
+                  Diterbitkan:{" "}
+                  <span className="font-medium text-[var(--foreground)]">
+                    {formatUtcDateTimeToJakarta(certificate.issued_at)}
+                  </span>
+                </p>
+              </>
+            ) : null}
           </div>
         </article>
       </div>
 
       <div className="flex flex-wrap gap-3">
         <Link href="/student/enrollments" className="inline-flex h-10 items-center text-sm text-primary hover:underline">
-          Kembali ke daftar enrollment
+          Kembali ke Kelas Saya
         </Link>
-        {canComplete ? (
-          <button
-            type="button"
-            onClick={() => completeMutation.mutate()}
-            disabled={completeMutation.isPending}
-            className="inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:opacity-90 disabled:opacity-70"
-          >
-            Tandai Course Selesai
-          </button>
-        ) : null}
+        <Link
+          href="/student/certificates"
+          className="inline-flex h-10 items-center rounded-md border border-[var(--border)] px-4 text-sm font-medium text-[var(--foreground)] transition hover:bg-[var(--surface-hover)]"
+        >
+          Lihat Semua Sertifikat
+        </Link>
       </div>
     </section>
   );

@@ -1,4 +1,5 @@
 import {
+  Award,
   BookOpen,
   GraduationCap,
   LayoutDashboard,
@@ -6,7 +7,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-export type StudentNavIcon = "dashboard" | "catalog" | "enrollments" | "orders";
+export type StudentNavIcon = "dashboard" | "catalog" | "enrollments" | "orders" | "certificates";
 
 export interface StudentNavigationItem {
   key: string;
@@ -32,6 +33,7 @@ const STUDENT_ICON_MAP: Record<StudentNavIcon, LucideIcon> = {
   catalog: BookOpen,
   enrollments: GraduationCap,
   orders: ReceiptText,
+  certificates: Award,
 };
 
 export const STUDENT_NAVIGATION: StudentNavigationGroup[] = [
@@ -61,9 +63,9 @@ export const STUDENT_NAVIGATION: StudentNavigationGroup[] = [
     items: [
       {
         key: "enrollments",
-        label: "Enrollments",
+        label: "Kelas Saya",
         href: "/student/enrollments",
-        description: "Course yang sudah aktif",
+        description: "Kelas yang sedang dipelajari dan selesai",
         icon: "enrollments",
       },
       {
@@ -72,6 +74,13 @@ export const STUDENT_NAVIGATION: StudentNavigationGroup[] = [
         href: "/student/orders",
         description: "Riwayat pembelian",
         icon: "orders",
+      },
+      {
+        key: "certificates",
+        label: "Certificates",
+        href: "/student/certificates",
+        description: "Unduh sertifikat course selesai",
+        icon: "certificates",
       },
     ],
   },
@@ -127,12 +136,12 @@ export function getStudentBreadcrumbs(pathname: string): StudentBreadcrumb[] {
   }
 
   if (pathname.startsWith("/student/enrollments")) {
-    breadcrumbs.push({ label: "Enrollments", href: "/student/enrollments" });
+    breadcrumbs.push({ label: "Kelas Saya", href: "/student/enrollments" });
 
     const isDetail = /^\/student\/enrollments\/\d+$/.test(pathname);
     const isLearn = /^\/student\/enrollments\/\d+\/learn$/.test(pathname);
     if (isDetail) {
-      breadcrumbs.push({ label: "Detail Enrollment" });
+      breadcrumbs.push({ label: "Detail Kelas" });
     }
     if (isLearn) {
       breadcrumbs.push({ label: "Akses Materi" });
@@ -146,6 +155,11 @@ export function getStudentBreadcrumbs(pathname: string): StudentBreadcrumb[] {
     if (/^\/student\/orders\/\d+$/.test(pathname)) {
       breadcrumbs.push({ label: "Detail Order" });
     }
+    return breadcrumbs;
+  }
+
+  if (pathname.startsWith("/student/certificates")) {
+    breadcrumbs.push({ label: "Certificates", href: "/student/certificates" });
     return breadcrumbs;
   }
 

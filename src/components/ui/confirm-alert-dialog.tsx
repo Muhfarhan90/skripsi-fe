@@ -18,6 +18,7 @@ interface ConfirmAlertDialogProps {
   description: string;
   confirmLabel?: string;
   cancelLabel?: string;
+  confirmTone?: "danger" | "primary";
   isPending?: boolean;
   onClose: () => void;
   onConfirm: () => void;
@@ -29,10 +30,17 @@ export function ConfirmAlertDialog({
   description,
   confirmLabel = "Konfirmasi",
   cancelLabel = "Batal",
+  confirmTone = "danger",
   isPending = false,
   onClose,
   onConfirm,
 }: ConfirmAlertDialogProps) {
+  const confirmVariant = confirmTone === "primary" ? "default" : "destructive";
+  const confirmClassName =
+    confirmTone === "primary"
+      ? "border-[var(--secondary)] bg-[var(--secondary)] text-[var(--secondary-foreground)] hover:opacity-90"
+      : "border-[var(--danger-soft-border)] bg-[var(--danger-soft-bg)] text-[var(--danger-soft-foreground)] hover:opacity-90";
+
   return (
     <AlertDialog
       open={open}
@@ -53,10 +61,10 @@ export function ConfirmAlertDialog({
             {cancelLabel}
           </AlertDialogCancel>
           <AlertDialogAction
-            variant="destructive"
+            variant={confirmVariant}
             onClick={onConfirm}
             disabled={isPending}
-            className="border-[var(--danger-soft-border)] bg-[var(--danger-soft-bg)] text-[var(--danger-soft-foreground)] hover:opacity-90"
+            className={confirmClassName}
           >
             {isPending ? <Loader2 className="size-4 animate-spin" /> : null}
             <span>{confirmLabel}</span>

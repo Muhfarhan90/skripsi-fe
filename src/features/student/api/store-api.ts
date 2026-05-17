@@ -2,6 +2,7 @@ import { ApiError } from "@/lib/api/client";
 import type {
   StoreAssignment,
   StoreAssignmentSubmission,
+  StoreCertificate,
   StoreCourse,
   StoreCourseCurriculum,
   StoreEnrollment,
@@ -13,6 +14,7 @@ import type {
   StoreQuizAnswer,
   StoreQuizAttempt,
   StoreQuizDetail,
+  StoreReview,
 } from "@/types/store";
 
 interface StudentApiEnvelope<T> {
@@ -137,6 +139,63 @@ export function completeStudentEnrollment(enrollmentId: number) {
     `/api/student/enrollments/${enrollmentId}/complete`,
     { method: "POST" },
   );
+}
+
+export async function getStudentEnrollmentCertificate(enrollmentId: number) {
+  try {
+    return await studentRequest<StoreCertificate>(
+      `/api/student/enrollments/${enrollmentId}/certificate`,
+      { method: "GET" },
+    );
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return null;
+    }
+
+    throw error;
+  }
+}
+
+export function getStudentCertificates() {
+  return studentRequest<StoreCertificate[]>("/api/student/certificates", { method: "GET" });
+}
+
+export function generateStudentEnrollmentCertificate(enrollmentId: number) {
+  return studentRequest<StoreCertificate>(
+    `/api/student/enrollments/${enrollmentId}/certificate`,
+    { method: "POST" },
+  );
+}
+
+export function getStudentCourseReviews(courseId: number) {
+  return studentRequest<StoreReview[]>(`/api/student/courses/${courseId}/reviews`, { method: "GET" });
+}
+
+export function createStudentCourseReview(
+  courseId: number,
+  payload: {
+    rating: number;
+    review?: string | null;
+  },
+) {
+  return studentRequest<StoreReview>(`/api/student/courses/${courseId}/reviews`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateStudentCourseReview(
+  courseId: number,
+  reviewId: number,
+  payload: {
+    rating: number;
+    review?: string | null;
+  },
+) {
+  return studentRequest<StoreReview>(`/api/student/courses/${courseId}/reviews/${reviewId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
 }
 
 export function getStudentEnrollmentCurriculum(enrollmentId: number) {

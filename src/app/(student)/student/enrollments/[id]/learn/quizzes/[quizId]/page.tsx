@@ -477,7 +477,7 @@ export default function StudentEnrollmentQuizPage() {
           Kembali ke halaman belajar
         </Link>
         <Link href={`/student/enrollments/${enrollmentId}`} className="text-primary hover:underline">
-          Detail enrollment
+          Detail kelas
         </Link>
       </div>
 

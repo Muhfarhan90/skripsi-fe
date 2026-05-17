@@ -20,6 +20,7 @@ const ALLOWED_ADMIN_RESOURCES = new Set([
   "course-offerings",
   "academic-periods",
   "assignment-submissions",
+  "certificate-settings",
 ]);
 
 function resolveTargetPath(pathSegments: string[] | undefined): string | null {
@@ -37,6 +38,10 @@ function resolveTargetPath(pathSegments: string[] | undefined): string | null {
   }
 
   if (pathSegments.length === 2 && maybeId) {
+    if (resource === "certificate-settings" && maybeId === "assets") {
+      return "/admin/certificate-settings/assets";
+    }
+
     return `/admin/${resource}/${maybeId}`;
   }
 
@@ -84,6 +89,13 @@ function resolveTargetPath(pathSegments: string[] | undefined): string | null {
 
   if (resource === "course-offerings" && pathSegments.length === 3 && maybeId && action === "assignment-submissions") {
     return `/admin/course-offerings/${maybeId}/assignment-submissions`;
+  }
+
+  if (resource === "course-offerings" && pathSegments.length === 5 && maybeId && action === "enrollments") {
+    const [, , , enrollmentId, enrollmentAction] = pathSegments;
+    if (enrollmentId && enrollmentAction === "certificate") {
+      return `/admin/course-offerings/${maybeId}/enrollments/${enrollmentId}/certificate`;
+    }
   }
 
   if (resource === "quizzes" && pathSegments.length === 3 && maybeId && action === "questions") {
@@ -146,10 +158,13 @@ async function proxyAdminRequest(
     Authorization: `Bearer ${token}`,
   };
 
-  let body: string | undefined;
+  let body: BodyInit | undefined;
   if (request.method !== "GET" && request.method !== "HEAD") {
-    body = await request.text();
     const contentType = request.headers.get("content-type");
+    body = contentType?.startsWith("multipart/form-data")
+      ? await request.arrayBuffer()
+      : await request.text();
+
     if (contentType) {
       headers["Content-Type"] = contentType;
     }
