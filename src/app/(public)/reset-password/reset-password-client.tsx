@@ -39,7 +39,7 @@ export function ResetPasswordClient() {
   const resetMutation = useMutation({
     mutationFn: resetPassword,
     onSuccess: (message) => {
-      toast.success(message || "Password berhasil direset");
+      toast.success(message || "Password reset successful");
       router.replace("/login");
     },
     onError: (error) => {
@@ -50,16 +50,16 @@ export function ResetPasswordClient() {
         return;
       }
 
-      toast.error("Gagal reset password");
+      toast.error("Failed to reset password");
     },
   });
 
   return (
     <AuthShell
       title="Reset Password"
-      subtitle="Masukkan password baru Anda"
-      footerText="Kembali ke"
-      footerLinkText="Login"
+      subtitle="Enter your new password"
+      footerText="Back to"
+      footerLinkText="Sign In"
       footerHref="/login"
     >
       <form
@@ -67,7 +67,7 @@ export function ResetPasswordClient() {
         onSubmit={handleSubmit((values) => {
           // Email and token are trusted from reset-link query params, so user only inputs new password.
           if (isResetLinkInvalid) {
-            toast.error("Link reset tidak valid atau sudah tidak lengkap");
+            toast.error("Reset link is invalid or incomplete");
             return;
           }
 
@@ -83,18 +83,18 @@ export function ResetPasswordClient() {
       >
         {isResetLinkInvalid ? (
           <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            Link reset password tidak valid. Silakan minta link reset baru.
+            The password reset link is invalid. Please request a new reset link.
           </p>
         ) : null}
 
         <div>
-          <AuthInput label="Password Baru" type="password" placeholder="********" {...register("password")} />
+          <AuthInput label="New Password" type="password" placeholder="********" {...register("password")} />
           <FieldError message={errors.password?.message} />
         </div>
 
         <div>
           <AuthInput
-            label="Konfirmasi Password"
+            label="Confirm Password"
             type="password"
             placeholder="********"
             {...register("password_confirmation")}

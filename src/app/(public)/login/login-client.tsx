@@ -57,7 +57,7 @@ export function LoginClient() {
     onSuccess: (data) => {
       setUser(data.user);
       setSessionChecked(true);
-      toast.success("Login berhasil");
+      toast.success("Login successful");
       router.replace(redirectTarget ?? getDefaultPathByRole(data.user.role_id));
     },
     onError: (error) => {
@@ -68,21 +68,21 @@ export function LoginClient() {
         return;
       }
 
-      toast.error("Terjadi kesalahan saat login");
+      toast.error("Something went wrong while signing in");
     },
   });
 
   return (
     <AuthShell
-      title="Masuk"
-      subtitle="Masuk menggunakan akun LMS Anda"
-      footerText="Belum punya akun?"
-      footerLinkText="Daftar"
+      title="Sign In"
+      subtitle="Sign in with your LMS account"
+      footerText="Don't have an account?"
+      footerLinkText="Sign Up"
       footerHref="/register"
     >
       <form className="space-y-4" onSubmit={handleSubmit((values) => loginMutation.mutate(values))}>
         <div>
-          <AuthInput label="Email" type="email" placeholder="nama@email.com" {...registerField("email")} />
+          <AuthInput label="Email" type="email" placeholder="name@email.com" {...registerField("email")} />
           <FieldError message={errors.email?.message} />
         </div>
 
@@ -91,15 +91,15 @@ export function LoginClient() {
           <FieldError message={errors.password?.message} />
         </div>
 
-        <SubmitButton loading={loginMutation.isPending}>Masuk</SubmitButton>
+        <SubmitButton loading={loginMutation.isPending}>Sign In</SubmitButton>
       </form>
 
       <div className="mt-4 flex flex-wrap gap-4 text-xs">
         <Link href="/forgot-password" className="text-zinc-600 hover:text-zinc-900 hover:underline">
-          Lupa password?
+          Forgot password?
         </Link>
         <Link href="/resend-verification" className="text-zinc-600 hover:text-zinc-900 hover:underline">
-          Kirim ulang verifikasi
+          Resend verification email
         </Link>
       </div>
     </AuthShell>

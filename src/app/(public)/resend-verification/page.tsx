@@ -48,11 +48,11 @@ export default function ResendVerificationPage() {
     onSuccess: (data) => {
       if (typeof data?.retry_after === "number") {
         setCooldownLeft(data.retry_after);
-        toast.success(`Email verifikasi dikirim. Coba lagi setelah ${data.retry_after} detik jika dibutuhkan.`);
+        toast.success(`Verification email sent. Try again in ${data.retry_after} seconds if needed.`);
         return;
       }
 
-      toast.success("Email verifikasi berhasil dikirim");
+      toast.success("Verification email sent successfully");
     },
     onError: (error) => {
       applyApiFieldErrors<ResendVerificationSchema>(error, setError);
@@ -71,32 +71,32 @@ export default function ResendVerificationPage() {
         return;
       }
 
-      toast.error("Gagal mengirim ulang email verifikasi");
+      toast.error("Failed to resend verification email");
     },
   });
 
   return (
     <AuthShell
-      title="Kirim Ulang Verifikasi"
-      subtitle="Gunakan jika email verifikasi belum diterima"
-      footerText="Ingin kembali?"
-      footerLinkText="Masuk"
+      title="Resend Verification Email"
+      subtitle="Use this if you have not received your verification email yet"
+      footerText="Want to go back?"
+      footerLinkText="Sign In"
       footerHref="/login"
     >
       <form className="space-y-4" onSubmit={handleSubmit((values) => resendMutation.mutate(values))}>
         <div>
-          <AuthInput label="Email" type="email" placeholder="nama@email.com" {...register("email")} />
+          <AuthInput label="Email" type="email" placeholder="name@email.com" {...register("email")} />
           <FieldError message={errors.email?.message} />
         </div>
 
         {cooldownLeft > 0 ? (
           <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
-            Anda bisa kirim ulang verifikasi dalam {cooldownLeft} detik.
+            You can resend the verification email in {cooldownLeft} seconds.
           </p>
         ) : null}
 
         <SubmitButton loading={resendMutation.isPending} disabled={cooldownLeft > 0}>
-          {cooldownLeft > 0 ? `Tunggu ${cooldownLeft} detik` : "Kirim Ulang"}
+          {cooldownLeft > 0 ? `Wait ${cooldownLeft}s` : "Resend Email"}
         </SubmitButton>
       </form>
     </AuthShell>

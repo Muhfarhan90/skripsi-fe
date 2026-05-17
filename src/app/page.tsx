@@ -39,7 +39,7 @@ export default function RootPage() {
             </PopoverTrigger>
 
             <PopoverContent align="end" sideOffset={8} className="w-56 p-2">
-              <p className="px-2 py-1 text-xs text-zinc-500">Masuk sebagai</p>
+              <p className="px-2 py-1 text-xs text-zinc-500">Signed in as</p>
               <p className="px-2 pb-2 text-sm font-medium text-zinc-900">{user?.email ?? "-"}</p>
 
               <Link
@@ -63,7 +63,7 @@ export default function RootPage() {
             href="/login"
             className="inline-flex h-9 items-center rounded-md border border-zinc-300 bg-white px-4 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50"
           >
-            Masuk
+            Sign In
           </Link>
         )}
       </div>
@@ -107,13 +107,13 @@ export default function RootPage() {
                 href="/login"
                 className="inline-flex h-11 items-center justify-center rounded-md bg-[#0F7A5A] px-6 text-sm font-medium text-white transition hover:bg-[#0d6b4f]"
               >
-                Masuk
+                Sign In
               </Link>
               <Link
                 href="/register"
                 className="inline-flex h-11 items-center justify-center rounded-md border border-zinc-300 bg-white px-6 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50"
               >
-                Daftar
+                Sign Up
               </Link>
             </>
           )}

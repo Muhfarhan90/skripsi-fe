@@ -1,18 +1,18 @@
 import { z } from "zod";
 
 export const loginSchema = z.object({
-  email: z.email("Email tidak valid"),
-  password: z.string().min(1, "Password wajib diisi"),
+  email: z.email("Invalid email address"),
+  password: z.string().min(1, "Password is required"),
 });
 
 export const registerSchema = z
   .object({
-    fullname: z.string().min(3, "Nama minimal 3 karakter").max(255),
-    email: z.email("Email tidak valid"),
-    password: z.string().min(8, "Password minimal 8 karakter"),
+    fullname: z.string().min(3, "Full name must be at least 3 characters").max(255),
+    email: z.email("Invalid email address"),
+    password: z.string().min(8, "Password must be at least 8 characters"),
     password_confirmation: z
       .string()
-      .min(8, "Konfirmasi password minimal 8 karakter"),
+      .min(8, "Password confirmation must be at least 8 characters"),
     nisn: z.string().max(20).optional().or(z.literal("")),
     phone: z.string().max(20).optional().or(z.literal("")),
     address: z.string().optional().or(z.literal("")),
@@ -22,27 +22,27 @@ export const registerSchema = z
     date_of_birth: z.string().optional().or(z.literal("")),
   })
   .refine((data) => data.password === data.password_confirmation, {
-    message: "Konfirmasi password tidak sama",
+    message: "Password confirmation does not match",
     path: ["password_confirmation"],
   });
 
 export const resendVerificationSchema = z.object({
-  email: z.email("Email tidak valid"),
+  email: z.email("Invalid email address"),
 });
 
 export const forgotPasswordSchema = z.object({
-  email: z.email("Email tidak valid"),
+  email: z.email("Invalid email address"),
 });
 
 export const resetPasswordSchema = z
   .object({
-    password: z.string().min(8, "Password minimal 8 karakter"),
+    password: z.string().min(8, "Password must be at least 8 characters"),
     password_confirmation: z
       .string()
-      .min(8, "Konfirmasi password minimal 8 karakter"),
+      .min(8, "Password confirmation must be at least 8 characters"),
   })
   .refine((data) => data.password === data.password_confirmation, {
-    message: "Konfirmasi password tidak sama",
+    message: "Password confirmation does not match",
     path: ["password_confirmation"],
   });
 
