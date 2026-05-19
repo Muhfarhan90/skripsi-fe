@@ -6,6 +6,7 @@ import {
   Loader2,
   MessageCircle,
   MessageSquare,
+  Pencil,
   Pin,
   PlusCircle,
   Search,
@@ -28,6 +29,8 @@ import {
   getAdminCourseForumPost,
   listAdminCourseForumPosts,
   toggleAdminCourseForumPostPin,
+  updateAdminCourseForumPost,
+  updateAdminCourseForumReply,
 } from "@/features/admin/api/master-api";
 import { AdminPagination } from "@/features/admin/components/admin-pagination";
 import { formatDateTime } from "@/features/admin/lib/offering-utils";
@@ -88,6 +91,11 @@ export function AdminOfferingForumPanel({
   const [replyContent, setReplyContent] = useState("");
   const [postToDeleteId, setPostToDeleteId] = useState<number | null>(null);
   const [replyToDeleteId, setReplyToDeleteId] = useState<number | null>(null);
+  const [editingPostId, setEditingPostId] = useState<number | null>(null);
+  const [editPostTitle, setEditPostTitle] = useState("");
+  const [editPostContent, setEditPostContent] = useState("");
+  const [editingReplyId, setEditingReplyId] = useState<number | null>(null);
+  const [editReplyContent, setEditReplyContent] = useState("");
 
   const postsQuery = useQuery({
     queryKey: ["admin", "course", courseId, "forum", search, page],
@@ -156,6 +164,62 @@ export function AdminOfferingForumPanel({
     },
   });
 
+  const updatePostMutation = useMutation({
+    mutationFn: (payload: { postId: number; title: string; content: string }) =>
+      updateAdminCourseForumPost(courseId, payload.postId, {
+        title: payload.title,
+        content: payload.content,
+      }),
+    onSuccess: (post) => {
+      setEditingPostId(null);
+      setEditPostTitle("");
+      setEditPostContent("");
+      toast.success("Topik forum berhasil diperbarui.");
+      queryClient.invalidateQueries({
+        queryKey: ["admin", "course", courseId, "forum"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["admin", "course", courseId, "forum-post", post.id],
+      });
+    },
+    onError: (error) => {
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+        return;
+      }
+
+      toast.error("Topik forum belum bisa diperbarui.");
+    },
+  });
+
+  const updateReplyMutation = useMutation({
+    mutationFn: (payload: { replyId: number; content: string }) =>
+      updateAdminCourseForumReply(payload.replyId, {
+        content: payload.content,
+      }),
+    onSuccess: () => {
+      setEditingReplyId(null);
+      setEditReplyContent("");
+      toast.success("Balasan forum berhasil diperbarui.");
+      queryClient.invalidateQueries({
+        queryKey: ["admin", "course", courseId, "forum"],
+      });
+      if (effectiveSelectedPostId) {
+        queryClient.invalidateQueries({
+          queryKey: ["admin", "course", courseId, "forum-post", effectiveSelectedPostId],
+        });
+      }
+    },
+    onError: (error) => {
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+        return;
+      }
+
+      toast.error("Balasan forum belum bisa diperbarui.");
+    },
+  });
+
   const togglePinMutation = useMutation({
     mutationFn: (postId: number) => toggleAdminCourseForumPostPin(courseId, postId),
     onSuccess: (post) => {
@@ -179,12 +243,28 @@ export function AdminOfferingForumPanel({
 
   const deletePostMutation = useMutation({
     mutationFn: (postId: number) => deleteAdminCourseForumPost(courseId, postId),
-    onSuccess: () => {
+    onSuccess: (_, postId) => {
+      const remainingPosts = posts.filter((post) => post.id !== postId);
+
       toast.success("Topik forum berhasil dihapus.");
+      setEditingPostId(null);
+      setEditPostTitle("");
+      setEditPostContent("");
       setPostToDeleteId(null);
+      setSelectedPostId(remainingPosts[0]?.id ?? null);
+
+      if (remainingPosts.length === 0 && page > 1) {
+        setPage((current) => Math.max(1, current - 1));
+      }
+
       queryClient.invalidateQueries({
         queryKey: ["admin", "course", courseId, "forum"],
       });
+      if (effectiveSelectedPostId) {
+        queryClient.invalidateQueries({
+          queryKey: ["admin", "course", courseId, "forum-post", effectiveSelectedPostId],
+        });
+      }
     },
     onError: (error) => {
       if (error instanceof ApiError) {
@@ -200,6 +280,8 @@ export function AdminOfferingForumPanel({
     mutationFn: (replyId: number) => deleteAdminCourseForumReply(replyId),
     onSuccess: () => {
       toast.success("Balasan forum berhasil dihapus.");
+      setEditingReplyId(null);
+      setEditReplyContent("");
       setReplyToDeleteId(null);
       queryClient.invalidateQueries({
         queryKey: ["admin", "course", courseId, "forum"],
@@ -253,7 +335,83 @@ export function AdminOfferingForumPanel({
     createReplyMutation.mutate({ content });
   };
 
+  const openPostEditor = (post: { id: number; title: string; content: string }) => {
+    setEditingReplyId(null);
+    setEditReplyContent("");
+    setEditingPostId(post.id);
+    setEditPostTitle(post.title);
+    setEditPostContent(post.content);
+  };
+
+  const openReplyEditor = (reply: { id: number; content: string }) => {
+    setEditingPostId(null);
+    setEditPostTitle("");
+    setEditPostContent("");
+    setEditingReplyId(reply.id);
+    setEditReplyContent(reply.content);
+  };
+
+  const cancelPostEditing = () => {
+    if (updatePostMutation.isPending) {
+      return;
+    }
+
+    setEditingPostId(null);
+    setEditPostTitle("");
+    setEditPostContent("");
+  };
+
+  const cancelReplyEditing = () => {
+    if (updateReplyMutation.isPending) {
+      return;
+    }
+
+    setEditingReplyId(null);
+    setEditReplyContent("");
+  };
+
+  const handleUpdatePost = () => {
+    if (!selectedPost || editingPostId !== selectedPost.id) {
+      return;
+    }
+
+    const title = editPostTitle.trim();
+    const content = editPostContent.trim();
+
+    if (!title) {
+      toast.error("Judul forum wajib diisi.");
+      return;
+    }
+
+    if (!content) {
+      toast.error("Isi forum wajib diisi.");
+      return;
+    }
+
+    updatePostMutation.mutate({
+      postId: selectedPost.id,
+      title,
+      content,
+    });
+  };
+
+  const handleUpdateReply = (replyId: number) => {
+    const content = editReplyContent.trim();
+
+    if (!content) {
+      toast.error("Isi balasan wajib diisi.");
+      return;
+    }
+
+    updateReplyMutation.mutate({
+      replyId,
+      content,
+    });
+  };
+
   const selectedPostRepliesCount = replies.length;
+  const isOwnSelectedPost = selectedPost?.user_id === currentUser?.id;
+  const isEditingSelectedPost = selectedPost ? editingPostId === selectedPost.id : false;
 
   return (
     <div className="space-y-4">
@@ -448,16 +606,41 @@ export function AdminOfferingForumPanel({
                             Post penting
                           </span>
                         ) : null}
-                        {selectedPost.user_id === currentUser?.id ? (
+                        {isOwnSelectedPost ? (
                           <span className="inline-flex rounded-full border border-[var(--border)] bg-[var(--card)] px-2 py-0.5 text-[11px] font-semibold text-[var(--muted-foreground)]">
                             Anda
                           </span>
                         ) : null}
                       </div>
-                      <h3 className="mt-3 text-2xl font-semibold text-[var(--foreground)]">{selectedPost.title}</h3>
+                      {isEditingSelectedPost ? (
+                        <Input
+                          value={editPostTitle}
+                          onChange={(event) => setEditPostTitle(event.target.value)}
+                          placeholder="Judul forum"
+                          className="mt-3"
+                        />
+                      ) : (
+                        <h3 className="mt-3 text-2xl font-semibold text-[var(--foreground)]">{selectedPost.title}</h3>
+                      )}
                     </div>
 
                     <div className="flex flex-wrap gap-2">
+                      {isOwnSelectedPost ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            if (isEditingSelectedPost) {
+                              cancelPostEditing();
+                              return;
+                            }
+                            openPostEditor(selectedPost);
+                          }}
+                        >
+                          <Pencil className="size-4" />
+                          <span>{isEditingSelectedPost ? "Batal Edit" : "Edit Post"}</span>
+                        </Button>
+                      ) : null}
                       <Button
                         type="button"
                         variant="outline"
@@ -499,9 +682,39 @@ export function AdminOfferingForumPanel({
                     </div>
                   </div>
 
-                  <div className="mt-5 whitespace-pre-line text-sm leading-7 text-[var(--muted-foreground)]">
-                    {selectedPost.content}
-                  </div>
+                  {isEditingSelectedPost ? (
+                    <div className="mt-5 space-y-3">
+                      <Textarea
+                        value={editPostContent}
+                        onChange={(event) => setEditPostContent(event.target.value)}
+                        placeholder="Perbarui isi topik forum di sini."
+                        className="min-h-36"
+                      />
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          onClick={handleUpdatePost}
+                          disabled={updatePostMutation.isPending}
+                          className="bg-[var(--secondary)] text-[var(--secondary-foreground)] hover:opacity-90"
+                        >
+                          {updatePostMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
+                          <span>Simpan Perubahan</span>
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={cancelPostEditing}
+                          disabled={updatePostMutation.isPending}
+                        >
+                          <span>Batal</span>
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-5 whitespace-pre-line text-sm leading-7 text-[var(--muted-foreground)]">
+                      {selectedPost.content}
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-4">
@@ -514,6 +727,8 @@ export function AdminOfferingForumPanel({
                     <div className="space-y-3">
                       {replies.map((reply) => {
                         const replyAvatarUrl = resolveAvatarUrl(reply.user?.avatar);
+                        const isOwnReply = reply.user_id === currentUser?.id;
+                        const isEditingReply = editingReplyId === reply.id;
 
                         return (
                           <article
@@ -536,24 +751,78 @@ export function AdminOfferingForumPanel({
                                 <div className="min-w-0">
                                   <div className="flex flex-wrap items-center gap-2">
                                     <p className="font-medium text-[var(--foreground)]">{reply.user?.fullname ?? "-"}</p>
+                                    {isOwnReply ? (
+                                      <span className="inline-flex rounded-full border border-[var(--border)] bg-[var(--card)] px-2 py-0.5 text-[11px] font-semibold text-[var(--muted-foreground)]">
+                                        Anda
+                                      </span>
+                                    ) : null}
                                     <span className="text-xs text-[var(--muted-foreground)]">{formatDateTime(reply.created_at)}</span>
                                   </div>
-                                  <p className="mt-2 whitespace-pre-line text-sm leading-7 text-[var(--muted-foreground)]">
-                                    {reply.content}
-                                  </p>
+                                  {isEditingReply ? (
+                                    <div className="mt-3 space-y-3">
+                                      <Textarea
+                                        value={editReplyContent}
+                                        onChange={(event) => setEditReplyContent(event.target.value)}
+                                        placeholder="Perbarui balasan forum di sini."
+                                        className="min-h-28"
+                                      />
+                                      <div className="flex flex-wrap gap-2">
+                                        <Button
+                                          type="button"
+                                          onClick={() => handleUpdateReply(reply.id)}
+                                          disabled={updateReplyMutation.isPending}
+                                          className="bg-[var(--secondary)] text-[var(--secondary-foreground)] hover:opacity-90"
+                                        >
+                                          {updateReplyMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
+                                          <span>Simpan Balasan</span>
+                                        </Button>
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          onClick={cancelReplyEditing}
+                                          disabled={updateReplyMutation.isPending}
+                                        >
+                                          <span>Batal</span>
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <p className="mt-2 whitespace-pre-line text-sm leading-7 text-[var(--muted-foreground)]">
+                                      {reply.content}
+                                    </p>
+                                  )}
                                 </div>
                               </div>
 
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setReplyToDeleteId(reply.id)}
-                                className="border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
-                              >
-                                <Trash2 className="size-4" />
-                                <span>Hapus</span>
-                              </Button>
+                              <div className="flex shrink-0 flex-wrap justify-end gap-2">
+                                {isOwnReply ? (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      if (isEditingReply) {
+                                        cancelReplyEditing();
+                                        return;
+                                      }
+                                      openReplyEditor(reply);
+                                    }}
+                                  >
+                                    <Pencil className="size-4" />
+                                    <span>{isEditingReply ? "Batal" : "Edit"}</span>
+                                  </Button>
+                                ) : null}
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setReplyToDeleteId(reply.id)}
+                                  className="border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
+                                >
+                                  <Trash2 className="size-4" />
+                                  <span>Hapus</span>
+                                </Button>
+                              </div>
                             </div>
                           </article>
                         );

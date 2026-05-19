@@ -61,6 +61,11 @@ async function studentRequestEnvelope<T>(
   return payload;
 }
 
+async function studentMessageOnly(endpoint: string, init: RequestInit): Promise<string> {
+  const payload = await studentRequestEnvelope<null>(endpoint, init);
+  return payload.message ?? "";
+}
+
 export function getPublishedCourses() {
   return studentRequest<StoreCourse[]>("/api/public/courses", { method: "GET" });
 }
@@ -214,6 +219,26 @@ export function createStudentCourseForumPost(
   });
 }
 
+export function updateStudentCourseForumPost(
+  courseId: number,
+  postId: number,
+  payload: {
+    title: string;
+    content: string;
+  },
+) {
+  return studentRequest<StoreForumPost>(`/api/student/courses/${courseId}/forum/${postId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteStudentCourseForumPost(courseId: number, postId: number) {
+  return studentMessageOnly(`/api/student/courses/${courseId}/forum/${postId}`, {
+    method: "DELETE",
+  });
+}
+
 export function createStudentCourseForumReply(
   courseId: number,
   postId: number,
@@ -224,6 +249,24 @@ export function createStudentCourseForumReply(
   return studentRequest<StoreForumReply>(`/api/student/courses/${courseId}/forum/${postId}/replies`, {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export function updateStudentCourseForumReply(
+  replyId: number,
+  payload: {
+    content: string;
+  },
+) {
+  return studentRequest<StoreForumReply>(`/api/student/forum-replies/${replyId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteStudentCourseForumReply(replyId: number) {
+  return studentMessageOnly(`/api/student/forum-replies/${replyId}`, {
+    method: "DELETE",
   });
 }
 

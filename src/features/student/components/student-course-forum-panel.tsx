@@ -3,17 +3,23 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { MessageCircle, MessageSquare, Pin, PlusCircle, Send, Sparkles } from "lucide-react";
+import { MessageCircle, MessageSquare, Pencil, Pin, PlusCircle, Send, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { ConfirmAlertDialog } from "@/components/ui/confirm-alert-dialog";
 import { useAuthStore } from "@/features/auth/store/auth-store";
 import {
   createStudentCourseForumPost,
   createStudentCourseForumReply,
+  deleteStudentCourseForumPost,
+  deleteStudentCourseForumReply,
   getStudentCourseForumPost,
   getStudentCourseForumPosts,
+  updateStudentCourseForumPost,
+  updateStudentCourseForumReply,
 } from "@/features/student/api/store-api";
 import { formatUtcDateTimeToJakarta } from "@/features/student/lib/date-time";
 import { ApiError } from "@/lib/api/client";
+import type { StoreForumPost, StoreForumReply } from "@/types/store";
 
 interface StudentCourseForumPanelProps {
   basePath: string;
@@ -94,6 +100,13 @@ export function StudentCourseForumPanel({
   const [postTitle, setPostTitle] = useState("");
   const [postContent, setPostContent] = useState("");
   const [replyContent, setReplyContent] = useState("");
+  const [editingPostId, setEditingPostId] = useState<number | null>(null);
+  const [editPostTitle, setEditPostTitle] = useState("");
+  const [editPostContent, setEditPostContent] = useState("");
+  const [editingReplyId, setEditingReplyId] = useState<number | null>(null);
+  const [editReplyContent, setEditReplyContent] = useState("");
+  const [postToDeleteId, setPostToDeleteId] = useState<number | null>(null);
+  const [replyToDeleteId, setReplyToDeleteId] = useState<number | null>(null);
 
   const requestedPage = Number(searchParams.get("forumPage") ?? "1");
   const currentPage = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
@@ -174,6 +187,72 @@ export function StudentCourseForumPanel({
     },
   });
 
+  const updatePostMutation = useMutation({
+    mutationFn: (payload: { postId: number; title: string; content: string }) =>
+      updateStudentCourseForumPost(courseId, payload.postId, {
+        title: payload.title,
+        content: payload.content,
+      }),
+    onSuccess: (post) => {
+      setEditingPostId(null);
+      setEditPostTitle("");
+      setEditPostContent("");
+      toast.success("Topik diskusi berhasil diperbarui.");
+      queryClient.invalidateQueries({
+        queryKey: ["student", "course", courseId, "forum"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["student", "course", courseId, "forum-post", post.id],
+      });
+    },
+    onError: (error) => {
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+        return;
+      }
+
+      toast.error("Topik diskusi belum bisa diperbarui.");
+    },
+  });
+
+  const deletePostMutation = useMutation({
+    mutationFn: (postId: number) => deleteStudentCourseForumPost(courseId, postId),
+    onSuccess: (_, postId) => {
+      const remainingPosts = posts.filter((post) => post.id !== postId);
+      const nextPage = remainingPosts.length === 0 && currentPage > 1 ? currentPage - 1 : currentPage;
+      const nextPostId = remainingPosts[0]?.id ?? null;
+
+      setEditingPostId(null);
+      setEditPostTitle("");
+      setEditPostContent("");
+      setPostToDeleteId(null);
+      toast.success("Topik diskusi berhasil dihapus.");
+
+      const nextUrl = buildForumHref(basePath, new URLSearchParams(searchParams.toString()), {
+        page: nextPage,
+        postId: nextPostId,
+      });
+      router.replace(nextUrl, { scroll: false });
+
+      queryClient.invalidateQueries({
+        queryKey: ["student", "course", courseId, "forum"],
+      });
+      if (activePostId) {
+        queryClient.invalidateQueries({
+          queryKey: ["student", "course", courseId, "forum-post", activePostId],
+        });
+      }
+    },
+    onError: (error) => {
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+        return;
+      }
+
+      toast.error("Topik diskusi belum bisa dihapus.");
+    },
+  });
+
   const createReplyMutation = useMutation({
     mutationFn: (payload: { content: string }) =>
       createStudentCourseForumReply(courseId, activePostId as number, payload),
@@ -194,6 +273,60 @@ export function StudentCourseForumPanel({
       }
 
       toast.error("Balasan belum bisa dikirim.");
+    },
+  });
+
+  const updateReplyMutation = useMutation({
+    mutationFn: (payload: { replyId: number; content: string }) =>
+      updateStudentCourseForumReply(payload.replyId, {
+        content: payload.content,
+      }),
+    onSuccess: () => {
+      setEditingReplyId(null);
+      setEditReplyContent("");
+      toast.success("Balasan berhasil diperbarui.");
+      queryClient.invalidateQueries({
+        queryKey: ["student", "course", courseId, "forum"],
+      });
+      if (activePostId) {
+        queryClient.invalidateQueries({
+          queryKey: ["student", "course", courseId, "forum-post", activePostId],
+        });
+      }
+    },
+    onError: (error) => {
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+        return;
+      }
+
+      toast.error("Balasan belum bisa diperbarui.");
+    },
+  });
+
+  const deleteReplyMutation = useMutation({
+    mutationFn: (replyId: number) => deleteStudentCourseForumReply(replyId),
+    onSuccess: () => {
+      setEditingReplyId(null);
+      setEditReplyContent("");
+      setReplyToDeleteId(null);
+      toast.success("Balasan berhasil dihapus.");
+      queryClient.invalidateQueries({
+        queryKey: ["student", "course", courseId, "forum"],
+      });
+      if (activePostId) {
+        queryClient.invalidateQueries({
+          queryKey: ["student", "course", courseId, "forum-post", activePostId],
+        });
+      }
+    },
+    onError: (error) => {
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+        return;
+      }
+
+      toast.error("Balasan belum bisa dihapus.");
     },
   });
 
@@ -229,8 +362,84 @@ export function StudentCourseForumPanel({
     createReplyMutation.mutate({ content });
   };
 
+  const openPostEditor = (post: StoreForumPost) => {
+    setEditingReplyId(null);
+    setEditReplyContent("");
+    setEditingPostId(post.id);
+    setEditPostTitle(post.title);
+    setEditPostContent(post.content);
+  };
+
+  const openReplyEditor = (reply: StoreForumReply) => {
+    setEditingPostId(null);
+    setEditPostTitle("");
+    setEditPostContent("");
+    setEditingReplyId(reply.id);
+    setEditReplyContent(reply.content);
+  };
+
+  const cancelPostEditing = () => {
+    if (updatePostMutation.isPending) {
+      return;
+    }
+
+    setEditingPostId(null);
+    setEditPostTitle("");
+    setEditPostContent("");
+  };
+
+  const cancelReplyEditing = () => {
+    if (updateReplyMutation.isPending) {
+      return;
+    }
+
+    setEditingReplyId(null);
+    setEditReplyContent("");
+  };
+
+  const handleUpdatePost = () => {
+    if (!selectedPost || editingPostId !== selectedPost.id) {
+      return;
+    }
+
+    const title = editPostTitle.trim();
+    const content = editPostContent.trim();
+
+    if (!title) {
+      toast.error("Judul diskusi wajib diisi.");
+      return;
+    }
+
+    if (!content) {
+      toast.error("Isi diskusi wajib diisi.");
+      return;
+    }
+
+    updatePostMutation.mutate({
+      postId: selectedPost.id,
+      title,
+      content,
+    });
+  };
+
+  const handleUpdateReply = (replyId: number) => {
+    const content = editReplyContent.trim();
+
+    if (!content) {
+      toast.error("Isi balasan wajib diisi.");
+      return;
+    }
+
+    updateReplyMutation.mutate({
+      replyId,
+      content,
+    });
+  };
+
   const selectedPost = selectedPostQuery.data ?? null;
   const replyList = selectedPost?.replies ?? [];
+  const isOwnSelectedPost = selectedPost?.user_id === currentUser?.id;
+  const isEditingSelectedPost = selectedPost ? editingPostId === selectedPost.id : false;
 
   return (
     <div className="space-y-5">
@@ -455,11 +664,50 @@ export function StudentCourseForumPanel({
                         </span>
                       ) : null}
                     </div>
-                    <h3 className="mt-3 text-2xl font-semibold text-foreground">{selectedPost.title}</h3>
+                    {isEditingSelectedPost ? (
+                      <input
+                        value={editPostTitle}
+                        onChange={(event) => setEditPostTitle(event.target.value)}
+                        placeholder="Judul diskusi"
+                        className="mt-3 h-11 w-full rounded-lg border border-border bg-card px-3 text-sm outline-none transition focus:border-[var(--secondary)]"
+                      />
+                    ) : (
+                      <h3 className="mt-3 text-2xl font-semibold text-foreground">{selectedPost.title}</h3>
+                    )}
                   </div>
-                  <div className="text-right text-xs text-muted-foreground">
-                    <p>Dibuat {formatUtcDateTimeToJakarta(selectedPost.created_at)}</p>
-                    <p className="mt-1">Diupdate {formatUtcDateTimeToJakarta(selectedPost.updated_at)}</p>
+
+                  <div className="flex flex-wrap items-start justify-end gap-2">
+                    {isOwnSelectedPost ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (isEditingSelectedPost) {
+                              cancelPostEditing();
+                              return;
+                            }
+                            openPostEditor(selectedPost);
+                          }}
+                          className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-medium text-foreground transition hover:bg-[var(--surface-hover)]"
+                        >
+                          <Pencil className="size-4" />
+                          {isEditingSelectedPost ? "Batal Edit" : "Edit Post"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPostToDeleteId(selectedPost.id)}
+                          className="inline-flex h-9 items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 text-sm font-medium text-red-700 transition hover:bg-red-100"
+                        >
+                          <Trash2 className="size-4" />
+                          Hapus Post
+                        </button>
+                      </>
+                    ) : null}
+
+                    <div className="min-w-[160px] text-right text-xs text-muted-foreground">
+                      <p>Dibuat {formatUtcDateTimeToJakarta(selectedPost.created_at)}</p>
+                      <p className="mt-1">Diupdate {formatUtcDateTimeToJakarta(selectedPost.updated_at)}</p>
+                    </div>
                   </div>
                 </div>
 
@@ -483,9 +731,39 @@ export function StudentCourseForumPanel({
                   </div>
                 </div>
 
-                <div className="mt-5 whitespace-pre-line text-sm leading-7 text-muted-foreground">
-                  {selectedPost.content}
-                </div>
+                {isEditingSelectedPost ? (
+                  <div className="mt-5 space-y-3">
+                    <textarea
+                      value={editPostContent}
+                      onChange={(event) => setEditPostContent(event.target.value)}
+                      rows={6}
+                      placeholder="Tulis isi diskusi di sini."
+                      className="w-full rounded-lg border border-border bg-card px-3 py-3 text-sm outline-none transition focus:border-[var(--secondary)]"
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={handleUpdatePost}
+                        disabled={updatePostMutation.isPending}
+                        className="inline-flex h-10 items-center justify-center rounded-md bg-[var(--secondary)] px-4 text-sm font-semibold text-[var(--secondary-foreground)] transition hover:opacity-90 disabled:opacity-70"
+                      >
+                        {updatePostMutation.isPending ? "Menyimpan..." : "Simpan Perubahan"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={cancelPostEditing}
+                        disabled={updatePostMutation.isPending}
+                        className="inline-flex h-10 items-center justify-center rounded-md border border-border px-4 text-sm font-semibold text-foreground transition hover:bg-[var(--surface-hover)] disabled:opacity-70"
+                      >
+                        Batal
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-5 whitespace-pre-line text-sm leading-7 text-muted-foreground">
+                    {selectedPost.content}
+                  </div>
+                )}
               </header>
 
               <section className="space-y-4">
@@ -499,13 +777,14 @@ export function StudentCourseForumPanel({
                     {replyList.map((reply) => {
                       const replyAvatarUrl = resolveAvatarUrl(reply.user?.avatar);
                       const isOwnReply = reply.user_id === currentUser?.id;
+                      const isEditingReply = editingReplyId === reply.id;
 
                       return (
                         <article
                           key={reply.id}
                           className="rounded-[20px] border border-border bg-[var(--surface-soft)] p-4"
                         >
-                          <div className="flex items-start gap-3">
+                          <div className="flex items-start justify-between gap-3">
                             <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--primary)]/10 text-sm font-semibold text-[var(--primary)]">
                               {replyAvatarUrl ? (
                                 <div
@@ -530,10 +809,68 @@ export function StudentCourseForumPanel({
                                   {formatUtcDateTimeToJakarta(reply.created_at)}
                                 </span>
                               </div>
-                              <p className="mt-2 whitespace-pre-line text-sm leading-7 text-muted-foreground">
-                                {reply.content}
-                              </p>
+
+                              {isEditingReply ? (
+                                <div className="mt-3 space-y-3">
+                                  <textarea
+                                    value={editReplyContent}
+                                    onChange={(event) => setEditReplyContent(event.target.value)}
+                                    rows={4}
+                                    placeholder="Perbarui balasan kamu di sini."
+                                    className="w-full rounded-lg border border-border bg-card px-3 py-3 text-sm outline-none transition focus:border-[var(--secondary)]"
+                                  />
+                                  <div className="flex flex-wrap gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleUpdateReply(reply.id)}
+                                      disabled={updateReplyMutation.isPending}
+                                      className="inline-flex h-10 items-center justify-center rounded-md bg-[var(--secondary)] px-4 text-sm font-semibold text-[var(--secondary-foreground)] transition hover:opacity-90 disabled:opacity-70"
+                                    >
+                                      {updateReplyMutation.isPending ? "Menyimpan..." : "Simpan Balasan"}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={cancelReplyEditing}
+                                      disabled={updateReplyMutation.isPending}
+                                      className="inline-flex h-10 items-center justify-center rounded-md border border-border px-4 text-sm font-semibold text-foreground transition hover:bg-[var(--surface-hover)] disabled:opacity-70"
+                                    >
+                                      Batal
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <p className="mt-2 whitespace-pre-line text-sm leading-7 text-muted-foreground">
+                                  {reply.content}
+                                </p>
+                              )}
                             </div>
+
+                            {isOwnReply ? (
+                              <div className="flex shrink-0 flex-wrap justify-end gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (isEditingReply) {
+                                      cancelReplyEditing();
+                                      return;
+                                    }
+                                    openReplyEditor(reply);
+                                  }}
+                                  className="inline-flex h-8 items-center gap-1 rounded-md border border-border bg-card px-2.5 text-xs font-medium text-foreground transition hover:bg-[var(--surface-hover)]"
+                                >
+                                  <Pencil className="size-3.5" />
+                                  {isEditingReply ? "Batal" : "Edit"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setReplyToDeleteId(reply.id)}
+                                  className="inline-flex h-8 items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2.5 text-xs font-medium text-red-700 transition hover:bg-red-100"
+                                >
+                                  <Trash2 className="size-3.5" />
+                                  Hapus
+                                </button>
+                              </div>
+                            ) : null}
                           </div>
                         </article>
                       );
@@ -577,6 +914,42 @@ export function StudentCourseForumPanel({
           )}
         </article>
       </div>
+
+      <ConfirmAlertDialog
+        open={postToDeleteId !== null}
+        title="Hapus topik diskusi?"
+        description="Topik dan seluruh balasannya akan hilang dari forum kelas ini."
+        confirmLabel="Ya, hapus topik"
+        cancelLabel="Batal"
+        confirmTone="danger"
+        isPending={deletePostMutation.isPending}
+        onClose={() => {
+          if (deletePostMutation.isPending) return;
+          setPostToDeleteId(null);
+        }}
+        onConfirm={() => {
+          if (!postToDeleteId) return;
+          deletePostMutation.mutate(postToDeleteId);
+        }}
+      />
+
+      <ConfirmAlertDialog
+        open={replyToDeleteId !== null}
+        title="Hapus balasan?"
+        description="Balasan ini akan dihapus dari topik diskusi."
+        confirmLabel="Ya, hapus balasan"
+        cancelLabel="Batal"
+        confirmTone="danger"
+        isPending={deleteReplyMutation.isPending}
+        onClose={() => {
+          if (deleteReplyMutation.isPending) return;
+          setReplyToDeleteId(null);
+        }}
+        onConfirm={() => {
+          if (!replyToDeleteId) return;
+          deleteReplyMutation.mutate(replyToDeleteId);
+        }}
+      />
     </div>
   );
 }

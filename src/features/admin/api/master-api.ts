@@ -876,6 +876,20 @@ export function createAdminCourseForumPost(
   });
 }
 
+export function updateAdminCourseForumPost(
+  courseId: number,
+  postId: number,
+  payload: {
+    title: string;
+    content: string;
+  },
+) {
+  return apiRequest<AdminForumPost>(`/api/admin/courses/${courseId}/forum/${postId}`, {
+    method: "PUT",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
 export function createAdminCourseForumReply(
   courseId: number,
   postId: number,
@@ -885,6 +899,18 @@ export function createAdminCourseForumReply(
 ) {
   return apiRequest<AdminForumReply>(`/api/admin/courses/${courseId}/forum/${postId}/replies`, {
     method: "POST",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function updateAdminCourseForumReply(
+  replyId: number,
+  payload: {
+    content: string;
+  },
+) {
+  return apiRequest<AdminForumReply>(`/api/admin/forum-replies/${replyId}`, {
+    method: "PUT",
     body: JSON.stringify(normalizePayload(payload)),
   });
 }

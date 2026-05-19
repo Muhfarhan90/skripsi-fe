@@ -47,6 +47,12 @@ function resolveTargetPath(pathSegments: string[] | undefined): string | null {
     }
   }
 
+  if (resource === "forum-replies") {
+    if (pathSegments.length === 2 && second) {
+      return `/forum-replies/${second}`;
+    }
+  }
+
   if (resource === "enrollments") {
     if (pathSegments.length === 1) return "/enrollments";
     if (pathSegments.length === 2 && second) return `/enrollments/${second}`;
