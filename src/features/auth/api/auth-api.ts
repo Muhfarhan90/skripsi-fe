@@ -10,6 +10,7 @@ import type {
   ResendVerificationRequest,
   ResendVerificationResponse,
   ResetPasswordRequest,
+  UserDevicePayload,
 } from "@/types/auth";
 
 function getApiOrigin(): string {
@@ -59,6 +60,19 @@ export function logout() {
 export function getCurrentUser() {
   return apiRequest<AuthUser>("/api/auth/me", {
     method: "GET",
+  });
+}
+
+export function registerCurrentDevice(payload: UserDevicePayload) {
+  return apiMessageOnly("/api/auth/devices", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deactivateCurrentDevice(deviceId: string) {
+  return apiMessageOnly(`/api/auth/devices/${encodeURIComponent(deviceId)}`, {
+    method: "DELETE",
   });
 }
 

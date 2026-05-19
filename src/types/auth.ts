@@ -80,3 +80,12 @@ export interface ResetPasswordRequest {
   password: string;
   password_confirmation: string;
 }
+
+export type UserDeviceType = "web" | "android" | "ios";
+
+export interface UserDevicePayload {
+  device_id: string;
+  device_type: UserDeviceType;
+  fcm_token: string;
+  device_info?: Record<string, string | string[]>;
+}

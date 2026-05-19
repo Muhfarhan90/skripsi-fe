@@ -3,8 +3,13 @@
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { logout } from "@/features/auth/api/auth-api";
+import {
+  deactivateCurrentDevice,
+  logout,
+} from "@/features/auth/api/auth-api";
+import { getStoredBrowserDeviceId } from "@/features/auth/lib/device";
 import { useAuthStore } from "@/features/auth/store/auth-store";
+import { revokeFirebaseMessagingToken } from "@/lib/firebase";
 
 interface UseLogoutActionOptions {
   redirectTo?: string;
@@ -16,7 +21,16 @@ export function useLogoutAction(options?: UseLogoutActionOptions) {
   const redirectTo = options?.redirectTo ?? "/login";
 
   return useMutation({
-    mutationFn: logout,
+    mutationFn: async () => {
+      const deviceId = getStoredBrowserDeviceId();
+
+      await Promise.allSettled([
+        deviceId ? deactivateCurrentDevice(deviceId) : Promise.resolve(""),
+        revokeFirebaseMessagingToken(),
+      ]);
+
+      return logout();
+    },
     onSuccess: () => {
       clearAuth();
       toast.success("Logout berhasil");
