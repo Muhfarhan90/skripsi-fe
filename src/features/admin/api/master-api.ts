@@ -60,7 +60,6 @@ export interface AdminAcademicPeriod {
     id: number;
     course_id: number | null;
     academic_period_id: number | null;
-    title: string | null;
     capacity: number | null;
     price: string | number | null;
     discount_price: string | number | null;
@@ -84,7 +83,6 @@ export interface AdminCourseOffering {
   id: number;
   course_id: number | null;
   academic_period_id: number | null;
-  title: string | null;
   capacity: number | null;
   price: string | number | null;
   discount_price: string | number | null;
@@ -541,7 +539,6 @@ export interface AcademicPeriodPayload {
 export interface CourseOfferingPayload {
   course_id: number;
   academic_period_id: number;
-  title: string;
   capacity: number;
   price: number;
   discount_price?: number | null;

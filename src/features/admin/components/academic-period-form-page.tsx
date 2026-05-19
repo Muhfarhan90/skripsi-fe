@@ -541,7 +541,7 @@ export function AcademicPeriodFormPage({ mode, periodId }: AcademicPeriodFormPag
           <Table className="min-w-[980px]">
             <TableHeader className="bg-[var(--muted)]">
               <TableRow className="hover:bg-[var(--muted)]">
-                <TableHead>Offering</TableHead>
+                <TableHead>Course</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead className="text-right">Harga</TableHead>
                 <TableHead>Peserta</TableHead>
@@ -576,7 +576,7 @@ export function AcademicPeriodFormPage({ mode, periodId }: AcademicPeriodFormPag
                       <TableRow key={offering.id}>
                         <TableCell className="text-sm">
                           <p className="font-medium text-[var(--foreground)]">
-                            {offering.title || offering.course?.title || "-"}
+                            {offering.course?.title ?? "-"}
                           </p>
                         </TableCell>
                         <TableCell className="text-sm text-[var(--muted-foreground)]">
@@ -622,14 +622,14 @@ export function AcademicPeriodFormPage({ mode, periodId }: AcademicPeriodFormPag
                             <Button
                               render={<Link href={`/admin/academic-periods/${periodId}/offerings/${offering.id}`} />}
                               type="button"
-                            variant="outline"
-                            size="icon-sm"
-                            className="border-[var(--border)] bg-[var(--card)] text-[var(--foreground)]"
-                            aria-label={`Buka offering ${offering.title ?? offering.id}`}
-                            onClick={(event) => {
-                              if (confirmLeave()) return;
-                              event.preventDefault();
-                            }}
+                              variant="outline"
+                              size="icon-sm"
+                              className="border-[var(--border)] bg-[var(--card)] text-[var(--foreground)]"
+                              aria-label={`Buka offering ${offering.course?.title ?? offering.id}`}
+                              onClick={(event) => {
+                                if (confirmLeave()) return;
+                                event.preventDefault();
+                              }}
                             >
                               <Pencil className="size-4" />
                             </Button>

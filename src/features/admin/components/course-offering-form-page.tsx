@@ -77,7 +77,6 @@ interface CourseOfferingFormPageProps {
 interface CourseOfferingFormState {
   course_id: string;
   academic_period_id: string;
-  title: string;
   capacity: string;
   price: string;
   discount_price: string;
@@ -101,7 +100,6 @@ type CourseOfferingFormErrors = Partial<Record<keyof CourseOfferingFormState | "
 const defaultForm: CourseOfferingFormState = {
   course_id: "",
   academic_period_id: "",
-  title: "",
   capacity: "",
   price: "",
   discount_price: "",
@@ -133,7 +131,6 @@ function mapOfferingToFormState(offering: AdminCourseOffering): CourseOfferingFo
   return {
     course_id: offering.course_id ? String(offering.course_id) : "",
     academic_period_id: offering.academic_period_id ? String(offering.academic_period_id) : "",
-    title: offering.title ?? "",
     capacity: offering.capacity !== null && offering.capacity !== undefined ? String(offering.capacity) : "",
     price: offering.price !== null && offering.price !== undefined ? String(offering.price) : "",
     discount_price:
@@ -174,7 +171,6 @@ function buildPayload(form: CourseOfferingFormState): CourseOfferingPayload {
   return {
     course_id: Number(form.course_id),
     academic_period_id: Number(form.academic_period_id),
-    title: form.title.trim(),
     capacity,
     price,
     discount_price: discountPrice,
@@ -226,7 +222,6 @@ function validateForm(form: CourseOfferingFormState): CourseOfferingFormErrors {
 
   if (!form.course_id) errors.course_id = "Course wajib dipilih";
   if (!form.academic_period_id) errors.academic_period_id = "Academic period wajib dipilih";
-  if (!form.title.trim()) errors.title = "Judul offering wajib diisi";
   if (!form.capacity.trim()) errors.capacity = "Kapasitas wajib diisi";
   if (!form.price.trim()) errors.price = "Harga wajib diisi";
 
@@ -705,12 +700,9 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
   };
 
   const handleCourseChange = (value: string) => {
-    const nextCourse = sortedCourses.find((course) => String(course.id) === value);
-
     setForm((prev) => ({
       ...prev,
       course_id: value,
-      title: prev.title.trim() ? prev.title : nextCourse?.title ?? prev.title,
     }));
   };
 
@@ -836,10 +828,10 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
   return (
     <section className="space-y-5">
       <AdminPageHeader
-        title={isEditing ? `Detail Course Offering - ${offeringDetailQuery.data?.title ?? "-"}` : "Buat Course Offering"}
+        title={isEditing ? `Detail Course Offering - ${offeringDetailQuery.data?.course?.title ?? "-"}` : "Buat Course Offering"}
         description={
           isEditing
-            ? `Periode Akademik ${offeringDetailQuery.data?.academic_period?.code ?? "-"}`
+            ? "Kelola kapasitas, harga, dan status offering untuk course ini."
             : isAcademicPeriodLocked
               ? "Offering baru ini otomatis terikat ke academic period induk yang sedang dibuka."
               : "Atur offering course per period akademik yang dipilih."
@@ -1034,18 +1026,6 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
                       </SelectContent>
                     </Select>
                     {formErrors.course_id ? <p className="text-xs text-red-600">{formErrors.course_id}</p> : null}
-                  </div>
-
-                  <div className="space-y-1.5 md:col-span-2">
-                    <Label htmlFor="offering-title">Judul Offering</Label>
-                    <Input
-                      id="offering-title"
-                      value={form.title}
-                      onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
-                      placeholder="Contoh: Intro Programming - Cohort A 2026"
-                      className="border-[var(--border)] bg-[var(--card)]"
-                    />
-                    {formErrors.title ? <p className="text-xs text-red-600">{formErrors.title}</p> : null}
                   </div>
 
                   <div className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-4 md:col-span-2">
@@ -1471,7 +1451,7 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
       {showOperationalTabs && activeTab === "forum" && offeringCourseId ? (
         <AdminOfferingForumPanel
           courseId={offeringCourseId}
-          courseTitle={offeringDetailQuery.data?.course?.title ?? offeringDetailQuery.data?.title ?? "Course"}
+          courseTitle={offeringDetailQuery.data?.course?.title ?? "Course"}
         />
       ) : null}
 
