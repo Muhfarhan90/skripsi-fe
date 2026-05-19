@@ -58,6 +58,7 @@ import {
   type CourseOfferingPayload,
 } from "@/features/admin/api/master-api";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
+import { AdminOfferingForumPanel } from "@/features/admin/components/admin-offering-forum-panel";
 import { AdminPagination } from "@/features/admin/components/admin-pagination";
 import { StatusBadge } from "@/features/admin/components/status-badge";
 import { useUnsavedChangesGuard } from "@/features/admin/hooks/use-unsaved-changes-guard";
@@ -65,7 +66,7 @@ import { formatCurrency, formatDate, formatDateTime, toStatusLabel } from "@/fea
 import { ApiError } from "@/lib/api/client";
 
 type CourseOfferingFormMode = "create" | "edit";
-type CourseOfferingTab = "overview" | "curriculum" | "students" | "assignment-review" | "certificates";
+type CourseOfferingTab = "overview" | "curriculum" | "students" | "forum" | "assignment-review" | "certificates";
 
 interface CourseOfferingFormPageProps {
   mode: CourseOfferingFormMode;
@@ -123,6 +124,7 @@ const offeringTabs: Array<{ id: CourseOfferingTab; label: string }> = [
   { id: "overview", label: "Overview" },
   { id: "curriculum", label: "Curriculum" },
   { id: "students", label: "Students" },
+  { id: "forum", label: "Forum" },
   { id: "assignment-review", label: "Assignment Review" },
   { id: "certificates", label: "Certificates" },
 ];
@@ -1464,6 +1466,13 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
             )}
           </CardContent>
         </Card>
+      ) : null}
+
+      {showOperationalTabs && activeTab === "forum" && offeringCourseId ? (
+        <AdminOfferingForumPanel
+          courseId={offeringCourseId}
+          courseTitle={offeringDetailQuery.data?.course?.title ?? offeringDetailQuery.data?.title ?? "Course"}
+        />
       ) : null}
 
       {showOperationalTabs && activeTab === "certificates" ? (

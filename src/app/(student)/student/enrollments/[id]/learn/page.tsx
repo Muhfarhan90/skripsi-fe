@@ -6,6 +6,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Award,
+  BookOpen,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
@@ -13,6 +14,7 @@ import {
   ClipboardList,
   FileText,
   HelpCircle,
+  MessageSquare,
   Star,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -53,6 +55,7 @@ import {
 } from "@/features/student/lib/quiz";
 import { printCertificatePreview } from "@/features/student/lib/certificate-print";
 import { formatUtcDateTimeToJakarta, parseUtcDateTime } from "@/features/student/lib/date-time";
+import { StudentCourseForumPanel } from "@/features/student/components/student-course-forum-panel";
 import type {
   StoreAssignment,
   StoreCurriculumSection,
@@ -233,6 +236,11 @@ function canStartQuizFromLearn(
   return hasRemainingAttempts(quiz.max_attempts, attempts.length);
 }
 
+function buildLearnHref(enrollmentId: number, searchParams: URLSearchParams): string {
+  const suffix = searchParams.toString();
+  return suffix ? `/student/enrollments/${enrollmentId}/learn?${suffix}` : `/student/enrollments/${enrollmentId}/learn`;
+}
+
 export default function StudentEnrollmentLearnPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -241,8 +249,12 @@ export default function StudentEnrollmentLearnPage() {
   const currentUser = useAuthStore((state) => state.user);
   const enrollmentId = Number(params.id);
   const requestedPanel = searchParams.get("panel");
+  const requestedTab = searchParams.get("tab");
   const [expandedSectionIds, setExpandedSectionIds] = useState<number[]>([]);
   const [selectedContent, setSelectedContent] = useState<SelectedContent | null>(null);
+  const [activeLearnTab, setActiveLearnTab] = useState<"material" | "forum">(() =>
+    requestedTab === "forum" ? "forum" : "material",
+  );
   const [activePanel, setActivePanel] = useState<"content" | "certificate">(() =>
     requestedPanel === "certificate" ? "certificate" : "content",
   );
@@ -667,6 +679,19 @@ export default function StudentEnrollmentLearnPage() {
     return <p className="text-sm text-red-600">Materi course tidak bisa diakses.</p>;
   }
 
+  const switchLearnTab = (nextTab: "material" | "forum") => {
+    setActiveLearnTab(nextTab);
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+    if (nextTab === "forum") {
+      nextParams.set("tab", "forum");
+    } else {
+      nextParams.delete("tab");
+    }
+
+    router.replace(buildLearnHref(enrollmentId, nextParams), { scroll: false });
+  };
+
   const toggleSection = (sectionId: number) => {
     setExpandedSectionIds((current) =>
       current.includes(sectionId)
@@ -676,6 +701,7 @@ export default function StudentEnrollmentLearnPage() {
   };
 
   const selectContent = (content: SelectedContent) => {
+    switchLearnTab("material");
     setActivePanel("content");
     setExpandedSectionIds((current) =>
       current.includes(content.sectionId) ? current : [...current, content.sectionId],
@@ -689,6 +715,7 @@ export default function StudentEnrollmentLearnPage() {
       return;
     }
 
+    switchLearnTab("material");
     setActivePanel("certificate");
     setSelectedContent(null);
   };
@@ -891,6 +918,44 @@ export default function StudentEnrollmentLearnPage() {
         </p>
       </header>
 
+      <div className="rounded-lg border border-border bg-card p-2 shadow-sm">
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => switchLearnTab("material")}
+            className={[
+              "inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition",
+              activeLearnTab === "material"
+                ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
+                : "text-[var(--muted-foreground)] hover:bg-[var(--surface-soft)]",
+            ].join(" ")}
+          >
+            <BookOpen className="size-4" />
+            Materi
+          </button>
+          <button
+            type="button"
+            onClick={() => switchLearnTab("forum")}
+            className={[
+              "inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition",
+              activeLearnTab === "forum"
+                ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
+                : "text-[var(--muted-foreground)] hover:bg-[var(--surface-soft)]",
+            ].join(" ")}
+          >
+            <MessageSquare className="size-4" />
+            Forum Diskusi
+          </button>
+        </div>
+      </div>
+
+      {activeLearnTab === "forum" ? (
+        <StudentCourseForumPanel
+          basePath={`/student/enrollments/${enrollmentId}/learn`}
+          courseId={courseId ?? 0}
+          courseTitle={curriculumQuery.data.title}
+        />
+      ) : (
       <div className="grid gap-5 lg:grid-cols-[380px_1fr]">
         <aside className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
           <p className="text-xs font-semibold tracking-[0.08em] text-[var(--muted-foreground)] uppercase">
@@ -1305,6 +1370,7 @@ export default function StudentEnrollmentLearnPage() {
           )}
         </article>
       </div>
+      )}
 
       <div className="flex flex-wrap gap-3">
         <Link href={`/student/enrollments/${enrollmentId}`} className="text-sm text-primary hover:underline">

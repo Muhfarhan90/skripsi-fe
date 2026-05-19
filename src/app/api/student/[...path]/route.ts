@@ -36,6 +36,15 @@ function resolveTargetPath(pathSegments: string[] | undefined): string | null {
     if (pathSegments.length === 4 && second && third === "reviews" && fourth) {
       return `/courses/${second}/reviews/${fourth}`;
     }
+    if (pathSegments.length === 3 && second && third === "forum") {
+      return `/courses/${second}/forum`;
+    }
+    if (pathSegments.length === 4 && second && third === "forum" && fourth) {
+      return `/courses/${second}/forum/${fourth}`;
+    }
+    if (pathSegments.length === 5 && second && third === "forum" && fourth && fifth === "replies") {
+      return `/courses/${second}/forum/${fourth}/replies`;
+    }
   }
 
   if (resource === "enrollments") {

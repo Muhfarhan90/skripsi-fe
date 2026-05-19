@@ -21,6 +21,7 @@ const ALLOWED_ADMIN_RESOURCES = new Set([
   "academic-periods",
   "assignment-submissions",
   "certificate-settings",
+  "forum-replies",
 ]);
 
 function resolveTargetPath(pathSegments: string[] | undefined): string | null {
@@ -62,11 +63,36 @@ function resolveTargetPath(pathSegments: string[] | undefined): string | null {
     return `/admin/courses/${maybeId}/assignments`;
   }
 
+  if (resource === "courses" && pathSegments.length === 3 && maybeId && action === "forum") {
+    return `/admin/courses/${maybeId}/forum`;
+  }
+
+  if (resource === "courses" && pathSegments.length === 4 && maybeId && action === "forum") {
+    const [, , , postId] = pathSegments;
+    if (postId) {
+      return `/admin/courses/${maybeId}/forum/${postId}`;
+    }
+  }
+
+  if (resource === "courses" && pathSegments.length === 5 && maybeId && action === "forum") {
+    const [, , , postId, forumAction] = pathSegments;
+    if (postId && forumAction === "replies") {
+      return `/admin/courses/${maybeId}/forum/${postId}/replies`;
+    }
+    if (postId && forumAction === "pin") {
+      return `/admin/courses/${maybeId}/forum/${postId}/pin`;
+    }
+  }
+
   if (resource === "courses" && pathSegments.length === 4 && maybeId && action === "assignments") {
     const [, , , assignmentId] = pathSegments;
     if (assignmentId) {
       return `/admin/courses/${maybeId}/assignments/${assignmentId}`;
     }
+  }
+
+  if (resource === "forum-replies" && pathSegments.length === 2 && maybeId) {
+    return `/admin/forum-replies/${maybeId}`;
   }
 
   if (resource === "courses" && pathSegments.length === 5 && maybeId && action === "sections") {

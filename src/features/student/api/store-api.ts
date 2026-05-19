@@ -8,9 +8,12 @@ import type {
   StoreEnrollment,
   StoreEnrollmentLessonDetail,
   StoreEnrollmentProgressSummary,
+  StoreForumPost,
+  StoreForumReply,
   StoreLesson,
   StoreLessonProgress,
   StoreOrder,
+  StorePaginationMeta,
   StoreQuizAnswer,
   StoreQuizAttempt,
   StoreQuizDetail,
@@ -21,10 +24,19 @@ interface StudentApiEnvelope<T> {
   success?: boolean;
   message?: string;
   data?: T;
+  meta?: StorePaginationMeta;
   errors?: Record<string, string[] | number[]>;
 }
 
 async function studentRequest<T>(endpoint: string, init: RequestInit): Promise<T> {
+  const payload = await studentRequestEnvelope<T>(endpoint, init);
+  return payload.data as T;
+}
+
+async function studentRequestEnvelope<T>(
+  endpoint: string,
+  init: RequestInit,
+): Promise<StudentApiEnvelope<T>> {
   const response = await fetch(endpoint, {
     ...init,
     headers: {
@@ -46,7 +58,7 @@ async function studentRequest<T>(endpoint: string, init: RequestInit): Promise<T
     );
   }
 
-  return payload.data as T;
+  return payload;
 }
 
 export function getPublishedCourses() {
@@ -169,6 +181,50 @@ export function generateStudentEnrollmentCertificate(enrollmentId: number) {
 
 export function getStudentCourseReviews(courseId: number) {
   return studentRequest<StoreReview[]>(`/api/student/courses/${courseId}/reviews`, { method: "GET" });
+}
+
+export async function getStudentCourseForumPosts(courseId: number, page = 1) {
+  const payload = await studentRequestEnvelope<StoreForumPost[]>(
+    `/api/student/courses/${courseId}/forum?page=${page}`,
+    { method: "GET" },
+  );
+
+  return {
+    items: payload.data ?? [],
+    meta: payload.meta ?? null,
+  };
+}
+
+export function getStudentCourseForumPost(courseId: number, postId: number) {
+  return studentRequest<StoreForumPost>(`/api/student/courses/${courseId}/forum/${postId}`, {
+    method: "GET",
+  });
+}
+
+export function createStudentCourseForumPost(
+  courseId: number,
+  payload: {
+    title: string;
+    content: string;
+  },
+) {
+  return studentRequest<StoreForumPost>(`/api/student/courses/${courseId}/forum`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function createStudentCourseForumReply(
+  courseId: number,
+  postId: number,
+  payload: {
+    content: string;
+  },
+) {
+  return studentRequest<StoreForumReply>(`/api/student/courses/${courseId}/forum/${postId}/replies`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export function createStudentCourseReview(

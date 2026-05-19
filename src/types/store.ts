@@ -19,6 +19,12 @@ export interface StoreCourse {
   created_at: string;
 }
 
+export interface StoreUserSummary {
+  id: number;
+  fullname: string;
+  avatar: string | null;
+}
+
 export interface StoreCourseOfferingSummary {
   id: number;
   course_id: number;
@@ -116,13 +122,40 @@ export interface StoreReview {
   enrollment_id: number | null;
   rating: number;
   review: string | null;
-  user?: {
-    id: number;
-    fullname: string;
-    avatar: string | null;
-  } | null;
+  user?: StoreUserSummary | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface StoreForumReply {
+  id: number;
+  post_id: number;
+  user_id: number;
+  content: string;
+  user?: StoreUserSummary | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StoreForumPost {
+  id: number;
+  course_id: number;
+  user_id: number;
+  title: string;
+  content: string;
+  is_pinned: boolean;
+  replies_count?: number | null;
+  user?: StoreUserSummary | null;
+  replies?: StoreForumReply[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StorePaginationMeta {
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
 }
 
 export interface StoreEnrollmentProgressSummary {

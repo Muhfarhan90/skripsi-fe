@@ -107,6 +107,10 @@ export function isStudentItemActive(pathname: string, href: string): boolean {
 }
 
 export function getStudentPageTitle(pathname: string): string {
+  if (/^\/student\/enrollments\/\d+\/forum$/.test(pathname)) {
+    return "Forum Diskusi";
+  }
+
   const matched = flattenStudentNavigationItems().find((item) => isStudentItemActive(pathname, item.href));
   if (matched) {
     return matched.label;
@@ -140,11 +144,15 @@ export function getStudentBreadcrumbs(pathname: string): StudentBreadcrumb[] {
 
     const isDetail = /^\/student\/enrollments\/\d+$/.test(pathname);
     const isLearn = /^\/student\/enrollments\/\d+\/learn$/.test(pathname);
+    const isForum = /^\/student\/enrollments\/\d+\/forum$/.test(pathname);
     if (isDetail) {
       breadcrumbs.push({ label: "Detail Kelas" });
     }
     if (isLearn) {
       breadcrumbs.push({ label: "Akses Materi" });
+    }
+    if (isForum) {
+      breadcrumbs.push({ label: "Forum Diskusi" });
     }
 
     return breadcrumbs;

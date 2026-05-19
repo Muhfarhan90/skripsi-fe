@@ -211,6 +211,37 @@ export interface AdminAssignment {
   updated_at: string | null;
 }
 
+export interface AdminForumUserSummary {
+  id: number;
+  fullname: string;
+  email?: string | null;
+  avatar: string | null;
+}
+
+export interface AdminForumReply {
+  id: number;
+  post_id: number;
+  user_id: number;
+  content: string;
+  user?: AdminForumUserSummary | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface AdminForumPost {
+  id: number;
+  course_id: number;
+  user_id: number;
+  title: string;
+  content: string;
+  is_pinned: boolean;
+  replies_count?: number | null;
+  user?: AdminForumUserSummary | null;
+  replies?: AdminForumReply[];
+  created_at: string | null;
+  updated_at: string | null;
+}
+
 export interface AdminQuestion {
   id: number;
   quiz_id: number;
@@ -478,6 +509,8 @@ export interface AdminOfferingAssignmentSubmissionQuery extends AdminPaginatedQu
   assignment_id?: number | string;
   status?: string;
 }
+
+export type AdminCourseForumQuery = AdminPaginatedQuery;
 
 export interface AdminAcademicPeriodQuery extends AdminPaginatedQuery {
   is_active?: boolean | string;
@@ -818,6 +851,63 @@ export async function listAdminCourseOfferingAssignmentSubmissions(
     `/api/admin/course-offerings/${offeringId}/assignment-submissions`,
     withListPagination(query),
   );
+}
+
+export async function listAdminCourseForumPosts(
+  courseId: number,
+  query: AdminCourseForumQuery = {},
+): Promise<AdminPaginatedResponse<AdminForumPost>> {
+  return listAdminCollection<AdminForumPost>(`/api/admin/courses/${courseId}/forum`, withListPagination(query));
+}
+
+export function getAdminCourseForumPost(courseId: number, postId: number) {
+  return apiRequest<AdminForumPost>(`/api/admin/courses/${courseId}/forum/${postId}`, {
+    method: "GET",
+  });
+}
+
+export function createAdminCourseForumPost(
+  courseId: number,
+  payload: {
+    title: string;
+    content: string;
+  },
+) {
+  return apiRequest<AdminForumPost>(`/api/admin/courses/${courseId}/forum`, {
+    method: "POST",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function createAdminCourseForumReply(
+  courseId: number,
+  postId: number,
+  payload: {
+    content: string;
+  },
+) {
+  return apiRequest<AdminForumReply>(`/api/admin/courses/${courseId}/forum/${postId}/replies`, {
+    method: "POST",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function toggleAdminCourseForumPostPin(courseId: number, postId: number) {
+  return apiRequest<AdminForumPost>(`/api/admin/courses/${courseId}/forum/${postId}/pin`, {
+    method: "PATCH",
+  });
+}
+
+export function deleteAdminCourseForumPost(courseId: number, postId: number) {
+  return apiMessageOnly(`/api/admin/courses/${courseId}/forum/${postId}`, {
+    method: "DELETE",
+  });
+}
+
+export function deleteAdminCourseForumReply(replyId: number) {
+  return apiMessageOnly(`/api/admin/forum-replies/${replyId}`, {
+    method: "DELETE",
+  });
 }
 
 export function reviewAdminAssignmentSubmission(
