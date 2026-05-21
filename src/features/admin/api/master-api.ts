@@ -328,12 +328,31 @@ export interface AdminOrderTransaction {
   id: number;
   order_id: number;
   invoice_code: string;
+  external_id?: string | null;
   payment_method: string | null;
+  payment_channel?: string | null;
+  payment_url?: string | null;
   payment_reference: string | null;
   payment_proof: string | null;
+  amount?: number | string;
   status: "pending" | "success" | "failed";
   paid_at: string | null;
   expired_at: string | null;
+  verified_by?: number | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  order?: {
+    id: number;
+    user_id: number;
+    order_code: string;
+    grand_total: number;
+    status: string | null;
+    user?: {
+      id: number;
+      fullname: string;
+      email: string;
+    } | null;
+  } | null;
 }
 
 export interface AdminOfferingEnrollment {
@@ -525,6 +544,10 @@ export type AdminUserQuery = AdminPaginatedQuery;
 export type AdminVoucherQuery = AdminPaginatedQuery;
 
 export type AdminOrderQuery = AdminPaginatedQuery;
+
+export interface AdminTransactionQuery extends AdminPaginatedQuery {
+  status?: string;
+}
 
 export interface AcademicPeriodPayload {
   code: string;
@@ -1348,6 +1371,12 @@ export function getAdminOrders(query: AdminOrderQuery = {}) {
 
 export async function listAdminOrders(query: AdminOrderQuery = {}): Promise<AdminPaginatedResponse<AdminOrder>> {
   return listAdminCollection<AdminOrder>("/api/admin/orders", withListPagination(query));
+}
+
+export async function listAdminTransactions(
+  query: AdminTransactionQuery = {},
+): Promise<AdminPaginatedResponse<AdminOrderTransaction>> {
+  return listAdminCollection<AdminOrderTransaction>("/api/admin/transactions", withListPagination(query));
 }
 
 export function updateAdminTransaction(

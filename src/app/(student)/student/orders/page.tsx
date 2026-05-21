@@ -16,7 +16,7 @@ function formatCurrency(amount: number | null | undefined): string {
 export default function StudentOrdersPage() {
   const ordersQuery = useQuery({
     queryKey: ["student", "orders"],
-    queryFn: getStudentOrders,
+    queryFn: () => getStudentOrders(),
   });
 
   return (

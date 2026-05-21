@@ -22,6 +22,8 @@ function resolveStatusClass(value: string): string {
     normalized.includes("nonaktif") ||
     normalized.includes("diblokir") ||
     normalized.includes("failed") ||
+    normalized.includes("cancelled") ||
+    normalized.includes("canceled") ||
     normalized.includes("dibatalkan") ||
     normalized.includes("archived")
   ) {
@@ -34,6 +36,8 @@ function resolveStatusClass(value: string): string {
     normalized.includes("paid") ||
     normalized.includes("published") ||
     normalized.includes("selesai") ||
+    normalized.includes("completed") ||
+    normalized.includes("success") ||
     normalized.includes("approved") ||
     normalized.includes("wajib")
   ) {

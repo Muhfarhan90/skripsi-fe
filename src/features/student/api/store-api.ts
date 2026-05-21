@@ -111,8 +111,23 @@ export function checkoutCart(payload: {
   });
 }
 
-export function getStudentOrders() {
-  return studentRequest<StoreOrder[]>("/api/student/orders", { method: "GET" });
+export function getStudentOrders(options?: {
+  status?: "pending" | "completed" | "cancelled";
+  perPage?: number;
+}) {
+  const searchParams = new URLSearchParams();
+
+  if (options?.status) {
+    searchParams.set("status", options.status);
+  }
+
+  if (typeof options?.perPage === "number" && Number.isFinite(options.perPage) && options.perPage > 0) {
+    searchParams.set("per_page", String(Math.trunc(options.perPage)));
+  }
+
+  const query = searchParams.toString();
+
+  return studentRequest<StoreOrder[]>(`/api/student/orders${query ? `?${query}` : ""}`, { method: "GET" });
 }
 
 export function getStudentOrderById(orderId: number) {

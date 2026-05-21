@@ -8,7 +8,9 @@ import {
   addCourseToCart,
   getPublishedCourses,
   getStudentEnrollments,
+  getStudentOrders,
 } from "@/features/student/api/store-api";
+import { buildHiddenCatalogCourseIds } from "@/features/student/lib/catalog-visibility";
 import { useAuthStore } from "@/features/auth/store/auth-store";
 import { ApiError } from "@/lib/api/client";
 
@@ -43,6 +45,12 @@ export default function CoursesPage() {
     enabled: isStudentUser,
   });
 
+  const pendingOrdersQuery = useQuery({
+    queryKey: ["student", "orders", "catalog-filter", "pending"],
+    queryFn: () => getStudentOrders({ status: "pending", perPage: 100 }),
+    enabled: isStudentUser,
+  });
+
   const addToCartMutation = useMutation({
     mutationFn: (courseId: number) => addCourseToCart(courseId),
     onSuccess: () => {
@@ -72,15 +80,18 @@ export default function CoursesPage() {
     addToCartMutation.mutate(courseId);
   };
 
-  const enrolledCourseIds = new Set(
-    (enrollmentsQuery.data ?? [])
-      .filter((enrollment) => enrollment.status !== "cancelled")
-      .map((enrollment) => enrollment.course_id),
+  const hiddenCourseIds = buildHiddenCatalogCourseIds(
+    enrollmentsQuery.data,
+    pendingOrdersQuery.data,
   );
 
-  const visibleCourses = (courseQuery.data ?? []).filter((course) => !enrolledCourseIds.has(course.id));
-  const isLoading = courseQuery.isLoading || (isStudentUser && enrollmentsQuery.isLoading);
-  const isError = courseQuery.isError || (isStudentUser && enrollmentsQuery.isError);
+  const visibleCourses = (courseQuery.data ?? []).filter((course) => !hiddenCourseIds.has(course.id));
+  const isLoading =
+    courseQuery.isLoading
+    || (isStudentUser && (enrollmentsQuery.isLoading || pendingOrdersQuery.isLoading));
+  const isError =
+    courseQuery.isError
+    || (isStudentUser && (enrollmentsQuery.isError || pendingOrdersQuery.isError));
 
   return (
     <main className="min-h-screen bg-background px-6 py-10">
@@ -88,7 +99,7 @@ export default function CoursesPage() {
         <header className="space-y-2">
           <h1 className="text-3xl font-semibold text-zinc-900">Katalog Course</h1>
           <p className="text-sm text-zinc-600">
-            Pilih course yang tersedia lalu lanjutkan checkout di dashboard student.
+            Pilih course yang tersedia. Course dengan enrollment aktif atau order pending tidak ditampilkan.
           </p>
         </header>
 
@@ -103,7 +114,7 @@ export default function CoursesPage() {
         {!isLoading && !isError && visibleCourses.length === 0 ? (
           <article className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
             <p className="text-sm text-zinc-600">
-              Tidak ada course baru. Semua course yang tersedia sudah ada di enrollment Anda.
+              Tidak ada course baru. Semua course yang tersedia sudah ada di enrollment Anda atau sedang menunggu pembayaran.
             </p>
           </article>
         ) : null}

@@ -24,19 +24,9 @@ function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-function normalizeOrderStatus(status: string): string {
-  switch (status) {
-    case "completed":
-      return "Selesai";
-    case "pending":
-      return "Pending";
-    case "cancelled":
-      return "Dibatalkan";
-    case "cart":
-      return "Cart";
-    default:
-      return status;
-  }
+function formatOrderStatus(status: string): string {
+  if (!status) return "-";
+  return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
 function isHttpUrl(value: string): boolean {
@@ -147,7 +137,7 @@ export default function AdminOrdersPage() {
                       <td className="px-4 py-3 text-sm text-[var(--foreground)]">{order.items.length} course</td>
                       <td className="px-4 py-3 text-sm text-[var(--foreground)]">{formatCurrency(order.grand_total)}</td>
                       <td className="px-4 py-3 text-sm text-[var(--foreground)]">
-                        <StatusBadge value={normalizeOrderStatus(order.status)} />
+                        <StatusBadge value={formatOrderStatus(order.status)} />
                       </td>
                       <td className="px-4 py-3 text-sm text-[var(--foreground)]">
                         {(() => {

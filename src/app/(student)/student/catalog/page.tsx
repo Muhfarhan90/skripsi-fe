@@ -8,7 +8,9 @@ import {
   addCourseToCart,
   getPublishedCourses,
   getStudentEnrollments,
+  getStudentOrders,
 } from "@/features/student/api/store-api";
+import { buildHiddenCatalogCourseIds } from "@/features/student/lib/catalog-visibility";
 import { ApiError } from "@/lib/api/client";
 
 function formatCurrency(amount: number | null | undefined): string {
@@ -44,6 +46,11 @@ export default function StudentCatalogPage() {
     queryFn: getStudentEnrollments,
   });
 
+  const pendingOrdersQuery = useQuery({
+    queryKey: ["student", "orders", "catalog-filter", "pending"],
+    queryFn: () => getStudentOrders({ status: "pending", perPage: 100 }),
+  });
+
   const addToCartMutation = useMutation({
     mutationFn: (courseId: number) => addCourseToCart(courseId),
     onSuccess: () => {
@@ -60,22 +67,21 @@ export default function StudentCatalogPage() {
     },
   });
 
-  const enrolledCourseIds = new Set(
-    (enrollmentsQuery.data ?? [])
-      .filter((enrollment) => enrollment.status !== "cancelled")
-      .map((enrollment) => enrollment.course_id),
+  const hiddenCourseIds = buildHiddenCatalogCourseIds(
+    enrollmentsQuery.data,
+    pendingOrdersQuery.data,
   );
 
-  const visibleCourses = (courseQuery.data ?? []).filter((course) => !enrolledCourseIds.has(course.id));
-  const isLoading = courseQuery.isLoading || enrollmentsQuery.isLoading;
-  const isError = courseQuery.isError || enrollmentsQuery.isError;
+  const visibleCourses = (courseQuery.data ?? []).filter((course) => !hiddenCourseIds.has(course.id));
+  const isLoading = courseQuery.isLoading || enrollmentsQuery.isLoading || pendingOrdersQuery.isLoading;
+  const isError = courseQuery.isError || enrollmentsQuery.isError || pendingOrdersQuery.isError;
 
   return (
     <section className="space-y-5">
       <header className="rounded-lg border border-border bg-card p-5 shadow-sm">
         <h1 className="text-2xl font-semibold text-foreground">Katalog Course</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Course yang sudah di-enroll tidak ditampilkan pada daftar ini.
+          Course yang sudah di-enroll atau masih menunggu pembayaran tidak ditampilkan pada daftar ini.
         </p>
       </header>
 
@@ -89,7 +95,7 @@ export default function StudentCatalogPage() {
       {!isLoading && !isError && visibleCourses.length === 0 ? (
         <article className="rounded-lg border border-border bg-card p-5 shadow-sm">
           <p className="text-sm text-muted-foreground">
-            Tidak ada course baru. Semua course yang tersedia sudah ada di kelas Anda.
+            Tidak ada course baru. Semua course yang tersedia sudah ada di kelas Anda atau sedang menunggu pembayaran.
           </p>
           <Link href="/student/enrollments" className="mt-3 inline-flex text-sm text-primary hover:underline">
             Lihat Kelas Saya
