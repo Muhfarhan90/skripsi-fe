@@ -7,6 +7,10 @@ import Sortable, { type SortableEvent } from "sortablejs";
 import {
   AlertTriangle,
   ArrowLeft,
+  BookOpen,
+  ChevronDown,
+  CircleHelp,
+  FileText,
   GripVertical,
   Loader2,
   Pencil,
@@ -46,18 +50,20 @@ import { useUnsavedChangesGuard } from "@/features/admin/hooks/use-unsaved-chang
 import { AdminModal } from "@/features/admin/components/admin-modal";
 import { ApiError } from "@/lib/api/client";
 import { SkillMultiSelect } from "@/features/admin/components/skill-multi-select";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmAlertDialog } from "@/components/ui/confirm-alert-dialog";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 
 type CourseFormMode = "create" | "edit";
 type LessonType = "video" | "file";
+type SectionContentType = "lesson" | "quiz" | "assignment";
 
 interface AdminCourseFormPageProps {
   mode: CourseFormMode;
@@ -142,6 +148,45 @@ interface CourseWizardStepItem {
 
 const FORM_ERROR_KEY = "__form";
 const AUTOSAVE_DELAY_MS = 15000;
+const LESSON_GROUP_CARD_CLASSNAME = "border-sky-200/80 bg-sky-50/40";
+const QUIZ_GROUP_CARD_CLASSNAME = "border-amber-200/80 bg-amber-50/40";
+const ASSIGNMENT_GROUP_CARD_CLASSNAME = "border-emerald-200/80 bg-emerald-50/40";
+const LESSON_ITEM_CARD_CLASSNAME = "border-sky-200/80 bg-sky-50/90 hover:bg-sky-100/90";
+const QUIZ_ITEM_CARD_CLASSNAME = "border-amber-200/80 bg-amber-50/90 hover:bg-amber-100/90";
+const ASSIGNMENT_ITEM_CARD_CLASSNAME = "border-emerald-200/80 bg-emerald-50/90 hover:bg-emerald-100/90";
+const SECTION_CONTENT_OPTIONS = [
+  {
+    type: "lesson",
+    label: "Lesson",
+    description: "Tambah materi video atau file untuk section ini.",
+    icon: BookOpen,
+    iconClassName: "bg-sky-100 text-sky-700 ring-sky-200",
+    cardClassName: "border-sky-200/80 bg-sky-50/90 hover:bg-sky-100/90",
+  },
+  {
+    type: "quiz",
+    label: "Quiz",
+    description: "Buat evaluasi singkat dengan durasi dan passing score.",
+    icon: CircleHelp,
+    iconClassName: "bg-amber-100 text-amber-700 ring-amber-200",
+    cardClassName: "border-amber-200/80 bg-amber-50/90 hover:bg-amber-100/90",
+  },
+  {
+    type: "assignment",
+    label: "Assignment",
+    description: "Tambahkan tugas dengan due date dan aturan submit.",
+    icon: FileText,
+    iconClassName: "bg-emerald-100 text-emerald-700 ring-emerald-200",
+    cardClassName: "border-emerald-200/80 bg-emerald-50/90 hover:bg-emerald-100/90",
+  },
+] satisfies Array<{
+  type: SectionContentType;
+  label: string;
+  description: string;
+  icon: typeof BookOpen;
+  iconClassName: string;
+  cardClassName: string;
+}>;
 
 const DEFAULT_FORM: CourseFormState = {
   title: "",
@@ -553,6 +598,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
   const [confirmDeleteQuiz, setConfirmDeleteQuiz] = useState<AdminQuiz | null>(null);
   const [confirmDeleteSection, setConfirmDeleteSection] = useState<SectionDeleteTarget | null>(null);
   const [confirmDeleteLesson, setConfirmDeleteLesson] = useState<LessonDeleteTarget | null>(null);
+  const [contentPopoverSectionKey, setContentPopoverSectionKey] = useState<string | null>(null);
   const [activeStepIndex, setActiveStepIndex] = useState<number>(() =>
     getStepIndexFromParam(searchParams.get("step")),
   );
@@ -1214,6 +1260,22 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
       section_id: String(sectionId),
     });
     setAssignmentModalOpen(true);
+  };
+
+  const handleSelectSectionContentType = (sectionId: number | undefined, type: SectionContentType) => {
+    setContentPopoverSectionKey(null);
+
+    if (type === "lesson") {
+      openCreateLessonPage(sectionId);
+      return;
+    }
+
+    if (type === "quiz") {
+      openCreateQuizPage(sectionId);
+      return;
+    }
+
+    openCreateAssignmentModal(sectionId);
   };
 
   const openEditAssignmentModal = (assignment: AdminAssignment) => {
@@ -1901,12 +1963,24 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
             ) : null}
 
             <div ref={sectionListRef} className="space-y-4">
-              {form.sections.map((section, sectionIndex) => (
-                <div
-                  key={section.client_id}
-                  data-section-draggable="true"
-                  className="space-y-3 rounded-md border border-[var(--border)] bg-[var(--card)] p-4"
-                >
+              {form.sections.map((section, sectionIndex) => {
+                const sectionLessons = section.lessons;
+                const sectionQuizzes = section.id ? (quizzesBySectionId.get(section.id) ?? []) : [];
+                const sectionAssignments = section.id ? (assignmentsBySectionId.get(section.id) ?? []) : [];
+                const showLessonsCard = sectionLessons.length > 0;
+                const showQuizzesCard =
+                  isEditing && validCourseId !== null && (sectionQuizzes.length > 0 || courseQuizzesQuery.isError);
+                const showAssignmentsCard =
+                  isEditing &&
+                  validCourseId !== null &&
+                  (sectionAssignments.length > 0 || courseAssignmentsQuery.isError);
+
+                return (
+                  <div
+                    key={section.client_id}
+                    data-section-draggable="true"
+                    className="space-y-3 rounded-md border border-[var(--border)] bg-[var(--card)] p-4"
+                  >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="inline-flex items-center gap-2">
                       <button
@@ -1922,6 +1996,56 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
+                      <Popover
+                        open={contentPopoverSectionKey === section.client_id}
+                        onOpenChange={(open) => setContentPopoverSectionKey(open ? section.client_id : null)}
+                      >
+                        <PopoverTrigger
+                          type="button"
+                          disabled={!canManageQuizzes || !section.id}
+                          className={`${buttonVariants({ variant: "outline", size: "sm" })} border-[var(--border)] bg-[var(--card)] text-[var(--foreground)]`}
+                        >
+                          <Plus className="size-4" />
+                          <span>Tambah Konten</span>
+                          <ChevronDown className="size-4 text-[var(--muted-foreground)]" />
+                        </PopoverTrigger>
+
+                        <PopoverContent
+                          align="end"
+                          className="w-80 border border-[var(--border)] bg-[var(--card)] p-3 text-[var(--foreground)] shadow-lg"
+                        >
+                          <div className="space-y-2">
+                            <div className="rounded-md border border-[var(--border)] bg-[var(--muted)] px-3 py-2">
+                              <p className="text-sm font-semibold">Pilih tipe konten</p>
+                              <p className="text-xs text-[var(--muted-foreground)]">
+                                Semua item baru akan ditambahkan ke section ini.
+                              </p>
+                            </div>
+
+                            {SECTION_CONTENT_OPTIONS.map((option) => (
+                              <button
+                                key={option.type}
+                                type="button"
+                                onClick={() => handleSelectSectionContentType(section.id, option.type)}
+                                className={`flex w-full items-start gap-3 rounded-xl border px-3 py-3 text-left transition ${option.cardClassName}`}
+                              >
+                                <span
+                                  className={`inline-flex size-10 shrink-0 items-center justify-center rounded-xl ring-1 ${option.iconClassName}`}
+                                >
+                                  <option.icon className="size-5" />
+                                </span>
+                                <span className="min-w-0">
+                                  <span className="block text-sm font-semibold text-[var(--foreground)]">{option.label}</span>
+                                  <span className="mt-0.5 block text-xs leading-5 text-[var(--muted-foreground)]">
+                                    {option.description}
+                                  </span>
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+
                       <Button
                         type="button"
                         variant="outline"
@@ -1954,210 +2078,18 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
                     <p className="text-xs text-red-600">{getFieldError(`sections.${sectionIndex}.title`)}</p>
                   ) : null}
 
-                  {isEditing && validCourseId !== null ? (
-                    <div className="space-y-3 rounded-md border border-[var(--border)] bg-[var(--muted)] p-3">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <p className="text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
-                          Quizzes
-                        </p>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openCreateQuizPage(section.id)}
-                          disabled={!canManageQuizzes || !section.id}
-                        >
-                          <Plus className="size-4" />
-                          <span>Tambah Quiz</span>
-                        </Button>
-                      </div>
-
-                      {!canManageQuizzes ? (
-                        <p className="text-xs text-[var(--muted-foreground)]">
-                          Simpan course dulu sebelum mengelola quiz.
-                        </p>
-                      ) : null}
-
-                      {!section.id ? (
-                        <p className="text-xs text-[var(--muted-foreground)]">
-                          Simpan course dulu agar section mendapat ID dan bisa dipakai untuk quiz.
-                        </p>
-                      ) : courseQuizzesQuery.isLoading ? (
-                        <p className="text-xs text-[var(--muted-foreground)]">Memuat quiz section...</p>
-                      ) : courseQuizzesQuery.isError ? (
-                        <p className="text-xs text-red-600">Gagal memuat quiz. Coba refresh halaman.</p>
-                      ) : ((quizzesBySectionId.get(section.id) ?? []).length > 0) ? (
-                        <div className="space-y-2">
-                          {(quizzesBySectionId.get(section.id) ?? []).map((quiz) => (
-                            <div
-                              key={quiz.id}
-                              className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-[var(--border)] bg-[var(--card)] px-3 py-2"
-                            >
-                              <div className="min-w-0">
-                                <button
-                                  type="button"
-                                  onClick={() => openQuizDetail(quiz.id)}
-                                  className="truncate text-left text-sm font-medium text-[var(--foreground)] hover:underline"
-                                >
-                                  {quiz.title}
-                                </button>
-                                <p className="text-xs text-[var(--muted-foreground)]">
-                                  Passing {quiz.passing_score ?? "-"} | Durasi {quiz.duration ?? "-"} menit
-                                </p>
-                                <p className="text-xs text-[var(--muted-foreground)]">
-                                  {formatQuizWindowLabel(quiz.open_at, quiz.close_at)}
-                                </p>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="icon-sm"
-                                  onClick={() => openQuizDetail(quiz.id)}
-                                  disabled={!canManageQuizzes}
-                                  className="border-[var(--border)] bg-[var(--card)] text-[var(--foreground)]"
-                                  aria-label={`Edit quiz ${quiz.title}`}
-                                >
-                                  <Pencil className="size-4" />
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="destructive"
-                                  size="icon-sm"
-                                  disabled={!canManageQuizzes || deleteQuizMutation.isPending}
-                                  onClick={() => {
-                                    setConfirmDeleteQuiz(quiz);
-                                  }}
-                                  className="border-[var(--danger-soft-border)] bg-[var(--danger-soft-bg)] text-[var(--danger-soft-foreground)] hover:opacity-90"
-                                  aria-label={`Hapus quiz ${quiz.title}`}
-                                >
-                                  <Trash2 className="size-4" />
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-xs text-[var(--muted-foreground)]">
-                          Belum ada quiz pada section ini.
-                        </p>
-                      )}
-                    </div>
-                  ) : null}
-
-                  <div className="space-y-3 rounded-md border border-[var(--border)] bg-[var(--muted)] p-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
-                        Assignments
-                      </p>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openCreateAssignmentModal(section.id)}
-                        disabled={!canManageQuizzes || !section.id}
-                      >
-                        <Plus className="size-4" />
-                        <span>Tambah Assignment</span>
-                      </Button>
-                    </div>
-
-                    {!canManageQuizzes ? (
-                      <p className="text-xs text-[var(--muted-foreground)]">
-                        Simpan course dulu sebelum mengelola assignment.
-                      </p>
-                    ) : null}
-
-                    {!section.id ? (
-                      <p className="text-xs text-[var(--muted-foreground)]">
-                        Simpan course dulu agar section mendapat ID dan bisa dipakai untuk assignment.
-                      </p>
-                    ) : courseAssignmentsQuery.isLoading ? (
-                      <p className="text-xs text-[var(--muted-foreground)]">Memuat assignment section...</p>
-                    ) : courseAssignmentsQuery.isError ? (
-                      <p className="text-xs text-red-600">Gagal memuat assignment. Coba refresh halaman.</p>
-                    ) : ((assignmentsBySectionId.get(section.id) ?? []).length > 0) ? (
-                      <div className="space-y-2">
-                        {(assignmentsBySectionId.get(section.id) ?? []).map((assignment) => (
-                          <div
-                            key={assignment.id}
-                            className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-[var(--border)] bg-[var(--card)] px-3 py-2"
-                          >
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-medium text-[var(--foreground)]">
-                                {assignment.title ?? `Assignment #${assignment.id}`}
-                              </p>
-                              <p className="text-xs text-[var(--muted-foreground)]">
-                                {assignment.is_required_for_certificate ? "Wajib Sertifikat" : "Opsional"} |{" "}
-                                {assignment.allow_resubmission ? "Boleh resubmit" : "Tidak boleh resubmit"} | Maks{" "}
-                                {assignment.max_attempts ?? "-"}x
-                              </p>
-                              <p className="text-xs text-[var(--muted-foreground)]">
-                                {formatAssignmentDueLabel(assignment.due_at)}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="icon-sm"
-                                onClick={() => openEditAssignmentModal(assignment)}
-                                disabled={!canManageQuizzes}
-                                className="border-[var(--border)] bg-[var(--card)] text-[var(--foreground)]"
-                                aria-label={`Edit assignment ${assignment.title ?? assignment.id}`}
-                              >
-                                <Pencil className="size-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-[var(--muted-foreground)]">
-                        Belum ada assignment pada section ini.
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="space-y-3 rounded-md border border-[var(--border)] bg-[var(--muted)] p-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
+                  {showLessonsCard ? (
+                    <div className={`space-y-3 rounded-md border p-3 ${LESSON_GROUP_CARD_CLASSNAME}`}>
                       <p className="text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
                         Lessons
                       </p>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openCreateLessonPage(section.id)}
-                        disabled={!canManageQuizzes || !section.id}
-                      >
-                        <Plus className="size-4" />
-                        <span>Tambah Lesson</span>
-                      </Button>
-                    </div>
-
-                    {!canManageQuizzes ? (
-                      <p className="text-xs text-[var(--muted-foreground)]">
-                        Simpan course dulu sebelum mengelola lesson.
-                      </p>
-                    ) : null}
-
-                    {!section.id ? (
-                      <p className="text-xs text-[var(--muted-foreground)]">
-                        Simpan course dulu agar section mendapat ID dan bisa dipakai untuk lesson.
-                      </p>
-                    ) : null}
-
-                    {section.lessons.length === 0 ? (
-                      <p className="text-xs text-[var(--muted-foreground)]">Belum ada lesson di section ini.</p>
-                    ) : null}
 
                     <div data-lesson-sortable="true" data-section-index={sectionIndex} className="space-y-2">
-                      {section.lessons.map((lesson, lessonIndex) => (
+                      {sectionLessons.map((lesson, lessonIndex) => (
                         <div
                           key={lesson.client_id}
                           data-lesson-draggable="true"
-                          className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-[var(--border)] bg-[var(--card)] px-3 py-2"
+                          className={`flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 transition ${LESSON_ITEM_CARD_CLASSNAME}`}
                         >
                           <div className="flex min-w-0 items-start gap-2">
                             <button
@@ -2212,9 +2144,122 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
                         </div>
                       ))}
                     </div>
-                  </div>
+                    </div>
+                  ) : null}
+
+                  {showQuizzesCard ? (
+                    <div className={`space-y-3 rounded-md border p-3 ${QUIZ_GROUP_CARD_CLASSNAME}`}>
+                      <p className="text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
+                        Quizzes
+                      </p>
+
+                      {courseQuizzesQuery.isError ? (
+                        <p className="text-xs text-red-600">Gagal memuat quiz. Coba refresh halaman.</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {sectionQuizzes.map((quiz) => (
+                            <div
+                              key={quiz.id}
+                              className={`flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 transition ${QUIZ_ITEM_CARD_CLASSNAME}`}
+                            >
+                              <div className="min-w-0">
+                                <button
+                                  type="button"
+                                  onClick={() => openQuizDetail(quiz.id)}
+                                  className="truncate text-left text-sm font-medium text-[var(--foreground)] hover:underline"
+                                >
+                                  {quiz.title}
+                                </button>
+                                <p className="text-xs text-[var(--muted-foreground)]">
+                                  Passing {quiz.passing_score ?? "-"} | Durasi {quiz.duration ?? "-"} menit
+                                </p>
+                                <p className="text-xs text-[var(--muted-foreground)]">
+                                  {formatQuizWindowLabel(quiz.open_at, quiz.close_at)}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="icon-sm"
+                                  onClick={() => openQuizDetail(quiz.id)}
+                                  disabled={!canManageQuizzes}
+                                  className="border-[var(--border)] bg-[var(--card)] text-[var(--foreground)]"
+                                  aria-label={`Edit quiz ${quiz.title}`}
+                                >
+                                  <Pencil className="size-4" />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="destructive"
+                                  size="icon-sm"
+                                  disabled={!canManageQuizzes || deleteQuizMutation.isPending}
+                                  onClick={() => {
+                                    setConfirmDeleteQuiz(quiz);
+                                  }}
+                                  className="border-[var(--danger-soft-border)] bg-[var(--danger-soft-bg)] text-[var(--danger-soft-foreground)] hover:opacity-90"
+                                  aria-label={`Hapus quiz ${quiz.title}`}
+                                >
+                                  <Trash2 className="size-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
+
+                  {showAssignmentsCard ? (
+                    <div className={`space-y-3 rounded-md border p-3 ${ASSIGNMENT_GROUP_CARD_CLASSNAME}`}>
+                      <p className="text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
+                        Assignments
+                      </p>
+
+                      {courseAssignmentsQuery.isError ? (
+                        <p className="text-xs text-red-600">Gagal memuat assignment. Coba refresh halaman.</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {sectionAssignments.map((assignment) => (
+                            <div
+                              key={assignment.id}
+                              className={`flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 transition ${ASSIGNMENT_ITEM_CARD_CLASSNAME}`}
+                            >
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-medium text-[var(--foreground)]">
+                                  {assignment.title ?? `Assignment #${assignment.id}`}
+                                </p>
+                                <p className="text-xs text-[var(--muted-foreground)]">
+                                  {assignment.is_required_for_certificate ? "Wajib Sertifikat" : "Opsional"} |{" "}
+                                  {assignment.allow_resubmission ? "Boleh resubmit" : "Tidak boleh resubmit"} | Maks{" "}
+                                  {assignment.max_attempts ?? "-"}x
+                                </p>
+                                <p className="text-xs text-[var(--muted-foreground)]">
+                                  {formatAssignmentDueLabel(assignment.due_at)}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="icon-sm"
+                                  onClick={() => openEditAssignmentModal(assignment)}
+                                  disabled={!canManageQuizzes}
+                                  className="border-[var(--border)] bg-[var(--card)] text-[var(--foreground)]"
+                                  aria-label={`Edit assignment ${assignment.title ?? assignment.id}`}
+                                >
+                                  <Pencil className="size-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
                 </div>
-              ))}
+                );
+              })}
             </div>
             </section>
           ) : null}
