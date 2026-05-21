@@ -1,24 +1,23 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import {
-  getCurrentUser,
-  registerCurrentDevice,
-} from "@/features/auth/api/auth-api";
-import {
-  getBrowserDeviceInfo,
-  getOrCreateBrowserDeviceId,
-} from "@/features/auth/lib/device";
+import { getCurrentUser } from "@/features/auth/api/auth-api";
+import { getOrCreateBrowserDeviceId } from "@/features/auth/lib/device";
+import { syncCurrentBrowserFcmDevice } from "@/features/auth/lib/fcm-device-sync";
 import { ApiError } from "@/lib/api/client";
-import {
-  getFirebaseMessagingToken,
-  subscribeToForegroundMessages,
-} from "@/lib/firebase";
+import { subscribeToForegroundMessages } from "@/lib/firebase";
+import { notificationQueryKeys } from "@/features/notifications/api/notification-api";
 import { useAuthStore } from "@/features/auth/store/auth-store";
 
+function invalidateNotificationQueries(queryClient: ReturnType<typeof useQueryClient>) {
+  void queryClient.invalidateQueries({ queryKey: notificationQueryKeys.all });
+  void queryClient.refetchQueries({ queryKey: notificationQueryKeys.all, type: "active" });
+}
+
 export function AuthBootstrap() {
+  const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
   const userId = user?.id ?? null;
   const sessionChecked = useAuthStore((state) => state.sessionChecked);
@@ -74,23 +73,22 @@ export function AuthBootstrap() {
       return;
     }
 
-    syncedDeviceKeyRef.current = syncKey;
-
     let isCancelled = false;
 
     void (async () => {
-      const fcmToken = await getFirebaseMessagingToken();
+      const didSync = await syncCurrentBrowserFcmDevice();
 
-      if (!fcmToken || isCancelled) {
+      if (isCancelled) {
         return;
       }
 
-      await registerCurrentDevice({
-        device_id: deviceId,
-        device_type: "web",
-        fcm_token: fcmToken,
-        device_info: getBrowserDeviceInfo(),
-      });
+      if (!didSync) {
+        syncedDeviceKeyRef.current = null;
+        console.warn("FCM token was not available after repeated sync attempts.");
+        return;
+      }
+
+      syncedDeviceKeyRef.current = syncKey;
     })().catch((error: unknown) => {
       syncedDeviceKeyRef.current = null;
       console.error("Failed to sync FCM device token", error);
@@ -110,15 +108,54 @@ export function AuthBootstrap() {
     let unsubscribe: (() => void) | null = null;
 
     void subscribeToForegroundMessages((payload) => {
+      invalidateNotificationQueries(queryClient);
+
       const title = payload.notification?.title ?? "Notifikasi baru";
       const description = payload.notification?.body;
+      const notificationLink =
+        payload.fcmOptions?.link ??
+        payload.data?.click_action ??
+        payload.data?.route ??
+        null;
+      const isDocumentHidden =
+        typeof document !== "undefined" && document.visibilityState === "hidden";
+      const shouldShowToast =
+        typeof document === "undefined" ||
+        document.visibilityState === "visible" ||
+        document.hasFocus();
 
-      if (description) {
+      // Some browsers still deliver messages to the page while the document
+      // is hidden or the window is minimized. In that case, raise a system
+      // notification instead of only showing the in-app toast.
+      if (
+        isDocumentHidden &&
+        typeof window !== "undefined" &&
+        "Notification" in window &&
+        Notification.permission === "granted"
+      ) {
+        const systemNotification = new Notification(title, {
+          body: description,
+          icon: payload.notification?.icon ?? "/globe.svg",
+          tag: payload.data?.notification_id,
+        });
+
+        if (notificationLink) {
+          systemNotification.onclick = () => {
+            systemNotification.close();
+            window.focus();
+            window.location.assign(new URL(notificationLink, window.location.origin).toString());
+          };
+        }
+      }
+
+      if (shouldShowToast && description) {
         toast.info(title, { description });
         return;
       }
 
-      toast.info(title);
+      if (shouldShowToast) {
+        toast.info(title);
+      }
     }).then((subscription) => {
       if (isCancelled) {
         subscription?.();
@@ -132,7 +169,27 @@ export function AuthBootstrap() {
       isCancelled = true;
       unsubscribe?.();
     };
-  }, [sessionChecked, userId]);
+  }, [queryClient, sessionChecked, userId]);
+
+  useEffect(() => {
+    if (!sessionChecked || !userId || typeof navigator === "undefined" || !("serviceWorker" in navigator)) {
+      return;
+    }
+
+    const handleServiceWorkerMessage = (event: MessageEvent) => {
+      if (event.data?.type !== "fcm-background-message") {
+        return;
+      }
+
+      invalidateNotificationQueries(queryClient);
+    };
+
+    navigator.serviceWorker.addEventListener("message", handleServiceWorkerMessage);
+
+    return () => {
+      navigator.serviceWorker.removeEventListener("message", handleServiceWorkerMessage);
+    };
+  }, [queryClient, sessionChecked, userId]);
 
   return null;
 }

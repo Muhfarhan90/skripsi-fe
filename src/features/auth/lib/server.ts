@@ -10,9 +10,19 @@ interface ApiEnvelope<T> {
 }
 
 export function buildApiUrl(endpoint: string): string {
-  const base = getApiBaseUrl().replace(/\/$/, "");
+  const base = getServerApiBaseUrl().replace(/\/$/, "");
   const path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
   return `${base}${path}`;
+}
+
+function getServerApiBaseUrl(): string {
+  const internalApiUrl = process.env.INTERNAL_API_URL?.replace(/\/$/, "");
+
+  if (internalApiUrl) {
+    return internalApiUrl;
+  }
+
+  return getApiBaseUrl().replace(/\/$/, "");
 }
 
 export function getAuthCookieOptions() {

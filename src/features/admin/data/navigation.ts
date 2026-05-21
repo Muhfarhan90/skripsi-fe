@@ -417,6 +417,10 @@ function resolveAdminDynamicRoute(pathname: string): AdminDynamicRouteMeta | und
 }
 
 export function getAdminPageTitle(pathname: string): string {
+  if (pathname.startsWith("/admin/notifications")) {
+    return "Notifikasi";
+  }
+
   const routeLabel = getAdminRouteLabel(pathname);
   if (routeLabel) {
     return routeLabel;
@@ -438,6 +442,13 @@ export function getAdminPageTitle(pathname: string): string {
 export function getAdminBreadcrumbs(pathname: string): AdminBreadcrumb[] {
   if (pathname === "/admin") {
     return [{ label: "Dashboard" }];
+  }
+
+  if (pathname.startsWith("/admin/notifications")) {
+    return [
+      { label: "Dashboard", href: "/admin" },
+      { label: "Notifikasi" },
+    ];
   }
 
   const dynamicRoute = resolveAdminDynamicRoute(pathname);

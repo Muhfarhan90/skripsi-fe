@@ -111,6 +111,10 @@ export function getStudentPageTitle(pathname: string): string {
     return "Forum Diskusi";
   }
 
+  if (pathname.startsWith("/student/notifications")) {
+    return "Notifikasi";
+  }
+
   const matched = flattenStudentNavigationItems().find((item) => isStudentItemActive(pathname, item.href));
   if (matched) {
     return matched.label;
@@ -163,6 +167,11 @@ export function getStudentBreadcrumbs(pathname: string): StudentBreadcrumb[] {
     if (/^\/student\/orders\/\d+$/.test(pathname)) {
       breadcrumbs.push({ label: "Detail Order" });
     }
+    return breadcrumbs;
+  }
+
+  if (pathname.startsWith("/student/notifications")) {
+    breadcrumbs.push({ label: "Notifikasi" });
     return breadcrumbs;
   }
 

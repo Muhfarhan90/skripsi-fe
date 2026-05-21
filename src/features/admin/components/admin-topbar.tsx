@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Bell,
   ChevronDown,
   LogOut,
   Menu,
@@ -18,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useLogoutAction } from "@/features/auth/hooks/use-logout-action";
+import { NotificationBell } from "@/features/notifications/components/notification-bell";
 import {
   getAdminQuickNavigationItems,
   type AdminQuickNavigationItem,
@@ -52,7 +52,6 @@ export function AdminTopbar({
   const quickNavigationItems = useMemo(() => getAdminQuickNavigationItems(), []);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [showSearchResults, setShowSearchResults] = useState(false);
-  const unreadNotificationCount = 8;
 
   const searchResults = useMemo(() => {
     const keyword = searchKeyword.trim().toLowerCase();
@@ -167,18 +166,7 @@ export function AdminTopbar({
           </div>
         </div>
 
-        <button
-          type="button"
-          className="relative inline-flex size-9 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] transition hover:bg-[var(--surface-hover)]"
-          aria-label={`Notifikasi (${unreadNotificationCount} belum dibaca)`}
-        >
-          <Bell className="size-4" />
-          {unreadNotificationCount > 0 ? (
-            <span className="absolute -top-1 -right-1 inline-flex min-w-4 items-center justify-center rounded-full bg-[var(--danger-soft-foreground)] px-1 text-[10px] font-semibold leading-4 text-white">
-              {unreadNotificationCount}
-            </span>
-          ) : null}
-        </button>
+        <NotificationBell />
 
         <Popover>
           <PopoverTrigger

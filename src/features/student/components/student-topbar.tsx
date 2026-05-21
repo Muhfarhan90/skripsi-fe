@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useLogoutAction } from "@/features/auth/hooks/use-logout-action";
+import { NotificationBell } from "@/features/notifications/components/notification-bell";
 import { getStudentCart } from "@/features/student/api/store-api";
 import {
   getStudentBreadcrumbs,
@@ -102,14 +103,7 @@ export function StudentTopbar({
           <p className="truncate text-sm font-semibold text-[var(--foreground)] sm:text-base">{pageTitle}</p>
         </div>
 
-        <button
-          type="button"
-          onClick={onToggleTheme}
-          className="inline-flex size-9 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] transition hover:bg-[var(--surface-hover)]"
-          aria-label={theme === "light" ? "Aktifkan dark mode" : "Aktifkan light mode"}
-        >
-          {theme === "light" ? <Moon className="size-4" /> : <Sun className="size-4" />}
-        </button>
+        <NotificationBell />
 
         <Link
           href="/student/cart"
@@ -123,7 +117,7 @@ export function StudentTopbar({
         >
           <ShoppingCart className="size-4" />
           {cartItemsCount > 0 ? (
-            <span className="absolute -right-1.5 -top-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold leading-none text-white">
+            <span className="absolute -right-1.5 -top-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--danger-soft-foreground)] px-1 text-[10px] font-semibold leading-none text-white">
               {cartItemsCount > 99 ? "99+" : cartItemsCount}
             </span>
           ) : null}
@@ -153,6 +147,35 @@ export function StudentTopbar({
             </div>
 
             <div className="space-y-1 pt-2">
+              <button
+                type="button"
+                onClick={onToggleTheme}
+                aria-pressed={theme === "dark"}
+                aria-label={theme === "dark" ? "Nonaktifkan dark mode" : "Aktifkan dark mode"}
+                className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm transition hover:bg-[var(--surface-hover)]"
+              >
+                <span className="inline-flex items-center gap-2">
+                  {theme === "light" ? <Moon className="size-4" /> : <Sun className="size-4" />}
+                  <span>Dark Mode</span>
+                </span>
+                <span
+                  aria-hidden
+                  className={cn(
+                    "relative inline-flex h-5 w-9 items-center rounded-full border transition",
+                    theme === "dark"
+                      ? "border-emerald-600 bg-emerald-600"
+                      : "border-[var(--border)] bg-[var(--muted)]",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "inline-block size-4 rounded-full bg-white transition-transform",
+                      theme === "dark" ? "translate-x-4" : "translate-x-0.5",
+                    )}
+                  />
+                </span>
+              </button>
+
               <Link
                 href="/student"
                 className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition hover:bg-[var(--surface-hover)]"
