@@ -161,6 +161,12 @@ src/
 - **shadcn/ui**
 - Lucide React
 
+### UI Copy Rules
+
+- Tampilkan hanya copy yang membantu user memahami status, aksi, atau hasil yang relevan di layar saat itu.
+- Jangan tampilkan catatan internal, penjelasan implementasi, debug text, atau keterangan teknis yang bukan untuk user akhir.
+- Jika sebuah informasi hanya berguna untuk developer atau agent, simpan di kode, komentar, atau dokumentasi internal; jangan render ke UI.
+
 ### State & Data
 
 - TanStack Query
