@@ -1,5 +1,20 @@
 import { apiMessageOnly, apiPaginatedRequest, apiRequest } from "@/lib/api/client";
 import type { ApiPaginationMeta } from "@/types/auth";
+import type {
+  WebsiteFaq,
+  WebsiteFaqCategory,
+  WebsiteFaqCategoryPayload,
+  WebsiteFaqPayload,
+  WebsiteHomeContent,
+  WebsitePage,
+  WebsitePagePayload,
+  WebsiteSection,
+  WebsiteSectionPayload,
+  WebsiteSettingGlobal,
+  WebsiteSettingPayload,
+  WebsiteSocialLink,
+  WebsiteSocialLinkPayload,
+} from "@/types/website";
 
 export interface AdminRole {
   id: number;
@@ -312,7 +327,7 @@ export interface AdminOrder {
   subtotal: number;
   discount: number;
   grand_total: number;
-  status: "cart" | "pending" | "completed" | "cancelled";
+  status: "pending" | "completed" | "cancelled";
   note: string | null;
   created_at: string | null;
   user?: {
@@ -448,6 +463,14 @@ export interface AdminCertificateSetting {
   created_at: string | null;
   updated_at: string | null;
 }
+
+export type AdminWebsiteSetting = WebsiteSettingGlobal;
+export type AdminWebsiteHome = WebsiteHomeContent;
+export type AdminWebsiteSocialLink = WebsiteSocialLink;
+export type AdminWebsitePage = WebsitePage;
+export type AdminWebsiteSection = WebsiteSection;
+export type AdminWebsiteFaqCategory = WebsiteFaqCategory;
+export type AdminWebsiteFaq = WebsiteFaq;
 
 export interface AdminPaginatedResponse<T> {
   items: T[];
@@ -972,10 +995,161 @@ export function getAdminCertificateSettings() {
   });
 }
 
+export function getAdminWebsiteSettings() {
+  return apiRequest<AdminWebsiteSetting>("/api/admin/website-settings", {
+    method: "GET",
+  });
+}
+
+export function getAdminWebsiteHome() {
+  return apiRequest<AdminWebsiteHome>("/api/admin/website/home", {
+    method: "GET",
+  });
+}
+
 export function updateAdminCertificateSettings(payload: CertificateSettingPayload) {
   return apiRequest<AdminCertificateSetting>("/api/admin/certificate-settings", {
     method: "PUT",
     body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function updateAdminWebsiteSettings(payload: WebsiteSettingPayload) {
+  return apiRequest<AdminWebsiteSetting>("/api/admin/website-settings", {
+    method: "PUT",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function listAdminWebsiteSocialLinks() {
+  return apiRequest<AdminWebsiteSocialLink[]>("/api/admin/website-social-links", {
+    method: "GET",
+  });
+}
+
+export function createAdminWebsiteSocialLink(payload: WebsiteSocialLinkPayload) {
+  return apiRequest<AdminWebsiteSocialLink>("/api/admin/website-social-links", {
+    method: "POST",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function updateAdminWebsiteSocialLink(linkId: number, payload: WebsiteSocialLinkPayload) {
+  return apiRequest<AdminWebsiteSocialLink>(`/api/admin/website-social-links/${linkId}`, {
+    method: "PUT",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function deleteAdminWebsiteSocialLink(linkId: number) {
+  return apiMessageOnly(`/api/admin/website-social-links/${linkId}`, {
+    method: "DELETE",
+  });
+}
+
+export function listAdminWebsitePages() {
+  return apiRequest<AdminWebsitePage[]>("/api/admin/website-pages", {
+    method: "GET",
+  });
+}
+
+export function createAdminWebsitePage(payload: WebsitePagePayload) {
+  return apiRequest<AdminWebsitePage>("/api/admin/website-pages", {
+    method: "POST",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function updateAdminWebsitePage(pageId: number, payload: WebsitePagePayload) {
+  return apiRequest<AdminWebsitePage>(`/api/admin/website-pages/${pageId}`, {
+    method: "PUT",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function deleteAdminWebsitePage(pageId: number) {
+  return apiMessageOnly(`/api/admin/website-pages/${pageId}`, {
+    method: "DELETE",
+  });
+}
+
+export function listAdminWebsiteSections(pageKey?: string) {
+  const query = pageKey ? `?page_key=${encodeURIComponent(pageKey)}` : "";
+
+  return apiRequest<AdminWebsiteSection[]>(`/api/admin/website-sections${query}`, {
+    method: "GET",
+  });
+}
+
+export function createAdminWebsiteSection(payload: WebsiteSectionPayload) {
+  return apiRequest<AdminWebsiteSection>("/api/admin/website-sections", {
+    method: "POST",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function updateAdminWebsiteSection(sectionId: number, payload: WebsiteSectionPayload) {
+  return apiRequest<AdminWebsiteSection>(`/api/admin/website-sections/${sectionId}`, {
+    method: "PUT",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function deleteAdminWebsiteSection(sectionId: number) {
+  return apiMessageOnly(`/api/admin/website-sections/${sectionId}`, {
+    method: "DELETE",
+  });
+}
+
+export function listAdminFaqs() {
+  return apiRequest<AdminWebsiteFaq[]>("/api/admin/faqs", {
+    method: "GET",
+  });
+}
+
+export function listAdminFaqCategories() {
+  return apiRequest<AdminWebsiteFaqCategory[]>("/api/admin/faq-categories", {
+    method: "GET",
+  });
+}
+
+export function createAdminFaqCategory(payload: WebsiteFaqCategoryPayload) {
+  return apiRequest<AdminWebsiteFaqCategory>("/api/admin/faq-categories", {
+    method: "POST",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function updateAdminFaqCategory(categoryId: number, payload: WebsiteFaqCategoryPayload) {
+  return apiRequest<AdminWebsiteFaqCategory>(`/api/admin/faq-categories/${categoryId}`, {
+    method: "PUT",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function deleteAdminFaqCategory(categoryId: number) {
+  return apiMessageOnly(`/api/admin/faq-categories/${categoryId}`, {
+    method: "DELETE",
+  });
+}
+
+export function createAdminFaq(payload: WebsiteFaqPayload) {
+  return apiRequest<AdminWebsiteFaq>("/api/admin/faqs", {
+    method: "POST",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function updateAdminFaq(faqId: number, payload: WebsiteFaqPayload) {
+  return apiRequest<AdminWebsiteFaq>(`/api/admin/faqs/${faqId}`, {
+    method: "PUT",
+    body: JSON.stringify(normalizePayload(payload)),
+  });
+}
+
+export function deleteAdminFaq(faqId: number) {
+  return apiMessageOnly(`/api/admin/faqs/${faqId}`, {
+    method: "DELETE",
   });
 }
 

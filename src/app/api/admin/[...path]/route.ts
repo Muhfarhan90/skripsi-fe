@@ -21,6 +21,13 @@ const ALLOWED_ADMIN_RESOURCES = new Set([
   "academic-periods",
   "assignment-submissions",
   "certificate-settings",
+  "website-settings",
+  "website",
+  "website-social-links",
+  "website-pages",
+  "website-sections",
+  "faq-categories",
+  "faqs",
   "forum-replies",
 ]);
 
@@ -36,6 +43,10 @@ function resolveTargetPath(pathSegments: string[] | undefined): string | null {
 
   if (pathSegments.length === 1) {
     return `/admin/${resource}`;
+  }
+
+  if (resource === "website" && pathSegments.length === 2 && maybeId === "home") {
+    return "/admin/website/home";
   }
 
   if (pathSegments.length === 2 && maybeId) {

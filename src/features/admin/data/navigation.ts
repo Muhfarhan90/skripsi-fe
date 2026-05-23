@@ -5,6 +5,7 @@ import {
   CalendarClock,
   CalendarRange,
   FolderKanban,
+  PanelsTopLeft,
   LayoutDashboard,
   ReceiptText,
   Shapes,
@@ -21,6 +22,7 @@ export type AdminNavIcon =
   | "courseOfferings"
   | "academicPeriods"
   | "certificates"
+  | "websiteCms"
   | "vouchers"
   | "transactions"
   | "orders";
@@ -67,6 +69,7 @@ const ADMIN_ICON_MAP: Record<AdminNavIcon, LucideIcon> = {
   courseOfferings: CalendarRange,
   academicPeriods: CalendarClock,
   certificates: Award,
+  websiteCms: PanelsTopLeft,
   vouchers: TicketPercent,
   transactions: ReceiptText,
   orders: ReceiptText,
@@ -172,6 +175,13 @@ export const ADMIN_NAVIGATION: AdminNavigationGroup[] = [
         href: "/admin/certificate-settings",
         description: "Atur template dan metadata sertifikat",
         icon: "certificates",
+      },
+      {
+        key: "website-cms",
+        label: "Website CMS",
+        href: "/admin/website-cms",
+        description: "Kelola footer, sosial media, dan konten landing page",
+        icon: "websiteCms",
       },
       {
         key: "master-data-vouchers",
