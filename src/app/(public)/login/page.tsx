@@ -3,7 +3,7 @@ import { LoginClient } from "@/app/(public)/login/login-client";
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<p className="text-sm text-zinc-600">Loading sign in page...</p>}>
+    <Suspense fallback={<p className="p-6 text-sm text-zinc-600">Memuat halaman masuk...</p>}>
       <LoginClient />
     </Suspense>
   );

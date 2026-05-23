@@ -48,11 +48,11 @@ export default function ResendVerificationPage() {
     onSuccess: (data) => {
       if (typeof data?.retry_after === "number") {
         setCooldownLeft(data.retry_after);
-        toast.success(`Verification email sent. Try again in ${data.retry_after} seconds if needed.`);
+        toast.success(`Email verifikasi dikirim. Coba lagi dalam ${data.retry_after} detik jika diperlukan.`);
         return;
       }
 
-      toast.success("Verification email sent successfully");
+      toast.success("Email verifikasi berhasil dikirim");
     },
     onError: (error) => {
       applyApiFieldErrors<ResendVerificationSchema>(error, setError);
@@ -71,16 +71,16 @@ export default function ResendVerificationPage() {
         return;
       }
 
-      toast.error("Failed to resend verification email");
+      toast.error("Gagal mengirim ulang email verifikasi");
     },
   });
 
   return (
     <AuthShell
-      title="Resend Verification Email"
-      subtitle="Use this if you have not received your verification email yet"
-      footerText="Want to go back?"
-      footerLinkText="Sign In"
+      title="Kirim Ulang Verifikasi"
+      subtitle="Gunakan halaman ini jika email verifikasi akun belum diterima."
+      footerText="Kembali ke halaman"
+      footerLinkText="Masuk"
       footerHref="/login"
     >
       <form className="space-y-4" onSubmit={handleSubmit((values) => resendMutation.mutate(values))}>
@@ -91,12 +91,12 @@ export default function ResendVerificationPage() {
 
         {cooldownLeft > 0 ? (
           <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
-            You can resend the verification email in {cooldownLeft} seconds.
+            Email verifikasi dapat dikirim ulang dalam {cooldownLeft} detik.
           </p>
         ) : null}
 
         <SubmitButton loading={resendMutation.isPending} disabled={cooldownLeft > 0}>
-          {cooldownLeft > 0 ? `Wait ${cooldownLeft}s` : "Resend Email"}
+          {cooldownLeft > 0 ? `Tunggu ${cooldownLeft}s` : "Kirim Ulang Email"}
         </SubmitButton>
       </form>
     </AuthShell>

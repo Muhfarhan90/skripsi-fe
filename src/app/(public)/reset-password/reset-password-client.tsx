@@ -39,7 +39,7 @@ export function ResetPasswordClient() {
   const resetMutation = useMutation({
     mutationFn: resetPassword,
     onSuccess: (message) => {
-      toast.success(message || "Password reset successful");
+      toast.success(message || "Password berhasil diperbarui");
       router.replace("/login");
     },
     onError: (error) => {
@@ -50,16 +50,16 @@ export function ResetPasswordClient() {
         return;
       }
 
-      toast.error("Failed to reset password");
+      toast.error("Gagal mereset password");
     },
   });
 
   return (
     <AuthShell
       title="Reset Password"
-      subtitle="Enter your new password"
-      footerText="Back to"
-      footerLinkText="Sign In"
+      subtitle="Masukkan password baru untuk akun SkripsiLMS."
+      footerText="Kembali ke halaman"
+      footerLinkText="Masuk"
       footerHref="/login"
     >
       <form
@@ -67,7 +67,7 @@ export function ResetPasswordClient() {
         onSubmit={handleSubmit((values) => {
           // Email and token are trusted from reset-link query params, so user only inputs new password.
           if (isResetLinkInvalid) {
-            toast.error("Reset link is invalid or incomplete");
+            toast.error("Link reset password tidak valid atau tidak lengkap");
             return;
           }
 
@@ -83,27 +83,27 @@ export function ResetPasswordClient() {
       >
         {isResetLinkInvalid ? (
           <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            The password reset link is invalid. Please request a new reset link.
+            Link reset password tidak valid. Silakan minta link reset baru.
           </p>
         ) : null}
 
         <div>
-          <AuthInput label="New Password" type="password" placeholder="********" {...register("password")} />
+          <AuthInput label="Password Baru" type="password" placeholder="Masukkan password baru" {...register("password")} />
           <FieldError message={errors.password?.message} />
         </div>
 
         <div>
           <AuthInput
-            label="Confirm Password"
+            label="Konfirmasi Password"
             type="password"
-            placeholder="********"
+            placeholder="Ulangi password baru"
             {...register("password_confirmation")}
           />
           <FieldError message={errors.password_confirmation?.message} />
         </div>
 
         <SubmitButton loading={resetMutation.isPending} disabled={isResetLinkInvalid}>
-          Reset Password
+          Simpan Password Baru
         </SubmitButton>
       </form>
     </AuthShell>

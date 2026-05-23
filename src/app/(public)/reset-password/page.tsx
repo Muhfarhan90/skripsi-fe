@@ -3,7 +3,7 @@ import { ResetPasswordClient } from "@/app/(public)/reset-password/reset-passwor
 
 export default function ResetPasswordPage() {
   return (
-    <Suspense fallback={<p className="text-sm text-zinc-600">Loading reset password page...</p>}>
+    <Suspense fallback={<p className="p-6 text-sm text-zinc-600">Memuat halaman reset password...</p>}>
       <ResetPasswordClient />
     </Suspense>
   );

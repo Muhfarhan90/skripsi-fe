@@ -57,7 +57,7 @@ export function LoginClient() {
     onSuccess: (data) => {
       setUser(data.user);
       setSessionChecked(true);
-      toast.success("Login successful");
+      toast.success("Berhasil masuk");
       router.replace(redirectTarget ?? getDefaultPathByRole(data.user.role_id));
     },
     onError: (error) => {
@@ -68,16 +68,16 @@ export function LoginClient() {
         return;
       }
 
-      toast.error("Something went wrong while signing in");
+      toast.error("Gagal masuk ke akun");
     },
   });
 
   return (
     <AuthShell
-      title="Sign In"
-      subtitle="Sign in with your LMS account"
-      footerText="Don't have an account?"
-      footerLinkText="Sign Up"
+      title="Masuk ke Akun"
+      subtitle="Gunakan akun SkripsiLMS untuk melanjutkan belajar, mengakses course, dan memantau progress."
+      footerText="Belum punya akun?"
+      footerLinkText="Daftar Sekarang"
       footerHref="/register"
     >
       <form className="space-y-4" onSubmit={handleSubmit((values) => loginMutation.mutate(values))}>
@@ -87,19 +87,19 @@ export function LoginClient() {
         </div>
 
         <div>
-          <AuthInput label="Password" type="password" placeholder="********" {...registerField("password")} />
+          <AuthInput label="Password" type="password" placeholder="Masukkan password" {...registerField("password")} />
           <FieldError message={errors.password?.message} />
         </div>
 
-        <SubmitButton loading={loginMutation.isPending}>Sign In</SubmitButton>
+        <SubmitButton loading={loginMutation.isPending}>Masuk</SubmitButton>
       </form>
 
       <div className="mt-4 flex flex-wrap gap-4 text-xs">
         <Link href="/forgot-password" className="text-zinc-600 hover:text-zinc-900 hover:underline">
-          Forgot password?
+          Lupa password?
         </Link>
         <Link href="/resend-verification" className="text-zinc-600 hover:text-zinc-900 hover:underline">
-          Resend verification email
+          Kirim ulang verifikasi email
         </Link>
       </div>
     </AuthShell>

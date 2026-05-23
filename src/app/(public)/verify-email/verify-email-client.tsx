@@ -44,7 +44,7 @@ export function VerifyEmailClient() {
         });
       }
 
-      throw new Error("Verification parameters are incomplete");
+      throw new Error("Parameter verifikasi tidak lengkap");
     },
   });
 
@@ -69,27 +69,27 @@ export function VerifyEmailClient() {
   const errorMessage =
     verifyMutation.error instanceof Error
       ? verifyMutation.error.message
-      : "Verification failed. Please try again.";
+      : "Verifikasi gagal. Silakan coba lagi.";
 
   return (
     <AuthShell
-      title="Email Verification"
-      subtitle="We are processing your email verification"
-      footerText="Need another email?"
-      footerLinkText="Resend Verification Email"
+      title="Verifikasi Email"
+      subtitle="Kami sedang memproses verifikasi email akun SkripsiLMS."
+      footerText="Butuh email baru?"
+      footerLinkText="Kirim Ulang Verifikasi"
       footerHref="/resend-verification"
     >
       <div className="space-y-4">
         {isRedirectedSuccess ? (
           <>
             <p className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
-              {verifyParams.message || "Email verified successfully"}
+              {verifyParams.message || "Email berhasil diverifikasi"}
             </p>
             <Link
               href="/login"
               className="inline-flex h-10 w-full items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             >
-              Continue to Sign In
+              Lanjut Masuk
             </Link>
           </>
         ) : null}
@@ -97,19 +97,19 @@ export function VerifyEmailClient() {
         {isRedirectedError ? (
           <>
             <p className="rounded-md border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
-              {verifyParams.message || "Verification failed. The link is invalid or has expired."}
+              {verifyParams.message || "Verifikasi gagal. Link tidak valid atau sudah kedaluwarsa."}
             </p>
             <Link
               href="/resend-verification"
               className="inline-flex h-10 w-full items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             >
-              Resend Verification Email
+              Kirim Ulang Verifikasi
             </Link>
             <Link
               href="/"
               className="inline-flex h-10 w-full items-center justify-center rounded-md border border-input bg-background px-4 text-sm font-medium hover:bg-muted"
             >
-              Back to Homepage
+              Kembali ke Beranda
             </Link>
           </>
         ) : null}
@@ -117,33 +117,33 @@ export function VerifyEmailClient() {
         {!isRedirectedSuccess && !isRedirectedError && !hasValidParams ? (
           <>
             <p className="rounded-md border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
-              The verification link is invalid or missing required parameters.
+              Link verifikasi tidak valid atau parameter tidak lengkap.
             </p>
             <Link
               href="/"
               className="inline-flex h-10 w-full items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             >
-              Back to Homepage
+              Kembali ke Beranda
             </Link>
           </>
         ) : null}
 
         {!isRedirectedSuccess && !isRedirectedError && hasValidParams && verifyMutation.isPending ? (
           <SubmitButton type="button" loading>
-            Verifying Email...
+            Memverifikasi Email...
           </SubmitButton>
         ) : null}
 
         {!isRedirectedSuccess && !isRedirectedError && hasValidParams && verifyMutation.isSuccess ? (
           <>
             <p className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
-              {verifyMutation.data || "Email verified successfully"}
+              {verifyMutation.data || "Email berhasil diverifikasi"}
             </p>
             <Link
               href="/login"
               className="inline-flex h-10 w-full items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             >
-              Continue to Sign In
+              Lanjut Masuk
             </Link>
           </>
         ) : null}
@@ -158,21 +158,21 @@ export function VerifyEmailClient() {
               loading={verifyMutation.isPending}
               onClick={() => verifyMutation.mutate()}
             >
-              Try Verification Again
+              Coba Verifikasi Lagi
             </SubmitButton>
             <Link
               href="/"
               className="inline-flex h-10 w-full items-center justify-center rounded-md border border-input bg-background px-4 text-sm font-medium hover:bg-muted"
             >
-              Back to Homepage
+              Kembali ke Beranda
             </Link>
           </>
         ) : null}
 
         <p className="text-xs text-zinc-500">
-          If the link has expired, you can request a new one from the{" "}
+          Jika link sudah kedaluwarsa, minta link baru dari halaman{" "}
           <Link href="/resend-verification" className="text-[#0F7A5A] hover:underline">
-            resend verification page
+            kirim ulang verifikasi
           </Link>
           .
         </p>

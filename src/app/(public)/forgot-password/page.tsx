@@ -27,7 +27,7 @@ export default function ForgotPasswordPage() {
   const forgotMutation = useMutation({
     mutationFn: forgotPassword,
     onSuccess: (message) => {
-      toast.success(message || "Password reset email sent successfully");
+      toast.success(message || "Email reset password berhasil dikirim");
     },
     onError: (error) => {
       applyApiFieldErrors<ForgotPasswordSchema>(error, setError);
@@ -37,16 +37,16 @@ export default function ForgotPasswordPage() {
         return;
       }
 
-      toast.error("Failed to process password reset request");
+      toast.error("Gagal memproses permintaan reset password");
     },
   });
 
   return (
     <AuthShell
-      title="Forgot Password"
-      subtitle="We will send a password reset link to your email"
-      footerText="Remember your password?"
-      footerLinkText="Sign In"
+      title="Lupa Password"
+      subtitle="Masukkan email akun untuk menerima link reset password."
+      footerText="Ingat password?"
+      footerLinkText="Masuk"
       footerHref="/login"
     >
       <form className="space-y-4" onSubmit={handleSubmit((values) => forgotMutation.mutate(values))}>
@@ -55,7 +55,7 @@ export default function ForgotPasswordPage() {
           <FieldError message={errors.email?.message} />
         </div>
 
-        <SubmitButton loading={forgotMutation.isPending}>Send Reset Link</SubmitButton>
+        <SubmitButton loading={forgotMutation.isPending}>Kirim Link Reset</SubmitButton>
       </form>
     </AuthShell>
   );
