@@ -97,7 +97,7 @@ export default function StudentOrderDetailPage() {
         <article className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
           <h2 className="text-sm font-semibold text-foreground">Pembayaran Manual</h2>
           <p className="text-sm text-muted-foreground">
-            Bukti pembayaran sudah dikirim saat checkout dan sekarang menunggu verifikasi admin.
+            Data pembayaran dari proses checkout ditampilkan di bawah dan menunggu verifikasi admin.
           </p>
           <div className="space-y-2 text-sm text-muted-foreground">
             <p>Invoice: {latestTransaction.invoice_code}</p>

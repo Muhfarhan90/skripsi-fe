@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { ArrowRight, CheckCircle2, Clock3, PackageOpen, XCircle } from "lucide-react";
 import { getStudentOrders } from "@/features/student/api/store-api";
 
 function formatCurrency(amount: number | null | undefined): string {
@@ -13,6 +14,48 @@ function formatCurrency(amount: number | null | undefined): string {
   }).format(value);
 }
 
+function formatOrderDate(dateString: string | null | undefined): string {
+  if (!dateString) return "—";
+  return new Date(dateString).toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const config: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
+    pending: {
+      label: "Pending",
+      className: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400",
+      icon: <Clock3 className="size-3" />,
+    },
+    paid: {
+      label: "Lunas",
+      className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400",
+      icon: <CheckCircle2 className="size-3" />,
+    },
+    cancelled: {
+      label: "Dibatalkan",
+      className: "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-400",
+      icon: <XCircle className="size-3" />,
+    },
+  };
+
+  const cfg = config[status] ?? {
+    label: status,
+    className: "bg-[var(--surface-soft)] text-[var(--muted-foreground)]",
+    icon: null,
+  };
+
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-bold ${cfg.className}`}>
+      {cfg.icon}
+      {cfg.label}
+    </span>
+  );
+}
+
 export default function StudentOrdersPage() {
   const ordersQuery = useQuery({
     queryKey: ["student", "orders"],
@@ -20,48 +63,93 @@ export default function StudentOrdersPage() {
   });
 
   return (
-    <section className="space-y-5">
-      <header className="rounded-lg border border-border bg-card p-5 shadow-sm">
-        <h1 className="text-2xl font-semibold text-foreground">Order Saya</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Pantau status pembayaran dan akses course Anda.
+    <section className="space-y-4">
+      {/* Header */}
+      <header className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-4 shadow-sm">
+        <h1 className="text-xl font-bold text-[var(--foreground)]">Order Saya</h1>
+        <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
+          Pantau status pembayaran dan akses course kamu.
         </p>
       </header>
 
-      {ordersQuery.isLoading ? <p className="text-sm text-muted-foreground">Memuat order...</p> : null}
-      {ordersQuery.isError ? <p className="text-sm text-red-600">Gagal memuat order.</p> : null}
+      {/* Loading */}
+      {ordersQuery.isLoading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-24 animate-pulse rounded-2xl bg-[var(--border)]" />
+          ))}
+        </div>
+      ) : null}
 
-      <div className="space-y-3">
-        {ordersQuery.data?.map((order) => (
-          <article key={order.id} className="rounded-lg border border-border bg-card p-4 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 className="text-sm font-semibold text-foreground">{order.order_code}</h2>
-                <p className="text-xs text-muted-foreground">
-                  {order.items.length} item - {order.status}
-                </p>
-              </div>
-              <p className="text-sm font-semibold text-foreground">{formatCurrency(order.grand_total)}</p>
-            </div>
+      {/* Error */}
+      {ordersQuery.isError ? (
+        <article className="rounded-xl border border-[var(--danger-soft-border)] bg-[var(--danger-soft-bg)] p-4 text-sm text-[var(--danger-soft-foreground)]">
+          Gagal memuat order. Silakan coba lagi.
+        </article>
+      ) : null}
 
-            <Link
-              href={`/student/orders/${order.id}`}
-              className="mt-3 inline-flex h-8 items-center rounded-md border border-border px-3 text-xs text-muted-foreground transition hover:bg-muted hover:text-foreground"
-            >
-              Lihat Detail
-            </Link>
-          </article>
-        ))}
-      </div>
-
+      {/* Empty */}
       {ordersQuery.data && ordersQuery.data.length === 0 ? (
-        <article className="rounded-lg border border-border bg-card p-5 shadow-sm">
-          <p className="text-sm text-muted-foreground">Belum ada order.</p>
-          <Link href="/student/catalog" className="mt-3 inline-flex text-sm text-primary hover:underline">
-            Jelajahi course
+        <article className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)] p-8 text-center shadow-sm">
+          <PackageOpen className="size-10 text-[var(--muted-foreground)]" />
+          <div>
+            <p className="font-semibold text-[var(--foreground)]">Belum ada order</p>
+            <p className="mt-0.5 text-sm text-[var(--muted-foreground)]">
+              Temukan course menarik di katalog dan mulai belajar.
+            </p>
+          </div>
+          <Link
+            href="/student/catalog"
+            className="inline-flex h-9 items-center rounded-xl bg-[var(--primary)] px-4 text-sm font-semibold text-white transition active:scale-95"
+          >
+            Jelajahi Course
           </Link>
         </article>
       ) : null}
+
+      {/* Orders list */}
+      <div className="space-y-3">
+        {ordersQuery.data?.map((order) => (
+          <article
+            key={order.id}
+            className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm"
+          >
+            <div className="px-4 py-3.5">
+              {/* Top row: order code + status */}
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold text-[var(--foreground)]">{order.order_code}</p>
+                  <p className="mt-0.5 text-[11px] text-[var(--muted-foreground)]">
+                    {order.items.length} item
+                    {order.created_at ? ` · ${formatOrderDate(order.created_at)}` : ""}
+                  </p>
+                </div>
+                <StatusBadge status={order.status} />
+              </div>
+
+              {/* Course titles preview */}
+              {order.items.length > 0 && order.items[0]?.course?.title ? (
+                <p className="mt-2 line-clamp-1 text-xs text-[var(--muted-foreground)]">
+                  {order.items[0].course.title}
+                  {order.items.length > 1 ? ` +${order.items.length - 1} lainnya` : ""}
+                </p>
+              ) : null}
+
+              {/* Bottom row: total + action */}
+              <div className="mt-3 flex items-center justify-between border-t border-[var(--border)] pt-3">
+                <p className="text-sm font-bold text-[var(--foreground)]">{formatCurrency(order.grand_total)}</p>
+                <Link
+                  href={`/student/orders/${order.id}`}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--surface-soft)] border border-[var(--border)] px-3 py-1.5 text-xs font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-hover)] active:scale-95"
+                >
+                  Lihat Detail
+                  <ArrowRight className="size-3.5" />
+                </Link>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
     </section>
   );
 }

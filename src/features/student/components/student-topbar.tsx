@@ -1,206 +1,341 @@
 "use client";
 
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
+  ArrowLeft,
+  Award,
+  BookOpen,
   ChevronDown,
-  ChevronRight,
+  GraduationCap,
   LayoutDashboard,
   LogOut,
-  Menu,
   Moon,
-  PanelLeft,
-  PanelLeftClose,
-  ShoppingCart,
+  ReceiptText,
   Sun,
+  UserCircle,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { BrandLogo, BrandMark } from "@/components/shared/brand-logo";
 import { useLogoutAction } from "@/features/auth/hooks/use-logout-action";
 import { NotificationBell } from "@/features/notifications/components/notification-bell";
-import { getStudentCart } from "@/features/student/api/store-api";
 import {
-  getStudentBreadcrumbs,
+  getStudentMobileBackHref,
   getStudentPageTitle,
+  isStudentImmersiveRoute,
+  isStudentItemActive,
 } from "@/features/student/data/navigation";
 import { cn } from "@/lib/utils/cn";
 
 type DashboardTheme = "light" | "dark";
+const STUDENT_ROUTE_STACK_KEY = "student.mobile.route-stack";
+
+function readStudentRouteStack(): string[] {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  try {
+    const rawValue = window.sessionStorage.getItem(STUDENT_ROUTE_STACK_KEY);
+    if (!rawValue) {
+      return [];
+    }
+
+    const parsed = JSON.parse(rawValue);
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeStudentRouteStack(stack: string[]) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.sessionStorage.setItem(STUDENT_ROUTE_STACK_KEY, JSON.stringify(stack.slice(-20)));
+}
 
 interface StudentTopbarProps {
   fullName: string;
   pathname: string;
   theme: DashboardTheme;
-  isSidebarCollapsed: boolean;
   onToggleTheme: () => void;
-  onToggleSidebar: () => void;
-  onOpenMobileSidebar: () => void;
+}
+
+function getFirstName(fullName: string): string {
+  const firstName = fullName.trim().split(/\s+/)[0];
+  return firstName || "Student";
+}
+
+interface ProfileMenuContentProps {
+  fullName: string;
+  formattedDate: string;
+  theme: DashboardTheme;
+  onToggleTheme: () => void;
+  logoutMutation: {
+    mutate: () => void;
+    isPending: boolean;
+  };
+}
+
+function ProfileMenuContent({
+  fullName,
+  formattedDate,
+  theme,
+  onToggleTheme,
+  logoutMutation,
+}: ProfileMenuContentProps) {
+  return (
+    <>
+      <div className="space-y-1 border-b border-[var(--border)] px-2 pb-2">
+        <p className="text-sm font-semibold truncate">{fullName}</p>
+        <p className="text-xs text-[var(--muted-foreground)]">{formattedDate}</p>
+      </div>
+
+      <div className="space-y-1 pt-2">
+        <Link
+          href="/student/profile"
+          className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition hover:bg-[var(--surface-hover)]"
+        >
+          <UserCircle className="size-4 text-[var(--muted-foreground)]" />
+          <span>Profil Saya</span>
+        </Link>
+
+        <Link
+          href="/student/certificates"
+          className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition hover:bg-[var(--surface-hover)]"
+        >
+          <Award className="size-4 text-[var(--muted-foreground)]" />
+          <span>Sertifikat Saya</span>
+        </Link>
+
+        <button
+          type="button"
+          onClick={onToggleTheme}
+          aria-pressed={theme === "dark"}
+          aria-label={theme === "dark" ? "Nonaktifkan dark mode" : "Aktifkan dark mode"}
+          className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm transition hover:bg-[var(--surface-hover)]"
+        >
+          <span className="inline-flex items-center gap-2">
+            {theme === "light" ? <Moon className="size-4 text-[var(--muted-foreground)]" /> : <Sun className="size-4 text-[var(--muted-foreground)]" />}
+            <span>Dark Mode</span>
+          </span>
+          <span
+            aria-hidden
+            className={cn(
+              "relative inline-flex h-5 w-9 items-center rounded-full border transition",
+              theme === "dark"
+                ? "border-emerald-600 bg-emerald-600"
+                : "border-[var(--border)] bg-[var(--muted)]",
+            )}
+          >
+            <span
+              className={cn(
+                "inline-block size-4 rounded-full bg-white transition-transform",
+                theme === "dark" ? "translate-x-4" : "translate-x-0.5",
+              )}
+            />
+          </span>
+        </button>
+
+        <div className="border-t border-[var(--border)] my-1" />
+
+        <button
+          type="button"
+          onClick={() => logoutMutation.mutate()}
+          disabled={logoutMutation.isPending}
+          className={cn(
+            "flex w-full items-center gap-2 rounded-md border border-transparent px-2 py-1.5 text-left text-sm transition",
+            logoutMutation.isPending
+              ? "cursor-not-allowed opacity-70"
+              : "border border-[var(--danger-soft-border)] bg-[var(--danger-soft-bg)] text-[var(--danger-soft-foreground)] hover:opacity-90",
+          )}
+        >
+          <LogOut className="size-4" />
+          <span>{logoutMutation.isPending ? "Memproses logout..." : "Logout"}</span>
+        </button>
+      </div>
+    </>
+  );
 }
 
 export function StudentTopbar({
   fullName,
   pathname,
   theme,
-  isSidebarCollapsed,
   onToggleTheme,
-  onToggleSidebar,
-  onOpenMobileSidebar,
 }: StudentTopbarProps) {
   const logoutMutation = useLogoutAction();
-  const breadcrumbs = getStudentBreadcrumbs(pathname);
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const pageTitle = getStudentPageTitle(pathname);
-  const cartQuery = useQuery({
-    queryKey: ["student", "cart"],
-    queryFn: getStudentCart,
-    staleTime: 30_000,
-  });
-  const cartItemsCount = cartQuery.data?.items.length ?? 0;
-  const isCartPage = pathname === "/student/cart" || pathname.startsWith("/student/cart/");
+  const mobileBackHref = getStudentMobileBackHref(pathname);
+  const isImmersiveRoute = isStudentImmersiveRoute(pathname);
+  const searchQuery = searchParams.toString();
+  const currentRoute = searchQuery ? `${pathname}?${searchQuery}` : pathname;
   const formattedDate = new Date().toLocaleDateString("id-ID", {
     weekday: "long",
     day: "2-digit",
     month: "long",
     year: "numeric",
   });
+  const firstName = getFirstName(fullName);
+  const mobileDescription =
+    pathname === "/student"
+      ? `Selamat datang, ${firstName}`
+      : formattedDate;
+
+  useEffect(() => {
+    const routeStack = readStudentRouteStack();
+    if (routeStack[routeStack.length - 1] === currentRoute) {
+      return;
+    }
+
+    writeStudentRouteStack([...routeStack, currentRoute]);
+  }, [currentRoute]);
+
+  const handleMobileLeadingAction = () => {
+    if (!mobileBackHref) return;
+
+    const routeStack = readStudentRouteStack();
+    const previousRoute = routeStack.length > 1 ? routeStack[routeStack.length - 2] : null;
+
+    if (previousRoute && previousRoute !== currentRoute) {
+      writeStudentRouteStack(routeStack.slice(0, -1));
+      router.push(previousRoute);
+      return;
+    }
+
+    router.push(mobileBackHref);
+  };
 
   return (
-    <header className="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--card)] backdrop-blur">
-      <div className="mx-auto flex h-[74px] w-full max-w-[1320px] items-center gap-3 px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onOpenMobileSidebar}
-            className="inline-flex size-9 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] transition hover:bg-[var(--surface-hover)] lg:hidden"
-            aria-label="Buka sidebar"
-          >
-            <Menu className="size-4" />
-          </button>
-
-          <button
-            type="button"
-            onClick={onToggleSidebar}
-            className="hidden size-9 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] transition hover:bg-[var(--surface-hover)] lg:inline-flex"
-            aria-label={isSidebarCollapsed ? "Buka sidebar desktop" : "Tutup sidebar desktop"}
-          >
-            {isSidebarCollapsed ? <PanelLeft className="size-4" /> : <PanelLeftClose className="size-4" />}
-          </button>
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="mb-1 flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
-            {breadcrumbs.map((item, index) => (
-              <span key={`${item.label}-${index}`} className="inline-flex items-center gap-1">
-                {item.href ? (
-                  <Link href={item.href} className="hover:text-[var(--primary)]">
-                    {item.label}
-                  </Link>
-                ) : (
-                  <span className="text-[var(--foreground)]">{item.label}</span>
-                )}
-                {index < breadcrumbs.length - 1 ? <ChevronRight className="size-3" /> : null}
-              </span>
-            ))}
-          </div>
-          <p className="truncate text-sm font-semibold text-[var(--foreground)] sm:text-base">{pageTitle}</p>
-        </div>
-
-        <NotificationBell />
-
-        <Link
-          href="/student/cart"
-          className={cn(
-            "relative inline-flex size-9 items-center justify-center rounded-md border transition",
-            isCartPage
-              ? "border-[var(--secondary)] bg-[var(--secondary)] text-[var(--secondary-foreground)]"
-              : "border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] hover:bg-[var(--surface-hover)]",
+    <header className="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--card)]/95 backdrop-blur-xl">
+      <div className="mx-auto w-full max-w-[1320px] px-3 sm:px-6 lg:px-8">
+        {/* Mobile topbar - compact, single row */}
+        <div className="pwa-safe-top flex items-center gap-2 py-2.5 lg:hidden">
+          {/* Leading action */}
+          {mobileBackHref ? (
+            <button
+              type="button"
+              onClick={handleMobileLeadingAction}
+              className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] text-[var(--foreground)] transition active:scale-95"
+              aria-label="Kembali ke halaman sebelumnya"
+            >
+              <ArrowLeft className="size-4" />
+            </button>
+          ) : (
+            <BrandMark size="sm" />
           )}
-          aria-label="Buka cart student"
-        >
-          <ShoppingCart className="size-4" />
-          {cartItemsCount > 0 ? (
-            <span className="absolute -right-1.5 -top-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--danger-soft-foreground)] px-1 text-[10px] font-semibold leading-none text-white">
-              {cartItemsCount > 99 ? "99+" : cartItemsCount}
-            </span>
-          ) : null}
-        </Link>
 
-        <Popover>
-          <PopoverTrigger
-            className="inline-flex items-center gap-2 rounded-md px-1 py-1 text-left transition hover:bg-[var(--surface-hover)]"
-            aria-label="Buka menu profil student"
-          >
-            <span className="inline-flex size-9 items-center justify-center rounded-full bg-[var(--primary)] text-xs font-semibold text-white">
-              {fullName.trim().charAt(0).toUpperCase() || "S"}
-            </span>
-            <span className="hidden min-w-0 sm:block">
-              <span className="block max-w-32 truncate text-sm font-semibold text-[var(--foreground)]">{fullName}</span>
-            </span>
-            <ChevronDown className="hidden size-4 text-[var(--muted-foreground)] sm:block" />
-          </PopoverTrigger>
+          {/* Title area */}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-[var(--foreground)] leading-tight">{pageTitle}</p>
+            <p className="truncate text-[11px] text-[var(--muted-foreground)] leading-tight">{mobileDescription}</p>
+          </div>
 
-          <PopoverContent
-            align="end"
-            className="w-64 border border-[var(--border)] bg-[var(--card)] p-2 text-[var(--foreground)] shadow-lg"
-          >
-            <div className="space-y-1 border-b border-[var(--border)] px-2 pb-2">
-              <p className="text-sm font-semibold">{fullName}</p>
-              <p className="text-xs text-[var(--muted-foreground)]">{formattedDate}</p>
-            </div>
+          {/* Trailing actions */}
+          <div className="flex shrink-0 items-center gap-1.5">
+            {isImmersiveRoute ? null : <NotificationBell />}
 
-            <div className="space-y-1 pt-2">
-              <button
-                type="button"
-                onClick={onToggleTheme}
-                aria-pressed={theme === "dark"}
-                aria-label={theme === "dark" ? "Nonaktifkan dark mode" : "Aktifkan dark mode"}
-                className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm transition hover:bg-[var(--surface-hover)]"
+            {/* Avatar / profile */}
+            <Popover>
+              <PopoverTrigger
+                className="inline-flex size-9 items-center justify-center rounded-xl transition active:scale-95"
+                aria-label="Buka menu profil student"
               >
-                <span className="inline-flex items-center gap-2">
-                  {theme === "light" ? <Moon className="size-4" /> : <Sun className="size-4" />}
-                  <span>Dark Mode</span>
+                <span className="inline-flex size-9 items-center justify-center rounded-xl bg-[var(--primary)] text-xs font-bold text-white shadow-sm">
+                  {fullName.trim().charAt(0).toUpperCase() || "S"}
                 </span>
-                <span
-                  aria-hidden
-                  className={cn(
-                    "relative inline-flex h-5 w-9 items-center rounded-full border transition",
-                    theme === "dark"
-                      ? "border-emerald-600 bg-emerald-600"
-                      : "border-[var(--border)] bg-[var(--muted)]",
-                  )}
-                >
-                  <span
+              </PopoverTrigger>
+
+              <PopoverContent
+                align="end"
+                className="w-64 border border-[var(--border)] bg-[var(--card)] p-2 text-[var(--foreground)] shadow-lg"
+              >
+                <ProfileMenuContent
+                  fullName={fullName}
+                  formattedDate={formattedDate}
+                  theme={theme}
+                  onToggleTheme={onToggleTheme}
+                  logoutMutation={logoutMutation}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+        </div>
+
+        {/* Desktop topbar */}
+        <div className="hidden min-h-[74px] items-center justify-between gap-4 lg:flex">
+          {/* Left section: Logo & Nav links */}
+          <div className="flex items-center gap-8">
+            <Link href="/student" className="flex items-center gap-3 shrink-0">
+              <BrandLogo title="Student Panel" subtitle="Skripsi LMS" size="md" />
+            </Link>
+
+            <nav className="flex items-center gap-1.5">
+              {[
+                { label: "Dashboard", href: "/student", icon: LayoutDashboard },
+                { label: "Katalog", href: "/student/catalog", icon: BookOpen },
+                { label: "Kelas Saya", href: "/student/enrollments", icon: GraduationCap },
+                { label: "Orders", href: "/student/orders", icon: ReceiptText },
+              ].map((item) => {
+                const Icon = item.icon;
+                const isActive = isStudentItemActive(pathname, item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
                     className={cn(
-                      "inline-block size-4 rounded-full bg-white transition-transform",
-                      theme === "dark" ? "translate-x-4" : "translate-x-0.5",
+                      "flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition duration-200",
+                      isActive
+                        ? "bg-[var(--primary)] text-white shadow-sm"
+                        : "text-[var(--muted-foreground)] hover:bg-[var(--surface-hover)] hover:text-[var(--foreground)]"
                     )}
-                  />
+                  >
+                    <Icon className="size-4" />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+
+          {/* Right section: Notifications & Profile */}
+          <div className="flex shrink-0 items-center gap-3">
+            {isImmersiveRoute ? null : <NotificationBell />}
+
+            <Popover>
+              <PopoverTrigger
+                className="inline-flex items-center gap-2 rounded-xl px-2 py-1 text-left transition hover:bg-[var(--surface-hover)]"
+                aria-label="Buka menu profil student"
+              >
+                <span className="inline-flex size-9 items-center justify-center rounded-full bg-[var(--primary)] text-xs font-semibold text-white shadow-sm">
+                  {fullName.trim().charAt(0).toUpperCase() || "S"}
                 </span>
-              </button>
+                <span className="hidden min-w-0 sm:block">
+                  <span className="block max-w-32 truncate text-sm font-semibold text-[var(--foreground)]">{fullName}</span>
+                </span>
+                <ChevronDown className="hidden size-4 text-[var(--muted-foreground)] sm:block" />
+              </PopoverTrigger>
 
-              <Link
-                href="/student"
-                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition hover:bg-[var(--surface-hover)]"
+              <PopoverContent
+                align="end"
+                className="w-64 border border-[var(--border)] bg-[var(--card)] p-2 text-[var(--foreground)] shadow-lg"
               >
-                <LayoutDashboard className="size-4" />
-                <span>Dashboard Student</span>
-              </Link>
-
-              <button
-                type="button"
-                onClick={() => logoutMutation.mutate()}
-                disabled={logoutMutation.isPending}
-                className={cn(
-                  "flex w-full items-center gap-2 rounded-md border border-transparent px-2 py-1.5 text-left text-sm transition",
-                  logoutMutation.isPending
-                    ? "cursor-not-allowed opacity-70"
-                    : "border border-[var(--danger-soft-border)] bg-[var(--danger-soft-bg)] text-[var(--danger-soft-foreground)] hover:opacity-90",
-                )}
-              >
-                <LogOut className="size-4" />
-                <span>{logoutMutation.isPending ? "Memproses logout..." : "Logout"}</span>
-              </button>
-            </div>
-          </PopoverContent>
-        </Popover>
+                <ProfileMenuContent
+                  fullName={fullName}
+                  formattedDate={formattedDate}
+                  theme={theme}
+                  onToggleTheme={onToggleTheme}
+                  logoutMutation={logoutMutation}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+        </div>
       </div>
     </header>
   );

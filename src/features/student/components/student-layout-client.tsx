@@ -1,11 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { useTheme } from "@/providers/theme-provider";
-import { StudentSidebar } from "@/features/student/components/student-sidebar";
+import { StudentMobileBottomNav } from "@/features/student/components/student-mobile-bottom-nav";
 import { StudentTopbar } from "@/features/student/components/student-topbar";
+import {
+  getStudentBreadcrumbs,
+  getStudentPageTitle,
+  isStudentImmersiveRoute,
+} from "@/features/student/data/navigation";
 
 interface StudentLayoutClientProps {
   fullName: string;
@@ -15,66 +21,53 @@ interface StudentLayoutClientProps {
 export function StudentLayoutClient({ fullName, children }: StudentLayoutClientProps) {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
-  const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(false);
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const activeTheme = theme === "dark" ? "dark" : "light";
-
-  useEffect(() => {
-    if (!isMobileSidebarOpen) {
-      return;
-    }
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setIsMobileSidebarOpen(false);
-      }
-    };
-
-    window.addEventListener("keydown", handleEscape);
-    return () => window.removeEventListener("keydown", handleEscape);
-  }, [isMobileSidebarOpen]);
-
-  useEffect(() => {
-    if (!isMobileSidebarOpen) {
-      return;
-    }
-
-    const { overflow } = document.body.style;
-    document.body.style.overflow = "hidden";
-
-    return () => {
-      document.body.style.overflow = overflow;
-    };
-  }, [isMobileSidebarOpen]);
+  const isImmersiveRoute = isStudentImmersiveRoute(pathname);
+  const breadcrumbs = getStudentBreadcrumbs(pathname);
+  const pageTitle = getStudentPageTitle(pathname);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <StudentSidebar
-        pathname={pathname}
-        collapsed={isDesktopSidebarCollapsed}
-        mobileOpen={isMobileSidebarOpen}
-        onCloseMobile={() => setIsMobileSidebarOpen(false)}
-      />
-
-      <div
-        className={cn(
-          "flex min-h-screen flex-col transition-[padding] duration-300",
-          isDesktopSidebarCollapsed ? "lg:pl-[92px]" : "lg:pl-[280px]",
-        )}
-      >
+    <div className="min-h-dvh bg-background text-foreground">
+      <div className="flex min-h-dvh flex-col bg-[var(--surface-soft)]">
         <StudentTopbar
           fullName={fullName}
           pathname={pathname}
           theme={activeTheme}
-          isSidebarCollapsed={isDesktopSidebarCollapsed}
           onToggleTheme={() => setTheme(activeTheme === "light" ? "dark" : "light")}
-          onToggleSidebar={() => setIsDesktopSidebarCollapsed((prev) => !prev)}
-          onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
         />
 
-        <main className="flex-1 px-4 py-5 sm:px-6 lg:px-8">
-          <div className="mx-auto w-full max-w-[1320px]">{children}</div>
+        <main
+          className={cn(
+            "flex-1 px-3 py-3 sm:px-6 sm:py-5 lg:px-8",
+            isImmersiveRoute ? "pwa-safe-bottom" : "pwa-safe-bottom-floating-nav",
+          )}
+        >
+          <div className="mx-auto w-full max-w-[1320px]">
+            {/* Desktop Breadcrumbs & Page Title */}
+            {!isImmersiveRoute && (
+              <div className="mb-5 hidden lg:block">
+                <div className="mb-1 flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
+                  {breadcrumbs.map((item, index) => (
+                    <span key={`${item.label}-${index}`} className="inline-flex items-center gap-1">
+                      {item.href ? (
+                        <Link href={item.href} className="hover:text-[var(--primary)] transition-colors">
+                          {item.label}
+                        </Link>
+                      ) : (
+                        <span className="text-[var(--foreground)]">{item.label}</span>
+                      )}
+                      {index < breadcrumbs.length - 1 ? <ChevronRight className="size-3" /> : null}
+                    </span>
+                  ))}
+                </div>
+                <h1 className="text-xl font-bold tracking-tight text-[var(--foreground)] sm:text-2xl">{pageTitle}</h1>
+              </div>
+            )}
+            {children}
+          </div>
         </main>
+
+        {isImmersiveRoute ? null : <StudentMobileBottomNav pathname={pathname} />}
       </div>
     </div>
   );

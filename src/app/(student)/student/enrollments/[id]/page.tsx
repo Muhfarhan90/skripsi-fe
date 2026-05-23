@@ -123,38 +123,40 @@ export default function StudentEnrollmentDetailPage() {
           : "Belum tersedia";
 
   return (
-    <section className="space-y-5">
+    <section className="space-y-4 sm:space-y-5">
       <header className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
-        <div className="grid gap-6 bg-[linear-gradient(120deg,#17212e,#1f2937)] p-6 lg:grid-cols-[1fr_360px]">
+        <div className="grid gap-4 bg-[linear-gradient(120deg,#10201c,#1b2d29)] p-4 sm:gap-6 sm:p-6 lg:grid-cols-[1fr_360px]">
           <div>
             <p className="text-xs text-zinc-300">Kelas #{enrollment.id}</p>
-            <h1 className="mt-2 text-4xl font-semibold leading-tight text-white">
+            <h1 className="mt-2 text-2xl font-semibold leading-tight text-white sm:text-3xl lg:text-4xl">
               {course?.title ?? `Course #${enrollment.course_id}`}
             </h1>
-            <p className="mt-3 max-w-4xl text-lg leading-relaxed text-zinc-200">{descriptionText}</p>
+            <p className="mt-2 max-w-4xl text-sm leading-relaxed text-zinc-200 sm:mt-3 sm:text-base lg:text-lg">
+              {descriptionText}
+            </p>
 
-            <div className="mt-5 flex flex-wrap items-center gap-3 text-sm text-zinc-200">
+            <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-zinc-200 sm:mt-5 sm:gap-3 sm:text-sm">
               {course?.instructor_name ? (
-                <span className="inline-flex items-center gap-2 rounded-md bg-white/10 px-3 py-1.5">
-                  <UserRound className="size-4" />
+                <span className="inline-flex items-center gap-1.5 rounded-md bg-white/10 px-2.5 py-1.5 sm:gap-2 sm:px-3">
+                  <UserRound className="size-3.5 sm:size-4" />
                   {course.instructor_name}
                 </span>
               ) : null}
               {course?.category_name ? (
-                <span className="inline-flex items-center gap-2 rounded-md bg-white/10 px-3 py-1.5">
-                  <Tags className="size-4" />
+                <span className="inline-flex items-center gap-1.5 rounded-md bg-white/10 px-2.5 py-1.5 sm:gap-2 sm:px-3">
+                  <Tags className="size-3.5 sm:size-4" />
                   {course.category_name}
                 </span>
               ) : null}
-              <span className="inline-flex items-center gap-2 rounded-md bg-white/10 px-3 py-1.5">
-                <GraduationCap className="size-4" />
+              <span className="inline-flex items-center gap-1.5 rounded-md bg-white/10 px-2.5 py-1.5 sm:gap-2 sm:px-3">
+                <GraduationCap className="size-3.5 sm:size-4" />
                 Status: {enrollment.status}
               </span>
             </div>
           </div>
 
-          <aside className="rounded-xl border border-white/20 bg-white p-5 text-[var(--foreground)]">
-            <h2 className="text-4xl font-semibold">Lanjutkan Belajar</h2>
+          <aside className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 text-[var(--foreground)] shadow-sm sm:p-5">
+            <h2 className="text-2xl font-semibold sm:text-3xl">Lanjutkan Belajar</h2>
             <div className="mt-4">
               <div className="mb-2 flex items-center justify-between text-sm">
                 <span className="text-[var(--muted-foreground)]">Progress belajar</span>
@@ -185,7 +187,7 @@ export default function StudentEnrollmentDetailPage() {
 
             <Link
               href={learnHref}
-              className="mt-5 inline-flex h-11 w-full items-center justify-center rounded-md bg-[var(--secondary)] px-4 text-sm font-semibold text-[var(--secondary-foreground)] transition hover:opacity-90"
+              className="mt-5 inline-flex h-10 w-full items-center justify-center rounded-md bg-[var(--secondary)] px-4 text-sm font-semibold text-[var(--secondary-foreground)] transition hover:opacity-90 sm:h-11"
             >
               {primaryActionLabel}
             </Link>
@@ -194,54 +196,54 @@ export default function StudentEnrollmentDetailPage() {
       </header>
 
       <div className="grid gap-5 lg:grid-cols-2">
-        <article className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm">
-          <h2 className="flex items-center gap-2 text-2xl font-semibold text-[var(--foreground)]">
+        <article className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm sm:p-5">
+          <h2 className="flex items-center gap-2 text-xl font-semibold text-[var(--foreground)] sm:text-2xl">
             <BookText className="size-5" />
             Section Deskripsi
           </h2>
-          <p className="mt-3 whitespace-pre-line text-lg leading-relaxed text-[var(--muted-foreground)]">
+          <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-[var(--muted-foreground)] sm:text-base lg:text-lg">
             {descriptionText}
           </p>
         </article>
 
-        <article className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm">
-          <h2 className="flex items-center gap-2 text-2xl font-semibold text-[var(--foreground)]">
+        <article className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm sm:p-5">
+          <h2 className="flex items-center gap-2 text-xl font-semibold text-[var(--foreground)] sm:text-2xl">
             <ListChecks className="size-5" />
             Requirements
           </h2>
           {requirementItems.length > 0 ? (
-            <ul className="mt-3 list-disc space-y-2 pl-5 text-lg text-[var(--muted-foreground)]">
+            <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-[var(--muted-foreground)] sm:text-base lg:text-lg">
               {requirementItems.map((item, index) => (
                 <li key={`requirement-${index}`}>{item}</li>
               ))}
             </ul>
           ) : (
-            <p className="mt-3 text-lg text-[var(--muted-foreground)]">Belum ada requirement yang ditambahkan.</p>
+            <p className="mt-3 text-sm text-[var(--muted-foreground)] sm:text-base lg:text-lg">Belum ada requirement yang ditambahkan.</p>
           )}
         </article>
 
-        <article className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm">
-          <h2 className="flex items-center gap-2 text-2xl font-semibold text-[var(--foreground)]">
+        <article className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm sm:p-5">
+          <h2 className="flex items-center gap-2 text-xl font-semibold text-[var(--foreground)] sm:text-2xl">
             <ListChecks className="size-5" />
             Outcomes
           </h2>
           {outcomeItems.length > 0 ? (
-            <ul className="mt-3 list-disc space-y-2 pl-5 text-lg text-[var(--muted-foreground)]">
+            <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-[var(--muted-foreground)] sm:text-base lg:text-lg">
               {outcomeItems.map((item, index) => (
                 <li key={`outcome-${index}`}>{item}</li>
               ))}
             </ul>
           ) : (
-            <p className="mt-3 text-lg text-[var(--muted-foreground)]">Belum ada outcomes yang ditambahkan.</p>
+            <p className="mt-3 text-sm text-[var(--muted-foreground)] sm:text-base lg:text-lg">Belum ada outcomes yang ditambahkan.</p>
           )}
         </article>
 
-        <article className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm">
-          <h2 className="flex items-center gap-2 text-2xl font-semibold text-[var(--foreground)]">
+        <article className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm sm:p-5">
+          <h2 className="flex items-center gap-2 text-xl font-semibold text-[var(--foreground)] sm:text-2xl">
             <Award className="size-5" />
             Informasi Kelas
           </h2>
-          <div className="mt-3 grid gap-2 text-lg text-[var(--muted-foreground)]">
+          <div className="mt-3 grid gap-2 text-sm text-[var(--muted-foreground)] sm:text-base">
             <p>
               Instructor Name:{" "}
               <span className="font-medium text-[var(--foreground)]">{course?.instructor_name || "-"}</span>

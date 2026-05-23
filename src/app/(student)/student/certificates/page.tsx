@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Award, ExternalLink, Printer } from "lucide-react";
+import { Award, ExternalLink, GraduationCap, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { getStudentCertificates } from "@/features/student/api/store-api";
 import { printCertificatePreview } from "@/features/student/lib/certificate-print";
@@ -29,75 +29,126 @@ export default function StudentCertificatesPage() {
   };
 
   if (certificatesQuery.isLoading) {
-    return <p className="text-sm text-muted-foreground">Memuat sertifikat...</p>;
+    return (
+      <section className="space-y-4">
+        <div className="h-20 animate-pulse rounded-2xl bg-[var(--border)]" />
+        <div className="space-y-3">
+          {[1, 2].map((i) => (
+            <div key={i} className="h-32 animate-pulse rounded-2xl bg-[var(--border)]" />
+          ))}
+        </div>
+      </section>
+    );
   }
 
   if (certificatesQuery.isError) {
-    return <p className="text-sm text-red-600">Sertifikat tidak bisa dimuat.</p>;
+    return (
+      <article className="rounded-xl border border-[var(--danger-soft-border)] bg-[var(--danger-soft-bg)] p-4 text-sm text-[var(--danger-soft-foreground)]">
+        Sertifikat tidak bisa dimuat. Silakan coba lagi.
+      </article>
+    );
   }
 
   const certificates = certificatesQuery.data ?? [];
 
   return (
-    <section className="space-y-5">
-      <header className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
-        <div className="flex items-start gap-3">
-          <span className="inline-flex size-12 items-center justify-center rounded-xl bg-[var(--secondary)]/10 text-[var(--secondary)]">
-            <Award className="size-6" />
-          </span>
-          <div>
-            <h1 className="text-3xl font-semibold text-[var(--foreground)]">Certificates</h1>
-            <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-              Sertifikat yang sudah diklaim akan muncul di sini dan bisa dibuka dalam mode cetak.
-            </p>
-          </div>
+    <section className="space-y-4">
+      {/* Header */}
+      <header className="flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-4 shadow-sm">
+        <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--secondary)]/15 text-[var(--secondary)]">
+          <Award className="size-5" />
+        </span>
+        <div>
+          <h1 className="text-xl font-bold text-[var(--foreground)]">Sertifikat Saya</h1>
+          <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
+            Sertifikat kelas yang sudah selesai dan bisa dicetak.
+          </p>
         </div>
+        {certificates.length > 0 ? (
+          <span className="ml-auto inline-flex size-7 items-center justify-center rounded-full bg-[var(--secondary)] text-xs font-bold text-[var(--secondary-foreground)]">
+            {certificates.length}
+          </span>
+        ) : null}
       </header>
 
-      {certificates.length ? (
-        <div className="grid gap-4">
+      {/* Empty state */}
+      {certificates.length === 0 ? (
+        <article className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)] p-8 text-center shadow-sm">
+          <span className="inline-flex size-16 items-center justify-center rounded-2xl bg-[var(--surface-soft)]">
+            <GraduationCap className="size-8 text-[var(--muted-foreground)]" />
+          </span>
+          <div>
+            <p className="font-semibold text-[var(--foreground)]">Belum ada sertifikat</p>
+            <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+              Selesaikan progress kursus 100% dan semua assignment wajib untuk mendapatkan sertifikat.
+            </p>
+          </div>
+          <Link
+            href="/student/enrollments"
+            className="inline-flex h-9 items-center rounded-xl bg-[var(--primary)] px-4 text-sm font-semibold text-white transition active:scale-95"
+          >
+            Lihat Kelas Saya
+          </Link>
+        </article>
+      ) : null}
+
+      {/* Certificates list */}
+      {certificates.length > 0 ? (
+        <div className="space-y-3">
           {certificates.map((certificate) => (
             <article
               key={certificate.id}
-              className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm"
+              className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm"
             >
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold tracking-[0.08em] text-[var(--muted-foreground)] uppercase">
-                    Certificate
-                  </p>
-                  <h2 className="text-2xl font-semibold text-[var(--foreground)]">
-                    {certificate.course?.title ?? `Course #${certificate.course_id}`}
-                  </h2>
-                  <div className="grid gap-1 text-sm text-[var(--muted-foreground)]">
-                    <p>
-                      Nomor sertifikat:{" "}
-                      <span className="font-medium text-[var(--foreground)]">{certificate.certificate_number}</span>
+              {/* Decorative header strip */}
+              <div className="h-1.5 bg-gradient-to-r from-[var(--primary)] via-[var(--secondary)] to-emerald-400" />
+
+              <div className="p-4">
+                {/* Top row */}
+                <div className="flex items-start gap-3">
+                  <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-[var(--secondary)]/15 text-[var(--secondary)]">
+                    <Award className="size-5" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[var(--muted-foreground)]">
+                      Sertifikat Kelulusan
                     </p>
-                    <p>
-                      Diterbitkan:{" "}
-                      <span className="font-medium text-[var(--foreground)]">
-                        {formatUtcDateTimeToJakarta(certificate.issued_at)}
-                      </span>
-                    </p>
+                    <h2 className="mt-0.5 line-clamp-2 text-sm font-bold leading-snug text-[var(--foreground)]">
+                      {certificate.course?.title ?? `Course #${certificate.course_id}`}
+                    </h2>
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-3">
+                {/* Details */}
+                <div className="mt-3 space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-[var(--muted-foreground)]">No. Sertifikat</span>
+                    <span className="font-semibold text-[var(--foreground)]">{certificate.certificate_number}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-[var(--muted-foreground)]">Diterbitkan</span>
+                    <span className="font-semibold text-[var(--foreground)]">
+                      {formatUtcDateTimeToJakarta(certificate.issued_at)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="mt-4 grid grid-cols-2 gap-2 border-t border-[var(--border)] pt-3">
                   <button
                     type="button"
                     onClick={() => handlePrintCertificate(certificate.id)}
                     disabled={printingCertificateId === certificate.id}
-                    className="inline-flex h-10 items-center gap-2 rounded-md bg-[var(--secondary)] px-4 text-sm font-semibold text-[var(--secondary-foreground)] transition hover:opacity-90"
+                    className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-[var(--secondary)] text-xs font-bold text-[var(--secondary-foreground)] transition hover:opacity-90 active:scale-95 disabled:opacity-70"
                   >
-                    <Printer className="size-4" />
-                    {printingCertificateId === certificate.id ? "Menyiapkan..." : "Cetak Sertifikat"}
+                    <Printer className="size-3.5" />
+                    {printingCertificateId === certificate.id ? "Menyiapkan..." : "Cetak"}
                   </button>
                   <Link
                     href={`/student/enrollments/${certificate.enrollment_id}`}
-                    className="inline-flex h-10 items-center gap-2 rounded-md border border-[var(--border)] px-4 text-sm font-medium text-[var(--foreground)] transition hover:bg-[var(--surface-hover)]"
+                    className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] text-xs font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-hover)] active:scale-95"
                   >
-                    <ExternalLink className="size-4" />
+                    <ExternalLink className="size-3.5" />
                     Lihat Kelas
                   </Link>
                 </div>
@@ -105,14 +156,7 @@ export default function StudentCertificatesPage() {
             </article>
           ))}
         </div>
-      ) : (
-        <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--card)] p-10 text-center shadow-sm">
-          <p className="text-lg font-medium text-[var(--foreground)]">Belum ada sertifikat</p>
-          <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-            Selesaikan progress course sampai 100% dan tunggu semua assignment wajib disetujui.
-          </p>
-        </div>
-      )}
+      ) : null}
     </section>
   );
 }
