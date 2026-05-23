@@ -1,17 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { MessageSquareText, Star } from "lucide-react";
-import { toast } from "sonner";
-import {
-  addCourseToCart,
-  getPublishedCourses,
-  getStudentEnrollments,
-  getStudentOrders,
-} from "@/features/student/api/store-api";
+import { useQuery } from "@tanstack/react-query";
+import { BookOpen, CreditCard, MessageSquareText, Star } from "lucide-react";
+import { getPublishedCourses, getStudentEnrollments, getStudentOrders } from "@/features/student/api/store-api";
 import { buildHiddenCatalogCourseIds } from "@/features/student/lib/catalog-visibility";
-import { ApiError } from "@/lib/api/client";
+import { buildStudentCheckoutPath } from "@/features/student/lib/checkout";
 
 function formatCurrency(amount: number | null | undefined): string {
   const value = Number(amount ?? 0);
@@ -34,8 +28,6 @@ function formatReviewAverage(value: number | null | undefined): string {
 }
 
 export default function StudentCatalogPage() {
-  const queryClient = useQueryClient();
-
   const courseQuery = useQuery({
     queryKey: ["store", "courses"],
     queryFn: getPublishedCourses,
@@ -51,22 +43,6 @@ export default function StudentCatalogPage() {
     queryFn: () => getStudentOrders({ status: "pending", perPage: 100 }),
   });
 
-  const addToCartMutation = useMutation({
-    mutationFn: (courseId: number) => addCourseToCart(courseId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["student", "cart"] });
-      toast.success("Course berhasil ditambahkan ke cart");
-    },
-    onError: (error) => {
-      if (error instanceof ApiError) {
-        toast.error(error.message);
-        return;
-      }
-
-      toast.error("Gagal menambahkan course ke cart");
-    },
-  });
-
   const hiddenCourseIds = buildHiddenCatalogCourseIds(
     enrollmentsQuery.data,
     pendingOrdersQuery.data,
@@ -77,83 +53,140 @@ export default function StudentCatalogPage() {
   const isError = courseQuery.isError || enrollmentsQuery.isError || pendingOrdersQuery.isError;
 
   return (
-    <section className="space-y-5">
-      <header className="rounded-lg border border-border bg-card p-5 shadow-sm">
-        <h1 className="text-2xl font-semibold text-foreground">Katalog Course</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Course yang sudah di-enroll atau masih menunggu pembayaran tidak ditampilkan pada daftar ini.
+    <section className="space-y-4">
+      {/* Header */}
+      <header className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-4 shadow-sm">
+        <h1 className="text-xl font-bold text-[var(--foreground)]">Katalog Course</h1>
+        <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
+          Course yang sudah di-enroll atau menunggu pembayaran tidak ditampilkan.
         </p>
       </header>
 
+      {/* Loading skeleton */}
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Memuat katalog course...</p>
-      ) : null}
-      {isError ? (
-        <p className="text-sm text-red-600">Gagal memuat katalog course.</p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
+              <div className="aspect-[16/7] animate-pulse bg-[var(--border)]" />
+              <div className="space-y-2 p-4">
+                <div className="h-3 w-2/3 animate-pulse rounded-full bg-[var(--border)]" />
+                <div className="h-4 w-full animate-pulse rounded-full bg-[var(--border)]" />
+                <div className="h-3 w-full animate-pulse rounded-full bg-[var(--border)]" />
+                <div className="h-3 w-3/4 animate-pulse rounded-full bg-[var(--border)]" />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : null}
 
+      {/* Error */}
+      {isError ? (
+        <article className="rounded-xl border border-[var(--danger-soft-border)] bg-[var(--danger-soft-bg)] p-4 text-sm text-[var(--danger-soft-foreground)]">
+          Gagal memuat katalog course. Silakan coba lagi.
+        </article>
+      ) : null}
+
+      {/* Empty */}
       {!isLoading && !isError && visibleCourses.length === 0 ? (
-        <article className="rounded-lg border border-border bg-card p-5 shadow-sm">
-          <p className="text-sm text-muted-foreground">
-            Tidak ada course baru. Semua course yang tersedia sudah ada di kelas Anda atau sedang menunggu pembayaran.
-          </p>
-          <Link href="/student/enrollments" className="mt-3 inline-flex text-sm text-primary hover:underline">
+        <article className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)] p-8 text-center shadow-sm">
+          <BookOpen className="size-10 text-[var(--muted-foreground)]" />
+          <div>
+            <p className="font-semibold text-[var(--foreground)]">Tidak ada course baru</p>
+            <p className="mt-0.5 text-sm text-[var(--muted-foreground)]">
+              Semua course tersedia sudah ada di kelas kamu atau sedang menunggu pembayaran.
+            </p>
+          </div>
+          <Link
+            href="/student/enrollments"
+            className="inline-flex h-9 items-center rounded-xl bg-[var(--primary)] px-4 text-sm font-semibold text-white transition active:scale-95"
+          >
             Lihat Kelas Saya
           </Link>
         </article>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {visibleCourses.map((course) => {
-          const hasDiscount = hasValidDiscount(course.price, course.discount_price);
-          const activePrice = hasDiscount ? Number(course.discount_price ?? 0) : Number(course.price ?? 0);
+      {/* Course grid */}
+      {!isLoading ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {visibleCourses.map((course) => {
+            const hasDiscount = hasValidDiscount(course.price, course.discount_price);
+            const activePrice = hasDiscount ? Number(course.discount_price ?? 0) : Number(course.price ?? 0);
 
-          return (
-            <article key={course.id} className="rounded-xl border border-border bg-card p-4 shadow-sm">
-              <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{course.status}</p>
-              <h2 className="mt-2 line-clamp-2 text-lg font-semibold text-foreground">{course.title}</h2>
-              <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">
-                {course.description || "Deskripsi course belum tersedia."}
-              </p>
+            return (
+              <article
+                key={course.id}
+                className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm transition hover:shadow-md"
+              >
+                {/* Thumbnail */}
+                <div className="relative aspect-[16/7] bg-[var(--muted)]">
+                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[var(--primary)]/10 to-[var(--primary)]/20">
+                    <BookOpen className="size-10 text-[var(--primary)]/40" />
+                  </div>
 
-              <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
-                <span className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-soft)] px-2.5 py-1">
-                  <Star className="size-4 fill-[var(--secondary)] text-[var(--secondary)]" />
-                  <span className="font-semibold text-foreground">{formatReviewAverage(course.reviews_avg_rating)}</span>
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <MessageSquareText className="size-4" />
-                  {course.reviews_count ?? 0} review
-                </span>
-              </div>
+                  {/* Status badge */}
+                  <span className="absolute left-2.5 top-2.5 inline-flex rounded-lg bg-emerald-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
+                    {course.status}
+                  </span>
 
-              <div className="mt-4 space-y-1">
-                {hasDiscount ? (
-                  <p className="text-sm text-muted-foreground line-through">{formatCurrency(course.price)}</p>
-                ) : null}
-                <p className="text-xl font-semibold text-[var(--secondary)]">{formatCurrency(activePrice)}</p>
-              </div>
+                  {/* Discount badge */}
+                  {hasDiscount ? (
+                    <span className="absolute right-2.5 top-2.5 inline-flex rounded-lg bg-rose-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
+                      Diskon
+                    </span>
+                  ) : null}
+                </div>
 
-              <div className="mt-5 flex items-center gap-2">
-                <Link
-                  href={`/student/catalog/${course.slug}`}
-                  className="inline-flex h-9 items-center rounded-md border border-border bg-card px-3 text-sm text-foreground transition hover:bg-muted"
-                >
-                  Detail
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => addToCartMutation.mutate(course.id)}
-                  disabled={addToCartMutation.isPending}
-                  className="inline-flex h-9 items-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition hover:opacity-90 disabled:opacity-70"
-                >
-                  Tambah ke Cart
-                </button>
-              </div>
-            </article>
-          );
-        })}
-      </div>
+                {/* Content */}
+                <div className="p-4">
+                  <h2 className="line-clamp-2 text-sm font-bold leading-snug text-[var(--foreground)]">{course.title}</h2>
+                  <p className="mt-1.5 line-clamp-2 text-xs leading-5 text-[var(--muted-foreground)]">
+                    {course.description || "Deskripsi course belum tersedia."}
+                  </p>
+
+                  {/* Rating row */}
+                  <div className="mt-3 flex items-center gap-3 text-xs text-[var(--muted-foreground)]">
+                    <span className="inline-flex items-center gap-1">
+                      <Star className="size-3.5 fill-[var(--secondary)] text-[var(--secondary)]" />
+                      <span className="font-semibold text-[var(--foreground)]">{formatReviewAverage(course.reviews_avg_rating)}</span>
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <MessageSquareText className="size-3.5" />
+                      {course.reviews_count ?? 0} review
+                    </span>
+                  </div>
+
+                  {/* Price */}
+                  <div className="mt-3 flex items-end justify-between gap-2">
+                    <div>
+                      {hasDiscount ? (
+                        <p className="text-[11px] text-[var(--muted-foreground)] line-through">{formatCurrency(course.price)}</p>
+                      ) : null}
+                      <p className="text-base font-bold text-[var(--secondary)]">{formatCurrency(activePrice)}</p>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="mt-3.5 grid grid-cols-2 gap-2">
+                    <Link
+                      href={`/student/catalog/${course.slug}`}
+                      className="inline-flex h-9 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] text-xs font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-hover)] active:scale-95"
+                    >
+                      Detail
+                    </Link>
+                    <Link
+                      href={buildStudentCheckoutPath(course.slug)}
+                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-[var(--primary)] text-xs font-semibold text-white transition hover:opacity-90 active:scale-95 disabled:opacity-70"
+                    >
+                      <CreditCard className="size-3.5" />
+                      Checkout
+                    </Link>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      ) : null}
     </section>
   );
 }

@@ -9,14 +9,6 @@ function resolveTargetPath(pathSegments: string[] | undefined): string | null {
 
   const [resource, second, third, fourth, fifth, sixth, seventh, eighth] = pathSegments;
 
-  if (resource === "cart") {
-    if (pathSegments.length === 1) return "/cart";
-    if (pathSegments.length === 2 && second === "items") return "/cart/items";
-    if (pathSegments.length === 3 && second === "items" && third) return `/cart/items/${third}`;
-    if (pathSegments.length === 2 && second === "apply-voucher") return "/cart/apply-voucher";
-    if (pathSegments.length === 2 && second === "checkout") return "/cart/checkout";
-  }
-
   if (resource === "orders") {
     if (pathSegments.length === 1) return "/orders";
     if (pathSegments.length === 2 && second) return `/orders/${second}`;

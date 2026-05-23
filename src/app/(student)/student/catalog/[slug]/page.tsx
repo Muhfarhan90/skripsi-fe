@@ -1,17 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ShoppingCart, Star, Tags, UserRound } from "lucide-react";
-import { toast } from "sonner";
-import {
-  addCourseToCart,
-  getPublishedCourseBySlug,
-  getStudentCourseReviews,
-} from "@/features/student/api/store-api";
+import { useParams } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import { CreditCard, Star, Tags, UserRound } from "lucide-react";
+import { getPublishedCourseBySlug, getStudentCourseReviews } from "@/features/student/api/store-api";
+import { buildStudentCheckoutPath } from "@/features/student/lib/checkout";
 import { formatUtcDateTimeToJakarta } from "@/features/student/lib/date-time";
-import { ApiError } from "@/lib/api/client";
 
 function formatCurrency(amount: number | null | undefined): string {
   const value = Number(amount ?? 0);
@@ -111,8 +106,6 @@ function renderStars(value: number) {
 
 export default function StudentCatalogDetailPage() {
   const params = useParams<{ slug: string }>();
-  const router = useRouter();
-  const queryClient = useQueryClient();
   const slug = typeof params.slug === "string" ? params.slug : "";
 
   const courseQuery = useQuery({
@@ -127,39 +120,6 @@ export default function StudentCatalogDetailPage() {
     queryFn: () => getStudentCourseReviews(courseId as number),
     enabled: Number.isFinite(courseId) && (courseId as number) > 0,
   });
-
-  const addToCartMutation = useMutation({
-    mutationFn: (courseId: number) => addCourseToCart(courseId),
-    onSuccess: (_, courseId) => {
-      queryClient.invalidateQueries({ queryKey: ["student", "cart"] });
-      toast.success("Course berhasil ditambahkan ke cart");
-      return courseId;
-    },
-    onError: (error) => {
-      if (error instanceof ApiError) {
-        toast.error(error.message);
-        return;
-      }
-
-      toast.error("Gagal menambahkan course ke cart");
-    },
-  });
-
-  const handleAddToCart = async (goToCart: boolean) => {
-    const course = courseQuery.data;
-    if (!course) {
-      return;
-    }
-
-    try {
-      await addToCartMutation.mutateAsync(course.id);
-      if (goToCart) {
-        router.push("/student/cart");
-      }
-    } catch {
-      // Error ditangani di onError.
-    }
-  };
 
   if (courseQuery.isLoading) {
     return <p className="text-sm text-muted-foreground">Memuat detail course...</p>;
@@ -253,23 +213,19 @@ export default function StudentCatalogDetailPage() {
             </div>
 
             <div className="mt-5 space-y-3">
-              <button
-                type="button"
-                onClick={() => handleAddToCart(true)}
-                disabled={addToCartMutation.isPending}
+              <Link
+                href={buildStudentCheckoutPath(course.slug)}
                 className="inline-flex h-11 w-full items-center justify-center rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-70"
               >
+                <CreditCard className="mr-2 size-4" />
                 Checkout Sekarang
-              </button>
-              <button
-                type="button"
-                onClick={() => handleAddToCart(false)}
-                disabled={addToCartMutation.isPending}
+              </Link>
+              <Link
+                href="/student/orders"
                 className="inline-flex h-11 w-full items-center justify-center rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground transition hover:bg-muted disabled:opacity-70"
               >
-                <ShoppingCart className="mr-2 size-4" />
-                Tambah ke Cart
-              </button>
+                Lihat Order Saya
+              </Link>
             </div>
           </aside>
         </div>
