@@ -7,6 +7,7 @@ export interface StoreCourse {
   category_name?: string | null;
   instructor_id: number | null;
   instructor_name?: string | null;
+  instructor_bio?: string | null;
   course_offering_id?: number | null;
   price: number | null;
   discount_price: number | null;
@@ -69,7 +70,7 @@ export interface StoreOrder {
   admin_fee: number;
   note: string | null;
   grand_total: number;
-  status: "cart" | "pending" | "completed" | "cancelled";
+  status: "pending" | "completed" | "cancelled";
   created_at: string;
   updated_at: string;
   items: StoreOrderItem[];

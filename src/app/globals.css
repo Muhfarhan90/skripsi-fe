@@ -101,3 +101,21 @@ body {
     color: var(--foreground);
     font-family: var(--font-poppins), "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
+
+@layer utilities {
+    .pwa-safe-top {
+        padding-top: max(0.75rem, env(safe-area-inset-top));
+    }
+
+    .pwa-safe-bottom {
+        padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    }
+
+    .pwa-safe-bottom-nav {
+        padding-bottom: calc(5.75rem + env(safe-area-inset-bottom));
+    }
+
+    .pwa-safe-bottom-floating-nav {
+        padding-bottom: calc(6.5rem + env(safe-area-inset-bottom));
+    }
+}

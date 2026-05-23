@@ -16,6 +16,29 @@ function resolveTargetPath(pathSegments: string[] | undefined): string | null {
     return `/courses/${slug}`;
   }
 
+  if (resource === "website-settings" && pathSegments.length === 1) {
+    return "/website-settings";
+  }
+
+  if (resource === "website" && pathSegments.length === 2 && slug === "home") {
+    return "/website/home";
+  }
+
+  if (resource === "website" && pathSegments.length === 2 && slug === "faqs") {
+    return "/website/faqs";
+  }
+
+  if (resource === "website" && pathSegments.length === 2 && slug === "faq-categories") {
+    return "/website/faq-categories";
+  }
+
+  if (resource === "website" && pathSegments.length === 3 && slug === "pages") {
+    const [, , pageSlug] = pathSegments;
+    if (pageSlug) {
+      return `/website/pages/${pageSlug}`;
+    }
+  }
+
   return null;
 }
 
@@ -62,4 +85,3 @@ export async function GET(
   const { path } = await context.params;
   return proxyPublicRequest(request, path);
 }
-

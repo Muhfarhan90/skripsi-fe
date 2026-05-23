@@ -18,7 +18,7 @@ interface UseLogoutActionOptions {
 export function useLogoutAction(options?: UseLogoutActionOptions) {
   const router = useRouter();
   const clearAuth = useAuthStore((state) => state.clearAuth);
-  const redirectTo = options?.redirectTo ?? "/login";
+  const redirectTo = options?.redirectTo ?? "/";
 
   return useMutation({
     mutationFn: async () => {

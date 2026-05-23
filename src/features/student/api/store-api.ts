@@ -1,4 +1,5 @@
 import { ApiError } from "@/lib/api/client";
+import type { WebsiteFaq, WebsiteFaqCategory, WebsitePage, WebsiteSetting } from "@/types/website";
 import type {
   StoreAssignment,
   StoreAssignmentSubmission,
@@ -74,38 +75,32 @@ export function getPublishedCourseBySlug(slug: string) {
   return studentRequest<StoreCourse>(`/api/public/courses/${slug}`, { method: "GET" });
 }
 
-export function getStudentCart() {
-  return studentRequest<StoreOrder | null>("/api/student/cart", { method: "GET" });
+export function getPublicWebsiteSettings() {
+  return studentRequest<WebsiteSetting>("/api/public/website/home", { method: "GET" });
 }
 
-export function applyStudentCartVoucher(voucherCode: string) {
-  return studentRequest<StoreOrder>("/api/student/cart/apply-voucher", {
-    method: "POST",
-    body: JSON.stringify({ voucher_code: voucherCode }),
-  });
+export function getPublicWebsitePage(slug: string) {
+  return studentRequest<WebsitePage>(`/api/public/website/pages/${slug}`, { method: "GET" });
 }
 
-export function addCourseToCart(courseId: number) {
-  return studentRequest<StoreOrder>("/api/student/cart/items", {
-    method: "POST",
-    body: JSON.stringify({ course_id: courseId }),
-  });
+export function getPublicFaqs() {
+  return studentRequest<WebsiteFaq[]>("/api/public/website/faqs", { method: "GET" });
 }
 
-export function removeCourseFromCart(courseId: number) {
-  return studentRequest<StoreOrder | null>(`/api/student/cart/items/${courseId}`, {
-    method: "DELETE",
-  });
+export function getPublicFaqCategories() {
+  return studentRequest<WebsiteFaqCategory[]>("/api/public/website/faq-categories", { method: "GET" });
 }
 
-export function checkoutCart(payload: {
+export function createStudentOrder(payload: {
+  course_id?: number;
+  course_offering_id?: number;
   voucher_code?: string;
   note?: string;
   payment_reference?: string;
   payment_proof?: string;
-  payment_method: "manual";
+  payment_method: "manual" | "gateway";
 }) {
-  return studentRequest<StoreOrder>("/api/student/cart/checkout", {
+  return studentRequest<StoreOrder>("/api/student/orders", {
     method: "POST",
     body: JSON.stringify(payload),
   });
