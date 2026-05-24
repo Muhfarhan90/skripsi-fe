@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { Search } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Download, Search } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
@@ -48,6 +49,17 @@ export default function AdminOrdersPage() {
   });
   const orders = ordersQuery.data?.items ?? [];
   const orderMeta = ordersQuery.data?.meta ?? createEmptyAdminPaginationMeta(page);
+  const exportHref = useMemo(() => {
+    const params = new URLSearchParams();
+    const search = searchKeyword.trim();
+
+    if (search) {
+      params.set("search", search);
+    }
+
+    const query = params.toString();
+    return query ? `/api/admin/orders/export?${query}` : "/api/admin/orders/export";
+  }, [searchKeyword]);
 
   const updateTransactionMutation = useMutation({
     mutationFn: ({ transactionId, status }: { transactionId: number; status: "success" | "failed" }) =>
@@ -79,7 +91,26 @@ export default function AdminOrdersPage() {
 
       <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
         <CardHeader className="border-b border-[var(--border)] pb-4">
-          <CardTitle className="text-base font-semibold text-[var(--foreground)]">Order List</CardTitle>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <CardTitle className="text-base font-semibold text-[var(--foreground)]">Order List</CardTitle>
+              <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+                Export laporan order sesuai kata kunci pencarian yang sedang aktif.
+              </p>
+            </div>
+
+            <Button
+              render={<a href={exportHref} />}
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full sm:w-auto"
+            >
+              <Download className="size-4" />
+              Export CSV
+            </Button>
+          </div>
+
           <div className="relative mt-3">
             <Search className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-[var(--muted-foreground)]" />
             <Input

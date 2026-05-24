@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { Download, Search } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
@@ -25,6 +26,12 @@ import {
 } from "@/features/admin/api/master-api";
 
 const EMPTY_TRANSACTIONS: AdminOrderTransaction[] = [];
+const STATUS_FILTER_OPTIONS = [
+  { value: "all", label: "Semua Status" },
+  { value: "pending", label: "Pending" },
+  { value: "success", label: "Success" },
+  { value: "failed", label: "Failed" },
+] as const;
 
 function formatCurrency(amount: number | string | null | undefined): string {
   const normalized = Number(amount ?? 0);
@@ -74,6 +81,25 @@ export default function AdminTransactionsPage() {
   });
   const transactions = transactionsQuery.data?.items ?? EMPTY_TRANSACTIONS;
   const transactionMeta = transactionsQuery.data?.meta ?? createEmptyAdminPaginationMeta(page);
+  const selectedStatusLabel = useMemo(
+    () => STATUS_FILTER_OPTIONS.find((option) => option.value === statusFilter)?.label ?? "Semua Status",
+    [statusFilter],
+  );
+  const exportHref = useMemo(() => {
+    const params = new URLSearchParams();
+    const search = searchKeyword.trim();
+
+    if (search) {
+      params.set("search", search);
+    }
+
+    if (statusFilter !== "all") {
+      params.set("status", statusFilter);
+    }
+
+    const query = params.toString();
+    return query ? `/api/admin/transactions/export?${query}` : "/api/admin/transactions/export";
+  }, [searchKeyword, statusFilter]);
 
   const pageSummary = useMemo(() => {
     return transactions.reduce(
@@ -150,11 +176,24 @@ export default function AdminTransactionsPage() {
 
       <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
         <CardHeader className="space-y-3 border-b border-[var(--border)] pb-4">
-          <div>
-            <CardTitle className="text-base font-semibold text-[var(--foreground)]">Payment Transactions</CardTitle>
-            <p className="text-sm text-[var(--muted-foreground)]">
-              Monitoring pembayaran, bukti transfer, dan proses verifikasi transaksi.
-            </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <CardTitle className="text-base font-semibold text-[var(--foreground)]">Payment Transactions</CardTitle>
+              <p className="text-sm text-[var(--muted-foreground)]">
+                Monitoring pembayaran, bukti transfer, proses verifikasi, dan export laporan CSV.
+              </p>
+            </div>
+
+            <Button
+              render={<a href={exportHref} />}
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full sm:w-auto"
+            >
+              <Download className="size-4" />
+              Export CSV
+            </Button>
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_220px]">
@@ -179,13 +218,14 @@ export default function AdminTransactionsPage() {
               }}
             >
               <SelectTrigger className="h-9 w-full border-[var(--border)] bg-[var(--surface-soft)] text-[var(--foreground)]">
-                <SelectValue placeholder="Filter status" />
+                <SelectValue>{selectedStatusLabel}</SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Semua Status</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="success">Success</SelectItem>
-                <SelectItem value="failed">Failed</SelectItem>
+                {STATUS_FILTER_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

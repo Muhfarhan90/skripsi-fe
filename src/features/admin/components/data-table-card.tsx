@@ -24,6 +24,13 @@ export function DataTableCard({ data }: DataTableCardProps) {
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [page, setPage] = useState(1);
   const pageSize = 10;
+  const selectedStatusLabel = useMemo(() => {
+    if (selectedStatus === "all") {
+      return "Semua Status";
+    }
+
+    return data.statusOptions?.find((status) => status === selectedStatus) ?? "Semua Status";
+  }, [data.statusOptions, selectedStatus]);
 
   const filteredRows = useMemo(() => {
     const keyword = searchKeyword.trim().toLowerCase();
@@ -107,7 +114,7 @@ export function DataTableCard({ data }: DataTableCardProps) {
               }}
             >
               <SelectTrigger className="h-9 w-full border-[var(--border)] bg-[var(--surface-soft)] text-[var(--foreground)]">
-                <SelectValue placeholder="Filter status" />
+                <SelectValue>{selectedStatusLabel}</SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Semua Status</SelectItem>
