@@ -10,6 +10,7 @@ import {
   type Unsubscribe,
 } from "firebase/messaging";
 import { getFirebaseVapidKey, getFirebaseWebConfig } from "@/lib/env";
+import { registerAppServiceWorker } from "@/lib/service-worker";
 
 let firebaseApp: FirebaseApp | null = null;
 let messagingPromise: Promise<Messaging | null> | null = null;
@@ -25,54 +26,6 @@ function logFcmDebug(message: string, detail?: unknown) {
   }
 
   console.warn(`[FCM] ${message}`, detail);
-}
-
-function waitForWorkerState(
-  worker: ServiceWorker,
-  expectedState: ServiceWorkerState,
-): Promise<void> {
-  if (worker.state === expectedState) {
-    return Promise.resolve();
-  }
-
-  return new Promise((resolve, reject) => {
-    const handleStateChange = () => {
-      if (worker.state === expectedState) {
-        worker.removeEventListener("statechange", handleStateChange);
-        resolve();
-        return;
-      }
-
-      if (worker.state === "redundant") {
-        worker.removeEventListener("statechange", handleStateChange);
-        reject(new Error("Firebase messaging service worker became redundant before activation."));
-      }
-    };
-
-    worker.addEventListener("statechange", handleStateChange);
-  });
-}
-
-async function waitForServiceWorkerActivation(
-  registration: ServiceWorkerRegistration,
-): Promise<ServiceWorkerRegistration> {
-  if (registration.active) {
-    return registration;
-  }
-
-  const worker = registration.installing ?? registration.waiting;
-  if (worker) {
-    await waitForWorkerState(worker, "activated");
-    return registration;
-  }
-
-  const readyRegistration = await navigator.serviceWorker.ready;
-
-  if (!readyRegistration.active) {
-    throw new Error("Firebase messaging service worker registered but did not become active.");
-  }
-
-  return readyRegistration;
 }
 
 export function getFirebaseApp(): FirebaseApp {
@@ -111,12 +64,7 @@ export async function registerFirebaseMessagingServiceWorker(): Promise<ServiceW
     return null;
   }
 
-  const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js", {
-    scope: "/",
-    updateViaCache: "none",
-  });
-
-  return waitForServiceWorkerActivation(registration);
+  return registerAppServiceWorker();
 }
 
 export async function requestNotificationPermission(): Promise<NotificationPermission> {
