@@ -3,6 +3,8 @@ import { AUTH_COOKIE_NAME } from "@/features/auth/lib/constants";
 import { buildApiUrl, getAuthCookieOptions } from "@/features/auth/lib/server";
 
 const ALLOWED_ADMIN_RESOURCES = new Set([
+  "dashboard",
+  "activity-logs",
   "categories",
   "skills",
   "courses",

@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ChevronDown,
@@ -11,7 +10,6 @@ import {
   PanelLeft,
   PanelLeftClose,
   Search,
-  Settings,
   Sun,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -220,15 +218,6 @@ export function AdminTopbar({
                   />
                 </span>
               </button>
-
-              <Link
-                href="/admin"
-                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition hover:bg-[var(--surface-hover)]"
-              >
-                <Settings className="size-4" />
-                <span>Settings</span>
-              </Link>
-
               <button
                 type="button"
                 onClick={() => logoutMutation.mutate()}

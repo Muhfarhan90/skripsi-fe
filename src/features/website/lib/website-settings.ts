@@ -168,15 +168,53 @@ export function getWebsiteSocialIconMeta(icon: WebsiteSocialIcon): WebsiteSocial
   return WEBSITE_SOCIAL_ICON_META[icon] ?? WEBSITE_SOCIAL_ICON_META.auto;
 }
 
-// Prefer explicit icon selection from CMS, then fall back to platform-based inference.
-export function resolveWebsiteSocialIcon(link: Pick<WebsiteSocialLink, "platform" | "icon">): WebsiteSocialIconMeta {
+function inferSocialIconFromText(value: string | null | undefined): WebsiteSocialIcon | null {
+  const normalized = value?.trim().toLowerCase() ?? "";
+
+  if (!normalized) {
+    return null;
+  }
+
+  if (normalized.includes("instagram")) {
+    return "instagram";
+  }
+
+  if (normalized.includes("facebook")) {
+    return "facebook";
+  }
+
+  if (normalized.includes("youtube")) {
+    return "youtube";
+  }
+
+  if (normalized.includes("linkedin")) {
+    return "linkedin";
+  }
+
+  if (normalized.includes("twitter") || normalized.includes("/x.com") || normalized.includes(" x ")) {
+    return "twitter";
+  }
+
+  if (normalized.includes("telegram") || normalized.includes("t.me")) {
+    return "telegram";
+  }
+
+  if (normalized.includes("http://") || normalized.includes("https://") || normalized.includes("www.")) {
+    return "website";
+  }
+
+  return normalizeSocialIconValue(normalized);
+}
+
+// Prefer explicit icon selection from CMS, then fall back to label/url-based inference.
+export function resolveWebsiteSocialIcon(link: Pick<WebsiteSocialLink, "label" | "url" | "icon">): WebsiteSocialIconMeta {
   const explicitIcon = normalizeSocialIconValue(link.icon);
 
   if (explicitIcon && explicitIcon !== "auto") {
     return getWebsiteSocialIconMeta(explicitIcon);
   }
 
-  const inferredIcon = normalizeSocialIconValue(link.platform);
+  const inferredIcon = inferSocialIconFromText(link.label) ?? inferSocialIconFromText(link.url);
 
   if (inferredIcon) {
     return getWebsiteSocialIconMeta(inferredIcon);

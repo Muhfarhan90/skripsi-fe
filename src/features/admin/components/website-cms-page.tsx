@@ -146,11 +146,9 @@ function buildSocialPayload(row: EditableSocialLink): WebsiteSocialLinkPayload {
   }
 
   return {
-    platform: normalizeText(row.platform) || "custom",
     label,
     url,
     icon: nullableText(row.icon),
-    sort_order: toPositiveInteger(row.sort_order, 1),
     is_active: row.is_active,
   };
 }
@@ -166,10 +164,8 @@ function buildPagePayload(row: EditablePage): WebsitePagePayload {
   return {
     slug,
     title,
-    excerpt: nullableText(row.excerpt),
     content: nullableText(row.content),
-    status: row.status,
-    published_at: row.status === "published" ? row.published_at : null,
+    is_active: row.is_active,
   };
 }
 
@@ -205,7 +201,6 @@ function buildFaqPayload(row: EditableFaq): WebsiteFaqPayload {
 
 function buildSectionPayload(section: EditableSection): WebsiteSectionPayload {
   return {
-    page_key: normalizeText(section.page_key) || "home",
     section_key: normalizeText(section.section_key),
     eyebrow: nullableText(section.eyebrow),
     title: nullableText(section.title),
@@ -216,29 +211,23 @@ function buildSectionPayload(section: EditableSection): WebsiteSectionPayload {
     cta_url: nullableText(section.cta_url),
     secondary_cta_label: nullableText(section.secondary_cta_label),
     secondary_cta_url: nullableText(section.secondary_cta_url),
-    sort_order: toPositiveInteger(section.sort_order, 1),
     is_active: section.is_active,
     items: section.items
-      .map((item, index) => ({
+      .map((item) => ({
         title: nullableText(item.title),
         description: nullableText(item.description),
         icon: nullableText(item.icon),
-        url: nullableText(item.url),
-        sort_order: toPositiveInteger(item.sort_order, index + 1),
-        is_active: item.is_active,
       }))
-      .filter((item) => item.title || item.description || item.icon || item.url),
+      .filter((item) => item.title || item.description),
   };
 }
 
 function emptySocialLink(): EditableSocialLink {
   return {
     id: nextTemporaryId(),
-    platform: "custom",
     label: "",
     url: "",
     icon: null,
-    sort_order: 1,
     is_active: true,
   };
 }
@@ -248,10 +237,8 @@ function emptyPage(): EditablePage {
     id: nextTemporaryId(),
     slug: "",
     title: "",
-    excerpt: null,
     content: "",
-    status: "draft",
-    published_at: null,
+    is_active: true,
   };
 }
 
@@ -283,9 +270,6 @@ function emptySectionItem(sectionId: number): WebsiteSection["items"][number] {
     title: "",
     description: "",
     icon: "book-open",
-    url: null,
-    sort_order: 1,
-    is_active: true,
   };
 }
 
@@ -472,7 +456,7 @@ function getSectionFieldPlaceholder(
   return "";
 }
 
-function getSectionItemPlaceholder(section: EditableSection, field: "title" | "url" | "description"): string {
+function getSectionItemPlaceholder(section: EditableSection, field: "title" | "description"): string {
   const sectionKey = section.section_key;
 
   if (field === "title") {
@@ -486,14 +470,6 @@ function getSectionItemPlaceholder(section: EditableSection, field: "title" | "u
       default:
         return "Judul item";
     }
-  }
-
-  if (field === "url") {
-    if (sectionKey === "cta") {
-      return "Opsional jika bullet mengarah ke halaman tertentu";
-    }
-
-    return "Opsional: /courses atau https://...";
   }
 
   if (field === "description") {
@@ -986,7 +962,7 @@ export function WebsiteCmsPage() {
                         onClick={() =>
                           updateSection(sectionIndex, (current) => ({
                             ...current,
-                            items: [...current.items, { ...emptySectionItem(current.id), sort_order: current.items.length + 1 }],
+                            items: [...current.items, emptySectionItem(current.id)],
                           }))
                         }
                       >
@@ -1004,27 +980,21 @@ export function WebsiteCmsPage() {
                             <span className={`inline-flex size-9 items-center justify-center rounded-lg ${iconMeta.colorClass}`}>
                               <Icon className="size-4" />
                             </span>
-                            <div className="flex items-center gap-2">
-                              <Switch
-                                checked={item.is_active}
-                                onCheckedChange={(checked) => updateSectionItem(sectionIndex, itemIndex, (current) => ({ ...current, is_active: checked }))}
-                              />
-                              <Button
-                                type="button"
-                                variant="outline"
-                                className="h-8 w-8 px-0 text-[var(--danger-soft-foreground)]"
-                                onClick={() =>
-                                  updateSection(sectionIndex, (current) => ({
-                                    ...current,
-                                    items: current.items.filter((candidate) => candidate.id !== item.id),
-                                  }))
-                                }
-                              >
-                                <Trash2 className="size-4" />
-                              </Button>
-                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="h-8 w-8 px-0 text-[var(--danger-soft-foreground)]"
+                              onClick={() =>
+                                updateSection(sectionIndex, (current) => ({
+                                  ...current,
+                                  items: current.items.filter((candidate) => candidate.id !== item.id),
+                                }))
+                              }
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
                           </div>
-                          <div className="grid gap-3 lg:grid-cols-[180px_1fr_1fr]">
+                          <div className="grid gap-3 lg:grid-cols-[180px_1fr]">
                             <Field label="Icon" id={`item-icon-${item.id}`}>
                               <Select
                                 value={item.icon ?? "book-open"}
@@ -1050,14 +1020,6 @@ export function WebsiteCmsPage() {
                                 placeholder={getSectionItemPlaceholder(section, "title")}
                                 value={item.title ?? ""}
                                 onChange={(event) => updateSectionItem(sectionIndex, itemIndex, (current) => ({ ...current, title: event.target.value }))}
-                              />
-                            </Field>
-                            <Field label="URL" id={`item-url-${item.id}`}>
-                              <Input
-                                id={`item-url-${item.id}`}
-                                placeholder={getSectionItemPlaceholder(section, "url")}
-                                value={item.url ?? ""}
-                                onChange={(event) => updateSectionItem(sectionIndex, itemIndex, (current) => ({ ...current, url: event.target.value }))}
                               />
                             </Field>
                           </div>
@@ -1095,7 +1057,7 @@ export function WebsiteCmsPage() {
             <Card key={page.id} className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
               <CardContent className="space-y-4 p-4">
                 <div className="flex justify-between gap-3">
-                  <div className="grid flex-1 gap-3 lg:grid-cols-3">
+                  <div className="grid flex-1 gap-3 lg:grid-cols-2">
                     <Field label="Slug" id={`page-slug-${page.id}`}>
                       <Input
                         id={`page-slug-${page.id}`}
@@ -1112,44 +1074,25 @@ export function WebsiteCmsPage() {
                         onChange={(event) => updateListRow(pages, setPagesDraft, page.id, (row) => ({ ...row, title: event.target.value }))}
                       />
                     </Field>
-                    <Field label="Status" id={`page-status-${page.id}`}>
-                      <Select
-                        value={page.status}
-                        onValueChange={(value) => {
-                          const status: EditablePage["status"] = value === "published" ? "published" : "draft";
-                          updateListRow(pages, setPagesDraft, page.id, (row) => ({ ...row, status }));
-                        }}
-                      >
-                        <SelectTrigger id={`page-status-${page.id}`} className="h-9 w-full border-[var(--border)] bg-[var(--card)]">
-                          <SelectValue placeholder="Pilih status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="draft">Draft</SelectItem>
-                          <SelectItem value="published">Published</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </Field>
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-9 w-9 px-0 text-[var(--danger-soft-foreground)]"
-                    onClick={() => {
-                      setPagesDraft(pages.filter((candidate) => candidate.id !== page.id));
-                      if (page.id > 0) deletePageMutation.mutate(page.id);
-                    }}
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
+                  <div className="flex h-10 items-center gap-3">
+                    <Switch
+                      checked={page.is_active}
+                      onCheckedChange={(checked) => updateListRow(pages, setPagesDraft, page.id, (row) => ({ ...row, is_active: checked }))}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-9 w-9 px-0 text-[var(--danger-soft-foreground)]"
+                      onClick={() => {
+                        setPagesDraft(pages.filter((candidate) => candidate.id !== page.id));
+                        if (page.id > 0) deletePageMutation.mutate(page.id);
+                      }}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
                 </div>
-                <Field label="Excerpt" id={`page-excerpt-${page.id}`}>
-                  <Input
-                    id={`page-excerpt-${page.id}`}
-                    placeholder="Ringkasan pendek yang muncul di bagian atas halaman."
-                    value={page.excerpt ?? ""}
-                    onChange={(event) => updateListRow(pages, setPagesDraft, page.id, (row) => ({ ...row, excerpt: event.target.value }))}
-                  />
-                </Field>
                 <Field label="Content" id={`page-content-${page.id}`}>
                   <div className="space-y-3">
                     <TinyMceEditor
@@ -1251,7 +1194,7 @@ export function WebsiteCmsPage() {
               faqs.map((faq) => (
                 <div key={faq.id} className="rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-4">
                   <div className="space-y-4">
-                    <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_auto]">
+                    <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_120px_auto]">
                       <Field label="Question" id={`faq-question-${faq.id}`}>
                         <Input
                           id={`faq-question-${faq.id}`}
@@ -1289,6 +1232,21 @@ export function WebsiteCmsPage() {
                             ))}
                           </SelectContent>
                         </Select>
+                      </Field>
+                      <Field label="Sort Order" id={`faq-sort-order-${faq.id}`}>
+                        <Input
+                          id={`faq-sort-order-${faq.id}`}
+                          type="number"
+                          min={1}
+                          placeholder="1"
+                          value={String(faq.sort_order ?? 1)}
+                          onChange={(event) =>
+                            updateListRow(faqs, setFaqsDraft, faq.id, (row) => ({
+                              ...row,
+                              sort_order: Math.max(1, Number(event.target.value) || 1),
+                            }))
+                          }
+                        />
                       </Field>
                       <div className="flex h-10 items-center gap-3 lg:mt-7 lg:justify-self-end">
                         <Switch
@@ -1352,7 +1310,7 @@ export function WebsiteCmsPage() {
                       </span>
                       <div>
                         <p className="text-sm font-semibold text-[var(--foreground)]">{link.label || "Social link baru"}</p>
-                        <p className="text-xs text-[var(--muted-foreground)]">{link.platform || "platform belum diisi"}</p>
+                        <p className="text-xs text-[var(--muted-foreground)]">{link.url || "URL belum diisi"}</p>
                       </div>
                     </div>
                     <div className="flex h-10 items-center gap-3">
@@ -1370,15 +1328,7 @@ export function WebsiteCmsPage() {
                       </Button>
                     </div>
                   </div>
-                  <div className="grid gap-3 lg:grid-cols-[160px_220px_1fr]">
-                    <Field label="Platform" id={`social-platform-${link.id}`}>
-                      <Input
-                        id={`social-platform-${link.id}`}
-                        placeholder="Contoh: instagram"
-                        value={link.platform}
-                        onChange={(event) => updateListRow(socialLinks, setSocialDraft, link.id, (row) => ({ ...row, platform: event.target.value }))}
-                      />
-                    </Field>
+                  <div className="grid gap-3 lg:grid-cols-[220px_1fr]">
                     <Field label="Icon" id={`social-icon-${link.id}`}>
                       <Select
                         value={socialIconValue}
@@ -1427,7 +1377,7 @@ export function WebsiteCmsPage() {
                     />
                   </Field>
                   <p className="text-xs leading-6 text-[var(--muted-foreground)]">
-                    Biarkan icon di mode otomatis jika ingin mengikuti nilai platform.
+                    Biarkan icon di mode otomatis jika ingin mengikuti label atau domain URL secara otomatis.
                   </p>
                 </CardContent>
               </Card>

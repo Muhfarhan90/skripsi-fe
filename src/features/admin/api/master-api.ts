@@ -477,6 +477,41 @@ export interface AdminPaginatedResponse<T> {
   meta: ApiPaginationMeta;
 }
 
+export interface AdminDashboardMetric {
+  label: string;
+  value: string;
+  note: string;
+  delta: string;
+  deltaTone: "positive" | "negative" | "neutral";
+}
+
+export interface AdminDashboardActivity {
+  id: number;
+  activity: string;
+  actor: string;
+  event: string | null;
+  subject_label: string | null;
+  subject_name: string | null;
+  occurred_at: string | null;
+}
+
+export interface AdminDashboard {
+  metrics: AdminDashboardMetric[];
+  recent_activities: AdminDashboardActivity[];
+}
+
+export interface AdminActivityLog {
+  id: number;
+  activity: string;
+  actor: string;
+  event: string | null;
+  subject_label: string | null;
+  subject_name: string | null;
+  description: string | null;
+  changed_fields: string[];
+  occurred_at: string | null;
+}
+
 export const ADMIN_PAGE_SIZE = 10;
 
 const ADMIN_OPTION_PAGE_SIZE = 100;
@@ -570,6 +605,10 @@ export type AdminOrderQuery = AdminPaginatedQuery;
 
 export interface AdminTransactionQuery extends AdminPaginatedQuery {
   status?: string;
+}
+
+export interface AdminActivityLogQuery extends AdminPaginatedQuery {
+  event?: string;
 }
 
 export interface AcademicPeriodPayload {
@@ -764,6 +803,18 @@ export function getAdminRoles() {
   return apiRequest<AdminRole[]>("/api/admin/roles", {
     method: "GET",
   });
+}
+
+export function getAdminDashboard() {
+  return apiRequest<AdminDashboard>("/api/admin/dashboard", {
+    method: "GET",
+  });
+}
+
+export async function listAdminActivityLogs(
+  query: AdminActivityLogQuery = {},
+): Promise<AdminPaginatedResponse<AdminActivityLog>> {
+  return listAdminCollection<AdminActivityLog>("/api/admin/activity-logs", withListPagination(query));
 }
 
 export function getAdminUsers(query: AdminUserQuery = {}) {
@@ -1073,10 +1124,8 @@ export function deleteAdminWebsitePage(pageId: number) {
   });
 }
 
-export function listAdminWebsiteSections(pageKey?: string) {
-  const query = pageKey ? `?page_key=${encodeURIComponent(pageKey)}` : "";
-
-  return apiRequest<AdminWebsiteSection[]>(`/api/admin/website-sections${query}`, {
+export function listAdminWebsiteSections() {
+  return apiRequest<AdminWebsiteSection[]>("/api/admin/website-sections", {
     method: "GET",
   });
 }

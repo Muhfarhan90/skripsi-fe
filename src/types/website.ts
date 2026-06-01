@@ -19,11 +19,9 @@ export interface WebsiteFooterLink {
 
 export interface WebsiteSocialLink {
   id: number;
-  platform: string;
   label: string;
   url: string;
   icon: string | null;
-  sort_order: number;
   is_active: boolean;
   created_at?: string | null;
   updated_at?: string | null;
@@ -33,10 +31,8 @@ export interface WebsitePage {
   id: number;
   slug: string;
   title: string;
-  excerpt: string | null;
   content: string | null;
-  status: "draft" | "published";
-  published_at: string | null;
+  is_active: boolean;
   created_at?: string | null;
   updated_at?: string | null;
 }
@@ -47,16 +43,12 @@ export interface WebsiteSectionItem {
   title: string | null;
   description: string | null;
   icon: string | null;
-  url: string | null;
-  sort_order: number;
-  is_active: boolean;
   created_at?: string | null;
   updated_at?: string | null;
 }
 
 export interface WebsiteSection {
   id: number;
-  page_key: string;
   section_key: string;
   eyebrow: string | null;
   title: string | null;
@@ -67,7 +59,6 @@ export interface WebsiteSection {
   cta_url: string | null;
   secondary_cta_label: string | null;
   secondary_cta_url: string | null;
-  sort_order: number;
   is_active: boolean;
   items: WebsiteSectionItem[];
   created_at?: string | null;

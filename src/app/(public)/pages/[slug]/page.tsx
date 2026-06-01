@@ -35,29 +35,25 @@ const fallbackContacts = {
 const fallbackPages = {
   "about-us": {
     title: "Tentang Kami",
-    excerpt: "Platform belajar pre-university untuk membantu siswa belajar lebih terarah dan terukur.",
     content:
       "SkripsiLMS menyediakan ekosistem belajar online yang menggabungkan course, materi, kuis, diskusi, progress belajar, dan sertifikat dalam satu platform.\n\nKami membantu siswa mempersiapkan diri menuju jenjang pendidikan berikutnya melalui alur belajar yang rapi, instructor yang mendampingi, dan konten pembelajaran yang dapat terus diperbarui melalui CMS.",
   },
   "help-center": {
     title: "Help Center",
-    excerpt: "Pusat bantuan untuk akun, course, pembayaran, progress belajar, dan sertifikat.",
     content:
       "Tim bantuan SkripsiLMS siap membantu kendala akun, akses course, pembayaran, forum diskusi, progress belajar, dan penerbitan sertifikat.\n\nSertakan detail kendala, nama akun, email terdaftar, dan course yang sedang diakses agar tim admin dapat menindaklanjuti lebih cepat.",
   },
   terms: {
     title: "Syarat & Ketentuan",
-    excerpt: "Ketentuan penggunaan platform, akses course, pembayaran, dan aktivitas belajar di SkripsiLMS.",
     content:
       "Dengan menggunakan SkripsiLMS, pengguna menyetujui ketentuan penggunaan platform, termasuk menjaga keamanan akun, menggunakan materi pembelajaran secara bertanggung jawab, dan mengikuti aturan pada setiap course.\n\nAkses course, sertifikat, forum diskusi, dan fitur pembelajaran mengikuti kebijakan yang berlaku pada platform.",
   },
   "privacy-policy": {
     title: "Kebijakan Privasi",
-    excerpt: "Informasi pengelolaan data akun, aktivitas belajar, dan komunikasi pengguna di SkripsiLMS.",
     content:
       "SkripsiLMS menggunakan data pengguna untuk mengelola akun, enrollment course, progress belajar, transaksi, notifikasi, dan penerbitan sertifikat.\n\nData kontak dapat digunakan untuk keperluan bantuan, verifikasi, dan komunikasi terkait layanan platform sesuai kebutuhan operasional.",
   },
-} satisfies Record<string, { title: string; excerpt: string; content: string }>;
+} satisfies Record<string, { title: string; content: string }>;
 
 export default function PublicCmsPage() {
   const params = useParams<{ slug: string }>();
@@ -128,11 +124,6 @@ export default function PublicCmsPage() {
                   Informasi
                 </span>
                 <h1 className="mt-5 text-3xl font-black tracking-tight sm:text-5xl">{page.title}</h1>
-                {page.excerpt ? (
-                  <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--muted-foreground)] sm:text-base">
-                    {page.excerpt}
-                  </p>
-                ) : null}
               </div>
               <div className="px-6 py-8 sm:px-10">
                 <WebsiteRichContent
@@ -189,7 +180,7 @@ export default function PublicCmsPage() {
           <div className="mx-auto max-w-7xl rounded-3xl border border-[var(--border)] bg-[var(--card)] p-8 text-center shadow-sm">
             <h1 className="text-2xl font-extrabold">Halaman tidak ditemukan</h1>
             <p className="mt-3 text-sm text-[var(--muted-foreground)]">
-              Halaman ini belum dipublish atau slug tidak tersedia.
+              Halaman ini belum aktif atau slug tidak tersedia.
             </p>
           </div>
         )}

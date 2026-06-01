@@ -5,6 +5,7 @@ import {
   CalendarClock,
   CalendarRange,
   FolderKanban,
+  History,
   PanelsTopLeft,
   LayoutDashboard,
   ReceiptText,
@@ -25,7 +26,8 @@ export type AdminNavIcon =
   | "websiteCms"
   | "vouchers"
   | "transactions"
-  | "orders";
+  | "orders"
+  | "activityLog";
 
 export interface AdminNavigationItem {
   key: string;
@@ -73,6 +75,7 @@ const ADMIN_ICON_MAP: Record<AdminNavIcon, LucideIcon> = {
   vouchers: TicketPercent,
   transactions: ReceiptText,
   orders: ReceiptText,
+  activityLog: History,
 };
 
 const ADMIN_ENTITY_LABEL: Record<AdminMasterEntity, string> = {
@@ -209,6 +212,19 @@ export const ADMIN_NAVIGATION: AdminNavigationGroup[] = [
         href: "/admin/transactions",
         description: "Order, pembayaran, dan enrollment",
         icon: "transactions",
+      },
+    ],
+  },
+  {
+    key: "monitoring",
+    title: "MONITORING",
+    items: [
+      {
+        key: "activity-log",
+        label: "Activity Log",
+        href: "/admin/activity-log",
+        description: "Audit trail perubahan data admin",
+        icon: "activityLog",
       },
     ],
   },
