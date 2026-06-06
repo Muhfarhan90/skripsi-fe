@@ -11,6 +11,9 @@ function resolveTargetPath(pathSegments: string[] | undefined): string | null {
 
   if (resource === "orders") {
     if (pathSegments.length === 1) return "/orders";
+    if (pathSegments.length === 2 && second === "payment-proof-upload") {
+      return "/orders/payment-proof-upload";
+    }
     if (pathSegments.length === 2 && second) return `/orders/${second}`;
     if (pathSegments.length === 3 && second && third === "payment-submission") {
       return `/orders/${second}/payment-submission`;
@@ -166,10 +169,13 @@ async function proxyStudentRequest(
     Authorization: `Bearer ${token}`,
   };
 
-  let body: string | undefined;
+  let body: BodyInit | undefined;
   if (request.method !== "GET" && request.method !== "HEAD") {
-    body = await request.text();
     const contentType = request.headers.get("content-type");
+    body = contentType?.startsWith("multipart/form-data")
+      ? await request.arrayBuffer()
+      : await request.text();
+
     if (contentType) {
       headers["Content-Type"] = contentType;
     }

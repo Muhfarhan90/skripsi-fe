@@ -40,6 +40,7 @@ import { ApiError } from "@/lib/api/client";
 interface AdminOfferingForumPanelProps {
   courseId: number;
   courseTitle: string;
+  initialPostId?: number | null;
 }
 
 function getAvatarLabel(name: string | null | undefined): string {
@@ -80,12 +81,13 @@ function buildExcerpt(content: string, maxLength = 140): string {
 export function AdminOfferingForumPanel({
   courseId,
   courseTitle,
+  initialPostId = null,
 }: AdminOfferingForumPanelProps) {
   const queryClient = useQueryClient();
   const currentUser = useAuthStore((state) => state.user);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
+  const [selectedPostId, setSelectedPostId] = useState<number | null>(initialPostId);
   const [postTitle, setPostTitle] = useState("");
   const [postContent, setPostContent] = useState("");
   const [replyContent, setReplyContent] = useState("");
@@ -105,13 +107,7 @@ export function AdminOfferingForumPanel({
 
   const posts = useMemo(() => postsQuery.data?.items ?? [], [postsQuery.data?.items]);
   const postMeta = postsQuery.data?.meta ?? createEmptyAdminPaginationMeta(page);
-  const effectiveSelectedPostId = useMemo(() => {
-    if (selectedPostId && posts.some((post) => post.id === selectedPostId)) {
-      return selectedPostId;
-    }
-
-    return posts[0]?.id ?? null;
-  }, [posts, selectedPostId]);
+  const effectiveSelectedPostId = selectedPostId;
 
   const selectedPostQuery = useQuery({
     queryKey: ["admin", "course", courseId, "forum-post", effectiveSelectedPostId],
@@ -251,7 +247,7 @@ export function AdminOfferingForumPanel({
       setEditPostTitle("");
       setEditPostContent("");
       setPostToDeleteId(null);
-      setSelectedPostId(remainingPosts[0]?.id ?? null);
+      setSelectedPostId(null);
 
       if (remainingPosts.length === 0 && page > 1) {
         setPage((current) => Math.max(1, current - 1));
@@ -489,6 +485,7 @@ export function AdminOfferingForumPanel({
                   onChange={(event) => {
                     setSearch(event.target.value);
                     setPage(1);
+                    setSelectedPostId(null);
                   }}
                   placeholder="Cari judul atau isi topik"
                   className="pl-9"
@@ -564,7 +561,10 @@ export function AdminOfferingForumPanel({
                 <AdminPagination
                   meta={postMeta}
                   isLoading={postsQuery.isFetching}
-                  onPageChange={(nextPage) => setPage(nextPage)}
+                  onPageChange={(nextPage) => {
+                    setPage(nextPage);
+                    setSelectedPostId(null);
+                  }}
                 />
               ) : null}
             </CardContent>
@@ -585,6 +585,14 @@ export function AdminOfferingForumPanel({
                 <h3 className="mt-4 text-2xl font-semibold text-[var(--foreground)]">Belum Ada Topik</h3>
                 <p className="mt-2 max-w-lg text-sm leading-7 text-[var(--muted-foreground)]">
                   Buat topik pertama untuk memulai diskusi atau tunggu student membuka percakapan.
+                </p>
+              </div>
+            ) : !effectiveSelectedPostId ? (
+              <div className="flex min-h-[420px] flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-soft)] p-6 text-center">
+                <MessageSquare className="size-10 text-[var(--primary)]" />
+                <h3 className="mt-4 text-2xl font-semibold text-[var(--foreground)]">Pilih Topik Forum</h3>
+                <p className="mt-2 max-w-lg text-sm leading-7 text-[var(--muted-foreground)]">
+                  Panel ini menampilkan detail topik setelah dipilih dari daftar di sebelah kiri.
                 </p>
               </div>
             ) : selectedPostQuery.isLoading ? (
