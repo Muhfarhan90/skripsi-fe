@@ -1,20 +1,18 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Download, Search } from "lucide-react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { Download, Eye, Search } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { AdminPagination } from "@/features/admin/components/admin-pagination";
 import { StatusBadge } from "@/features/admin/components/status-badge";
-import { ApiError } from "@/lib/api/client";
 import {
   createEmptyAdminPaginationMeta,
   listAdminOrders,
-  updateAdminTransaction,
 } from "@/features/admin/api/master-api";
 
 function formatCurrency(amount: number): string {
@@ -30,14 +28,9 @@ function formatOrderStatus(status: string): string {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
-function isHttpUrl(value: string): boolean {
-  return value.startsWith("http://") || value.startsWith("https://");
-}
-
 export default function AdminOrdersPage() {
   const [searchKeyword, setSearchKeyword] = useState("");
   const [page, setPage] = useState(1);
-  const queryClient = useQueryClient();
 
   const ordersQuery = useQuery({
     queryKey: ["admin", "orders", "list", page, searchKeyword],
@@ -60,27 +53,6 @@ export default function AdminOrdersPage() {
     const query = params.toString();
     return query ? `/api/admin/orders/export?${query}` : "/api/admin/orders/export";
   }, [searchKeyword]);
-
-  const updateTransactionMutation = useMutation({
-    mutationFn: ({ transactionId, status }: { transactionId: number; status: "success" | "failed" }) =>
-      updateAdminTransaction(transactionId, { status }),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "orders"] });
-      toast.success(
-        variables.status === "success"
-          ? "Pembayaran berhasil dikonfirmasi"
-          : "Pembayaran ditandai gagal",
-      );
-    },
-    onError: (error) => {
-      if (error instanceof ApiError) {
-        toast.error(error.message);
-        return;
-      }
-
-      toast.error("Gagal memperbarui status pembayaran");
-    },
-  });
 
   return (
     <section className="space-y-5">
@@ -153,7 +125,10 @@ export default function AdminOrdersPage() {
                     Status
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
-                    Konfirmasi Pembayaran
+                    Pembayaran
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
+                    Detail
                   </th>
                 </tr>
               </thead>
@@ -172,77 +147,33 @@ export default function AdminOrdersPage() {
                       </td>
                       <td className="px-4 py-3 text-sm text-[var(--foreground)]">
                         {(() => {
-                          const pendingTransaction = order.transactions?.find(
-                            (transaction) => transaction.status === "pending",
-                          );
+                          const latestTransaction = order.transactions?.at(-1) ?? order.transactions?.[0];
 
-                          if (!pendingTransaction || order.status !== "pending") {
+                          if (!latestTransaction) {
                             return <span className="text-xs text-[var(--muted-foreground)]">-</span>;
                           }
 
                           return (
-                            <div className="space-y-2">
-                              <p className="text-xs text-[var(--muted-foreground)]">
-                                Ref: {pendingTransaction.payment_reference || "-"}
-                              </p>
-                              <p className="text-xs text-[var(--muted-foreground)]">
-                                Proof:{" "}
-                                {pendingTransaction.payment_proof ? (
-                                  isHttpUrl(pendingTransaction.payment_proof) ? (
-                                    <a
-                                      href={pendingTransaction.payment_proof}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="break-all text-[var(--foreground)] underline underline-offset-2 hover:opacity-80"
-                                    >
-                                      {pendingTransaction.payment_proof}
-                                    </a>
-                                  ) : (
-                                    <span className="break-all text-[var(--foreground)]">
-                                      {pendingTransaction.payment_proof}
-                                    </span>
-                                  )
-                                ) : (
-                                  "-"
-                                )}
-                              </p>
-                              <div className="flex items-center gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    updateTransactionMutation.mutate({
-                                      transactionId: pendingTransaction.id,
-                                      status: "success",
-                                    })
-                                  }
-                                  disabled={updateTransactionMutation.isPending}
-                                  className="inline-flex h-8 items-center rounded-md bg-emerald-600 px-3 text-xs font-medium text-white transition hover:bg-emerald-700 disabled:opacity-70"
-                                >
-                                  Konfirmasi
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    updateTransactionMutation.mutate({
-                                      transactionId: pendingTransaction.id,
-                                      status: "failed",
-                                    })
-                                  }
-                                  disabled={updateTransactionMutation.isPending}
-                                  className="inline-flex h-8 items-center rounded-md border border-red-300 bg-red-50 px-3 text-xs font-medium text-red-700 transition hover:bg-red-100 disabled:opacity-70"
-                                >
-                                  Tolak
-                                </button>
-                              </div>
-                            </div>
+                            <StatusBadge value={formatOrderStatus(latestTransaction.status)} />
                           );
                         })()}
+                      </td>
+                      <td className="px-4 py-3 text-right text-sm text-[var(--foreground)]">
+                        <Button
+                          render={<Link href={`/admin/orders/${order.id}`} />}
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                        >
+                          <Eye className="size-4" />
+                          Detail
+                        </Button>
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td className="px-4 py-6 text-center text-sm text-[var(--muted-foreground)]" colSpan={6}>
+                    <td className="px-4 py-6 text-center text-sm text-[var(--muted-foreground)]" colSpan={7}>
                       Data order tidak ditemukan.
                     </td>
                   </tr>

@@ -38,11 +38,13 @@ async function studentRequestEnvelope<T>(
   endpoint: string,
   init: RequestInit,
 ): Promise<StudentApiEnvelope<T>> {
+  const isFormData = typeof FormData !== "undefined" && init.body instanceof FormData;
+
   const response = await fetch(endpoint, {
     ...init,
     headers: {
       Accept: "application/json",
-      ...(init.body ? { "Content-Type": "application/json" } : {}),
+      ...(init.body && !isFormData ? { "Content-Type": "application/json" } : {}),
       ...(init.headers || {}),
     },
   });
@@ -103,6 +105,16 @@ export function createStudentOrder(payload: {
   return studentRequest<StoreOrder>("/api/student/orders", {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export function uploadStudentPaymentProof(file: File) {
+  const formData = new FormData();
+  formData.set("file", file);
+
+  return studentRequest<{ path: string }>("/api/student/orders/payment-proof-upload", {
+    method: "POST",
+    body: formData,
   });
 }
 
@@ -198,9 +210,27 @@ export function getStudentCourseReviews(courseId: number) {
   return studentRequest<StoreReview[]>(`/api/student/courses/${courseId}/reviews`, { method: "GET" });
 }
 
-export async function getStudentCourseForumPosts(courseId: number, page = 1) {
+export async function getStudentCourseForumPosts(
+  courseId: number,
+  options: {
+    page?: number;
+    search?: string;
+  } = {},
+) {
+  const searchParams = new URLSearchParams();
+  const page =
+    typeof options.page === "number" && Number.isFinite(options.page) && options.page > 0
+      ? Math.trunc(options.page)
+      : 1;
+
+  searchParams.set("page", String(page));
+
+  if (options.search?.trim()) {
+    searchParams.set("search", options.search.trim());
+  }
+
   const payload = await studentRequestEnvelope<StoreForumPost[]>(
-    `/api/student/courses/${courseId}/forum?page=${page}`,
+    `/api/student/courses/${courseId}/forum?${searchParams.toString()}`,
     { method: "GET" },
   );
 

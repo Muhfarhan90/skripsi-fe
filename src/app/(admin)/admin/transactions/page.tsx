@@ -18,6 +18,7 @@ import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { AdminPagination } from "@/features/admin/components/admin-pagination";
 import { StatusBadge } from "@/features/admin/components/status-badge";
 import { ApiError } from "@/lib/api/client";
+import { resolvePublicFileUrl } from "@/lib/file-url";
 import {
   createEmptyAdminPaginationMeta,
   listAdminTransactions,
@@ -46,10 +47,6 @@ function formatCurrency(amount: number | string | null | undefined): string {
 function formatStatusLabel(status: string | null | undefined): string {
   if (!status) return "-";
   return status.charAt(0).toUpperCase() + status.slice(1);
-}
-
-function isHttpUrl(value: string): boolean {
-  return value.startsWith("http://") || value.startsWith("https://");
 }
 
 function getTransactionMethodLabel(transaction: AdminOrderTransaction): string {
@@ -101,18 +98,6 @@ export default function AdminTransactionsPage() {
     return query ? `/api/admin/transactions/export?${query}` : "/api/admin/transactions/export";
   }, [searchKeyword, statusFilter]);
 
-  const pageSummary = useMemo(() => {
-    return transactions.reduce(
-      (summary, transaction) => {
-        if (transaction.status === "pending") summary.pending += 1;
-        if (transaction.status === "success") summary.success += 1;
-        if (transaction.status === "failed") summary.failed += 1;
-        return summary;
-      },
-      { pending: 0, success: 0, failed: 0 },
-    );
-  }, [transactions]);
-
   const updateTransactionMutation = useMutation({
     mutationFn: ({ transactionId, status }: { transactionId: number; status: "success" | "failed" }) =>
       updateAdminTransaction(transactionId, { status }),
@@ -141,38 +126,6 @@ export default function AdminTransactionsPage() {
         title="Transaksi Pembayaran"
         description="Pantau transaksi pembayaran siswa dengan data API yang sama alurnya seperti list order."
       />
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-[var(--muted-foreground)]">Total Transaksi</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold text-[var(--foreground)]">{transactionMeta.total}</p>
-            <p className="text-xs text-[var(--muted-foreground)]">Total data transaksi pembayaran.</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-[var(--muted-foreground)]">Pending Verifikasi</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold text-[var(--foreground)]">{pageSummary.pending}</p>
-            <p className="text-xs text-[var(--muted-foreground)]">Jumlah transaksi pending pada halaman/filter ini.</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-[var(--muted-foreground)]">Berhasil Dibayar</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold text-[var(--foreground)]">{pageSummary.success}</p>
-            <p className="text-xs text-[var(--muted-foreground)]">Jumlah transaksi success pada halaman/filter ini.</p>
-          </CardContent>
-        </Card>
-      </div>
 
       <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
         <CardHeader className="space-y-3 border-b border-[var(--border)] pb-4">
@@ -291,22 +244,28 @@ export default function AdminTransactionsPage() {
                         <StatusBadge value={formatStatusLabel(transaction.status)} />
                       </td>
                       <td className="px-4 py-3 text-sm text-[var(--foreground)]">
-                        {transaction.payment_proof ? (
-                          isHttpUrl(transaction.payment_proof) ? (
-                            <a
-                              href={transaction.payment_proof}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="break-all underline underline-offset-2 hover:opacity-80"
-                            >
-                              Lihat Bukti
-                            </a>
-                          ) : (
-                            <span className="break-all">{transaction.payment_proof}</span>
-                          )
-                        ) : (
-                          <span className="text-[var(--muted-foreground)]">-</span>
-                        )}
+                        {(() => {
+                          const paymentProofUrl = resolvePublicFileUrl(transaction.payment_proof);
+
+                          if (paymentProofUrl) {
+                            return (
+                              <a
+                                href={paymentProofUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="break-all underline underline-offset-2 hover:opacity-80"
+                              >
+                                Lihat Bukti
+                              </a>
+                            );
+                          }
+
+                          if (transaction.payment_proof) {
+                            return <span className="break-all">{transaction.payment_proof}</span>;
+                          }
+
+                          return <span className="text-[var(--muted-foreground)]">-</span>;
+                        })()}
                       </td>
                       <td className="px-4 py-3 text-sm text-[var(--foreground)]">
                         {transaction.status === "pending" ? (

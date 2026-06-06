@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { getStudentOrderById } from "@/features/student/api/store-api";
+import { resolvePublicFileUrl } from "@/lib/file-url";
 import type { StoreOrderItem } from "@/types/store";
 
 function formatCurrency(amount: number | null | undefined): string {
@@ -43,6 +44,9 @@ export default function StudentOrderDetailPage() {
 
   const order = orderQuery.data;
   const latestTransaction = order.transactions.at(0);
+  const paymentProofUrl = resolvePublicFileUrl(latestTransaction?.payment_proof);
+  const isGatewayPayment =
+    latestTransaction?.payment_method === "midtrans" || Boolean(latestTransaction?.payment_url);
 
   return (
     <section className="space-y-5">
@@ -95,30 +99,56 @@ export default function StudentOrderDetailPage() {
 
       {latestTransaction ? (
         <article className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-foreground">Pembayaran Manual</h2>
+          <h2 className="text-sm font-semibold text-foreground">
+            {isGatewayPayment ? "Pembayaran Midtrans" : "Pembayaran Manual"}
+          </h2>
           <p className="text-sm text-muted-foreground">
-            Data pembayaran dari proses checkout ditampilkan di bawah dan menunggu verifikasi admin.
+            {isGatewayPayment
+              ? "Status pembayaran diperbarui otomatis setelah Midtrans mengirim notifikasi ke sistem."
+              : "Data pembayaran dari proses checkout ditampilkan di bawah dan menunggu verifikasi admin."}
           </p>
           <div className="space-y-2 text-sm text-muted-foreground">
             <p>Invoice: {latestTransaction.invoice_code}</p>
             <p>Status transaksi: {latestTransaction.status}</p>
-            <p>Metode: {latestTransaction.payment_method ?? "-"}</p>
+            <p>
+              Metode:{" "}
+              {[latestTransaction.payment_method, latestTransaction.payment_channel]
+                .filter(Boolean)
+                .join(" / ") || "-"}
+            </p>
             <p>Referensi: {latestTransaction.payment_reference ?? "-"}</p>
-            <p className="break-all">
-              Bukti pembayaran:{" "}
-              {latestTransaction.payment_proof ? (
+            {latestTransaction.payment_url && latestTransaction.status === "pending" ? (
+              <p>
+                Link pembayaran:{" "}
                 <a
-                  href={latestTransaction.payment_proof}
+                  href={latestTransaction.payment_url}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-primary hover:underline"
+                  className="font-semibold text-primary hover:underline"
                 >
-                  {latestTransaction.payment_proof}
+                  Bayar sekarang
                 </a>
-              ) : (
-                "-"
-              )}
-            </p>
+              </p>
+            ) : null}
+            {!isGatewayPayment ? (
+              <p className="break-all">
+                Bukti pembayaran:{" "}
+                {paymentProofUrl ? (
+                  <a
+                    href={paymentProofUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    Lihat bukti pembayaran
+                  </a>
+                ) : latestTransaction.payment_proof ? (
+                  latestTransaction.payment_proof
+                ) : (
+                  "-"
+                )}
+              </p>
+            ) : null}
           </div>
         </article>
       ) : null}
