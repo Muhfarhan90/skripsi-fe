@@ -1,5 +1,7 @@
 import {
   Award,
+  BarChart3,
+  ClipboardList,
   BrainCircuit,
   BookOpenText,
   CalendarClock,
@@ -10,9 +12,11 @@ import {
   LayoutDashboard,
   ReceiptText,
   Shapes,
+  Star,
   TicketPercent,
   type LucideIcon,
 } from "lucide-react";
+import { isExactAdminRole } from "@/features/auth/lib/roles";
 
 export type AdminNavIcon =
   | "dashboard"
@@ -27,14 +31,24 @@ export type AdminNavIcon =
   | "vouchers"
   | "transactions"
   | "orders"
-  | "activityLog";
+  | "reports"
+  | "activityLog"
+  | "courseActivity"
+  | "courseReviews";
 
-export interface AdminNavigationItem {
+export type AdminNavigationVisibility = "all" | "platform-admin";
+
+export interface AdminNavigationLink {
   key: string;
   label: string;
   href: string;
   description: string;
+  visibility?: AdminNavigationVisibility;
+}
+
+export interface AdminNavigationItem extends AdminNavigationLink {
   icon: AdminNavIcon;
+  children?: AdminNavigationLink[];
 }
 
 export interface AdminNavigationGroup {
@@ -57,6 +71,8 @@ export interface AdminQuickNavigationItem {
 
 type AdminMasterEntity =
   | "users"
+  | "students"
+  | "instructors"
   | "categories"
   | "skills"
   | "courses"
@@ -75,11 +91,16 @@ const ADMIN_ICON_MAP: Record<AdminNavIcon, LucideIcon> = {
   vouchers: TicketPercent,
   transactions: ReceiptText,
   orders: ReceiptText,
+  reports: BarChart3,
   activityLog: History,
+  courseActivity: ClipboardList,
+  courseReviews: Star,
 };
 
 const ADMIN_ENTITY_LABEL: Record<AdminMasterEntity, string> = {
   users: "User",
+  students: "Siswa",
+  instructors: "Instructor",
   categories: "Category",
   skills: "Skill",
   courses: "Course Master",
@@ -88,10 +109,16 @@ const ADMIN_ENTITY_LABEL: Record<AdminMasterEntity, string> = {
 
 const ADMIN_QUICK_ACTIONS: AdminQuickNavigationItem[] = [
   {
-    label: "Buat User",
-    href: "/admin/master-data/users/new",
-    description: "Tambah akun user baru",
-    keywords: ["create", "user", "tambah", "akun"],
+    label: "Tambah Siswa",
+    href: "/admin/master-data/students/new",
+    description: "Tambah akun siswa baru",
+    keywords: ["create", "student", "siswa", "tambah", "akun"],
+  },
+  {
+    label: "Tambah Instructor",
+    href: "/admin/master-data/instructors/new",
+    description: "Tambah akun instructor baru",
+    keywords: ["create", "instructor", "pengajar", "tambah", "akun"],
   },
   {
     label: "Buat Course Master",
@@ -134,15 +161,65 @@ export const ADMIN_NAVIGATION: AdminNavigationGroup[] = [
     ],
   },
   {
+    key: "course-activity",
+    title: "COURSE ACTIVITY",
+    items: [
+      {
+        key: "course-activity",
+        label: "Course Activity",
+        href: "/admin/course-activity",
+        description: "Workspace transaksional untuk instructor dan admin",
+        icon: "courseActivity",
+        children: [
+          {
+            key: "course-activity-forum",
+            label: "Forum",
+            href: "/admin/course-activity/forum",
+            description: "Moderasi diskusi course lintas offering",
+          },
+          {
+            key: "course-activity-assignment-reviews",
+            label: "Assignment Review",
+            href: "/admin/course-activity/assignment-reviews",
+            description: "Tinjau submission assignment per offering",
+          },
+          {
+            key: "course-activity-student-progress",
+            label: "Student Progress",
+            href: "/admin/course-activity/student-progress",
+            description: "Pantau progres dan status siswa per offering",
+          },
+        ],
+      },
+      {
+        key: "course-reviews",
+        label: "Course Reviews",
+        href: "/admin/course-reviews",
+        description: "Moderasi rating dan ulasan student per course",
+        icon: "courseReviews",
+        visibility: "platform-admin",
+      },
+    ],
+  },
+  {
     key: "master-data",
     title: "MANAJEMEN DATA",
     items: [
       {
-        key: "master-data-users",
-        label: "Users",
-        href: "/admin/master-data/users",
-        description: "Kelola akun student dan admin",
+        key: "master-data-students",
+        label: "Kelola Siswa",
+        href: "/admin/master-data/students",
+        description: "Kelola akun siswa, NISN, dan asal sekolah",
         icon: "users",
+        visibility: "platform-admin",
+      },
+      {
+        key: "master-data-instructors",
+        label: "Kelola Instructor",
+        href: "/admin/master-data/instructors",
+        description: "Kelola akun instructor secara terpisah",
+        icon: "users",
+        visibility: "platform-admin",
       },
       {
         key: "master-data-categories",
@@ -150,6 +227,7 @@ export const ADMIN_NAVIGATION: AdminNavigationGroup[] = [
         href: "/admin/master-data/categories",
         description: "Kelola kategori course",
         icon: "categories",
+        visibility: "platform-admin",
       },
       {
         key: "master-data-skills",
@@ -157,6 +235,7 @@ export const ADMIN_NAVIGATION: AdminNavigationGroup[] = [
         href: "/admin/master-data/skills",
         description: "Kelola badge skill course",
         icon: "skills",
+        visibility: "platform-admin",
       },
       {
         key: "master-data-courses",
@@ -164,6 +243,7 @@ export const ADMIN_NAVIGATION: AdminNavigationGroup[] = [
         href: "/admin/master-data/courses",
         description: "Kelola konten master course",
         icon: "courses",
+        visibility: "platform-admin",
       },
       {
         key: "course-offerings",
@@ -171,6 +251,7 @@ export const ADMIN_NAVIGATION: AdminNavigationGroup[] = [
         href: "/admin/academic-periods",
         description: "Kelola period dan offering course",
         icon: "academicPeriods",
+        visibility: "platform-admin",
       },
       {
         key: "certificate-settings",
@@ -178,6 +259,7 @@ export const ADMIN_NAVIGATION: AdminNavigationGroup[] = [
         href: "/admin/certificate-settings",
         description: "Atur template dan metadata sertifikat",
         icon: "certificates",
+        visibility: "platform-admin",
       },
       {
         key: "website-cms",
@@ -185,6 +267,7 @@ export const ADMIN_NAVIGATION: AdminNavigationGroup[] = [
         href: "/admin/website-cms",
         description: "Kelola footer, sosial media, dan konten landing page",
         icon: "websiteCms",
+        visibility: "platform-admin",
       },
       {
         key: "master-data-vouchers",
@@ -192,6 +275,7 @@ export const ADMIN_NAVIGATION: AdminNavigationGroup[] = [
         href: "/admin/master-data/vouchers",
         description: "Kelola data voucher diskon",
         icon: "vouchers",
+        visibility: "platform-admin",
       },
     ],
   },
@@ -205,6 +289,7 @@ export const ADMIN_NAVIGATION: AdminNavigationGroup[] = [
         href: "/admin/orders",
         description: "Kelola order pembelian course siswa",
         icon: "orders",
+        visibility: "platform-admin",
       },
       {
         key: "transactions-overview",
@@ -212,6 +297,15 @@ export const ADMIN_NAVIGATION: AdminNavigationGroup[] = [
         href: "/admin/transactions",
         description: "Order, pembayaran, dan enrollment",
         icon: "transactions",
+        visibility: "platform-admin",
+      },
+      {
+        key: "reports-overview",
+        label: "Reports",
+        href: "/admin/reports",
+        description: "Ringkasan penjualan dan export laporan",
+        icon: "reports",
+        visibility: "platform-admin",
       },
     ],
   },
@@ -225,6 +319,7 @@ export const ADMIN_NAVIGATION: AdminNavigationGroup[] = [
         href: "/admin/activity-log",
         description: "Audit trail perubahan data admin",
         icon: "activityLog",
+        visibility: "platform-admin",
       },
     ],
   },
@@ -239,19 +334,58 @@ export function resolveAdminIcon(icon: AdminNavIcon): LucideIcon {
   return ADMIN_ICON_MAP[icon];
 }
 
-export function flattenAdminNavigationItems(): AdminNavigationItem[] {
-  return ADMIN_NAVIGATION.flatMap((group) => group.items);
+function canAccessAdminNavigationItem(
+  item: Pick<AdminNavigationLink, "visibility">,
+  roleName?: string | null,
+): boolean {
+  if (item.visibility === "platform-admin") {
+    return isExactAdminRole(roleName, null);
+  }
+
+  return true;
 }
 
-export function getAdminQuickNavigationItems(): AdminQuickNavigationItem[] {
-  const baseItems = flattenAdminNavigationItems().map<AdminQuickNavigationItem>((item) => ({
+export function getAdminNavigation(roleName?: string | null): AdminNavigationGroup[] {
+  return ADMIN_NAVIGATION.map((group) => ({
+    ...group,
+    items: group.items
+      .map((item) => ({
+        ...item,
+        children: item.children?.filter((child) => canAccessAdminNavigationItem(child, roleName)),
+      }))
+      .filter(
+        (item) =>
+          canAccessAdminNavigationItem(item, roleName) &&
+          (item.children === undefined || item.children.length > 0),
+      ),
+  })).filter((group) => group.items.length > 0);
+}
+
+export function flattenAdminNavigationItems(
+  roleName?: string | null,
+): Array<AdminNavigationItem | AdminNavigationLink> {
+  return getAdminNavigation(roleName).flatMap((group) =>
+    group.items.flatMap((item) => [item, ...(item.children ?? [])]),
+  );
+}
+
+function flattenAllAdminNavigationItems(): Array<AdminNavigationItem | AdminNavigationLink> {
+  return ADMIN_NAVIGATION.flatMap((group) =>
+    group.items.flatMap((item) => [item, ...(item.children ?? [])]),
+  );
+}
+
+export function getAdminQuickNavigationItems(roleName?: string | null): AdminQuickNavigationItem[] {
+  const baseItems = flattenAdminNavigationItems(roleName).map<AdminQuickNavigationItem>((item) => ({
     label: item.label,
     href: item.href,
     description: item.description,
     keywords: [item.label, item.description, item.key],
   }));
 
-  return [...baseItems, ...ADMIN_QUICK_ACTIONS];
+  const extraItems = isExactAdminRole(roleName, null) ? ADMIN_QUICK_ACTIONS : [];
+
+  return [...baseItems, ...extraItems];
 }
 
 export function isAdminItemActive(pathname: string, href: string): boolean {
@@ -266,8 +400,10 @@ export function isAdminItemActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function findAdminNavigationItem(pathname: string): AdminNavigationItem | undefined {
-  return flattenAdminNavigationItems().find((item) => isAdminItemActive(pathname, item.href));
+export function findAdminNavigationItem(
+  pathname: string,
+): AdminNavigationItem | AdminNavigationLink | undefined {
+  return flattenAllAdminNavigationItems().find((item) => isAdminItemActive(pathname, item.href));
 }
 
 function fallbackSegmentLabel(segment: string): string {
@@ -279,7 +415,7 @@ function fallbackSegmentLabel(segment: string): string {
 }
 
 function getAdminRouteLabel(path: string): string | undefined {
-  return flattenAdminNavigationItems().find((item) => item.href === path)?.label;
+  return flattenAllAdminNavigationItems().find((item) => item.href === path)?.label;
 }
 
 function isNumericIdSegment(segment: string): boolean {

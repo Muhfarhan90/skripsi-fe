@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -120,11 +120,6 @@ const defaultCertificateSettingForm: CertificateSettingFormState = {
 
 const offeringTabs: Array<{ id: CourseOfferingTab; label: string }> = [
   { id: "overview", label: "Overview" },
-  { id: "curriculum", label: "Curriculum" },
-  { id: "students", label: "Students" },
-  { id: "forum", label: "Forum" },
-  { id: "assignment-review", label: "Assignment Review" },
-  { id: "certificates", label: "Certificates" },
 ];
 
 function mapOfferingToFormState(offering: AdminCourseOffering): CourseOfferingFormState {
@@ -300,6 +295,15 @@ function buildOfferingTabClass(isActive: boolean): string {
   ].join(" ");
 }
 
+function getOfferingTabFromParam(tab: string | null): CourseOfferingTab {
+  return offeringTabs.some((item) => item.id === tab) ? (tab as CourseOfferingTab) : "overview";
+}
+
+function getPositiveIdFromParam(value: string | null): number | null {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
 function formatProgress(progress: number | null | undefined): string {
   return `${Math.max(0, Number(progress ?? 0))}%`;
 }
@@ -344,10 +348,13 @@ function formatRequirementStatus(
 
 export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodId }: CourseOfferingFormPageProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const isEditing = mode === "edit";
   const isAcademicPeriodLocked = typeof lockedAcademicPeriodId === "number" && lockedAcademicPeriodId > 0;
-  const [activeTab, setActiveTab] = useState<CourseOfferingTab>("overview");
+  const requestedTab = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState<CourseOfferingTab>(() => getOfferingTabFromParam(searchParams.get("tab")));
   const [draftForm, setDraftForm] = useState<CourseOfferingFormState | null>(null);
   const [formErrors, setFormErrors] = useState<CourseOfferingFormErrors>({});
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -361,7 +368,9 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
   const [reviewPage, setReviewPage] = useState(1);
   const [reviewStatusFilter, setReviewStatusFilter] = useState("all");
   const [reviewAssignmentId, setReviewAssignmentId] = useState("all");
-  const [selectedSubmissionId, setSelectedSubmissionId] = useState<number | null>(null);
+  const [selectedSubmissionId, setSelectedSubmissionId] = useState<number | null>(() =>
+    getPositiveIdFromParam(searchParams.get("submissionId")),
+  );
   const [activeCertificateEnrollmentId, setActiveCertificateEnrollmentId] = useState<number | null>(null);
   const [reviewDraft, setReviewDraft] = useState<{
     submissionId: number | null;
@@ -543,6 +552,46 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
       ? reviewDraft.value
       : selectedSubmission?.review_notes ?? "";
 
+  useEffect(() => {
+    if (!isEditing || !offeringId || !requestedTab) {
+      return;
+    }
+
+    if (requestedTab === "students") {
+      router.replace(`/admin/course-activity/student-progress?offeringId=${offeringId}`, { scroll: false });
+      return;
+    }
+
+    if (requestedTab === "assignment-review") {
+      const nextParams = new URLSearchParams();
+      nextParams.set("offeringId", String(offeringId));
+      if (selectedSubmissionId) {
+        nextParams.set("submissionId", String(selectedSubmissionId));
+      }
+
+      router.replace(`/admin/course-activity/assignment-reviews?${nextParams.toString()}`, { scroll: false });
+      return;
+    }
+
+    if (requestedTab === "certificates") {
+      router.replace("/admin/certificate-settings", { scroll: false });
+      return;
+    }
+
+    if (!offeringCourseId) {
+      return;
+    }
+
+    if (requestedTab === "forum") {
+      router.replace(`/admin/course-activity/forum?courseId=${offeringCourseId}`, { scroll: false });
+      return;
+    }
+
+    if (requestedTab === "curriculum") {
+      router.replace(`/admin/master-data/courses/${offeringCourseId}?step=curriculum`, { scroll: false });
+    }
+  }, [isEditing, offeringCourseId, offeringId, requestedTab, router, selectedSubmissionId]);
+
   const certificateSettingForm =
     draftCertificateSettingForm ??
     (certificateSettingsQuery.data
@@ -704,6 +753,25 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
       ...prev,
       course_id: value,
     }));
+  };
+
+  const handleTabChange = (tab: CourseOfferingTab) => {
+    setActiveTab(tab);
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+    if (tab === "overview") {
+      nextParams.delete("tab");
+    } else {
+      nextParams.set("tab", tab);
+    }
+
+    if (tab !== "assignment-review") {
+      nextParams.delete("submissionId");
+      setSelectedSubmissionId(null);
+    }
+
+    const nextQuery = nextParams.toString();
+    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
   };
 
   const handlePeriodChange = (value: string) => {
@@ -915,7 +983,7 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
         </Card>
       </div>
 
-      {showOperationalTabs ? (
+      {showOperationalTabs && offeringTabs.length > 1 ? (
         <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
           <CardContent className="flex flex-wrap gap-2 p-4">
             {offeringTabs.map((tab) => (
@@ -923,7 +991,7 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
                 key={tab.id}
                 type="button"
                 className={buildOfferingTabClass(activeTab === tab.id)}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
               >
                 {tab.label}
               </button>

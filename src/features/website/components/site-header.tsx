@@ -18,7 +18,7 @@ interface SiteHeaderProps {
 export function SiteHeader({ settings, activePath = "home" }: SiteHeaderProps) {
   const user = useAuthStore((state) => state.user);
   const logoutMutation = useLogoutAction();
-  const dashboardHref = getDefaultPathByRole(user?.role_id);
+  const dashboardHref = getDefaultPathByRole(user?.role_id, user?.role_name);
   const initials = user?.fullname?.trim().charAt(0).toUpperCase() || "U";
 
   return (

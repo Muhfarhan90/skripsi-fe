@@ -14,8 +14,9 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { useAuthStore } from "@/features/auth/store/auth-store";
-import { getDefaultPathByRole } from "@/features/auth/lib/roles";
+import { getDefaultPathByRole, isStudentRole } from "@/features/auth/lib/roles";
 import { getPublicWebsiteSettings, getPublishedCourses } from "@/features/student/api/store-api";
+import { formatDiscountBadge, hasValidDiscount } from "@/features/student/lib/pricing";
 import { HeroMediaSlider, type HeroMediaSlide } from "@/features/website/components/hero-media-slider";
 import { SiteFooter } from "@/features/website/components/site-footer";
 import { PublicSiteHeader } from "@/features/website/components/public-site-header";
@@ -31,12 +32,6 @@ function formatCurrency(amount: number | null | undefined): string {
     currency: "IDR",
     maximumFractionDigits: 0,
   }).format(Number(amount ?? 0));
-}
-
-function hasValidDiscount(price: number | null | undefined, discountPrice: number | null | undefined): boolean {
-  const base = Number(price ?? 0);
-  const discount = Number(discountPrice ?? 0);
-  return discount > 0 && discount < base;
 }
 
 function buildHeroSlides(
@@ -85,8 +80,8 @@ export default function RootPage() {
   const user = useAuthStore((state) => state.user);
 
   const isLoggedIn = Boolean(user);
-  const dashboardHref = getDefaultPathByRole(user?.role_id);
-  const catalogHref = user?.role_id === 3 ? "/student/catalog" : "/courses";
+  const dashboardHref = getDefaultPathByRole(user?.role_id, user?.role_name);
+  const catalogHref = isStudentRole(user?.role_name, user?.role_id) ? "/student/catalog" : "/courses";
 
   const courseQuery = useQuery({
     queryKey: ["store", "courses", "preview"],
@@ -275,7 +270,7 @@ export default function RootPage() {
                         )}
                         {hasDiscount ? (
                           <span className="absolute right-3 top-3 rounded-full bg-rose-500 px-3 py-1 text-[10px] font-black text-white shadow">
-                            DISKON
+                            {formatDiscountBadge(course.price, course.discount_price)}
                           </span>
                         ) : null}
                         {course.instructor_name ? (

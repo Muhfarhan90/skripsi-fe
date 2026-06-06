@@ -103,6 +103,17 @@ body {
 }
 
 @layer utilities {
+    .native-horizontal-scroll {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+        touch-action: pan-x;
+    }
+
+    .native-horizontal-scroll::-webkit-scrollbar {
+        display: none;
+    }
+
     .pwa-safe-top {
         padding-top: max(0.75rem, env(safe-area-inset-top));
     }

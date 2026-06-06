@@ -12,6 +12,7 @@ export function useAuthStatus() {
       sessionChecked,
       isAuthenticated: Boolean(user),
       roleId: user?.role_id ?? null,
+      roleName: user?.role_name ?? null,
       user,
     }),
     [sessionChecked, user],

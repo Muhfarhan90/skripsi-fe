@@ -137,7 +137,18 @@ export default function RegisterPage() {
                 onValueChange={(value) => field.onChange(value === "unspecified" ? undefined : value)}
               >
                 <SelectTrigger id="gender" className="h-10 w-full border-input bg-background">
-                  <SelectValue placeholder="Select gender" />
+                  <SelectValue>
+                    {() => {
+                      const label =
+                        field.value === "laki"
+                          ? "Laki-laki"
+                          : field.value === "perempuan"
+                            ? "Perempuan"
+                            : "Tidak disebutkan";
+
+                      return <span>{label}</span>;
+                    }}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="unspecified">Tidak disebutkan</SelectItem>

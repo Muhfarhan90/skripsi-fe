@@ -19,10 +19,12 @@ import {
   buildStudentCheckoutLoginRedirect,
   buildStudentCheckoutPath,
 } from "@/features/student/lib/checkout";
+import { hasValidDiscount } from "@/features/student/lib/pricing";
 import { SiteFooter } from "@/features/website/components/site-footer";
 import { PublicSiteHeader } from "@/features/website/components/public-site-header";
 import { getCourseInstructorHref } from "@/features/website/lib/public-instructors";
 import { createDefaultWebsiteSetting } from "@/features/website/lib/website-settings";
+import { isStudentRole } from "@/features/auth/lib/roles";
 import { useAuthStore } from "@/features/auth/store/auth-store";
 
 function formatCurrency(amount: number | null | undefined): string {
@@ -32,12 +34,6 @@ function formatCurrency(amount: number | null | undefined): string {
     currency: "IDR",
     maximumFractionDigits: 0,
   }).format(value);
-}
-
-function hasValidDiscount(price: number | null | undefined, discountPrice: number | null | undefined): boolean {
-  const base = Number(price ?? 0);
-  const discount = Number(discountPrice ?? 0);
-  return discount > 0 && discount < base;
 }
 
 function parseTextItems(value: string | null | undefined): string[] {
@@ -56,7 +52,7 @@ export default function CourseDetailPage() {
   const router = useRouter();
   const params = useParams<{ slug: string }>();
   const user = useAuthStore((state) => state.user);
-  const catalogHref = user?.role_id === 3 ? "/student/catalog" : "/courses";
+  const catalogHref = isStudentRole(user?.role_name, user?.role_id) ? "/student/catalog" : "/courses";
   const slug = typeof params.slug === "string" ? params.slug : "";
 
   const websiteSettingsQuery = useQuery({
@@ -83,7 +79,7 @@ export default function CourseDetailPage() {
       return;
     }
 
-    if (user.role_id !== 3) {
+    if (!isStudentRole(user.role_name, user.role_id)) {
       toast.error("Fitur pembelian hanya tersedia untuk akun student");
       return;
     }

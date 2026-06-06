@@ -6,6 +6,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, BookOpen, Layers3, Search, Star } from "lucide-react";
 import { getPublicWebsiteSettings, getPublishedCourses } from "@/features/student/api/store-api";
+import { hasValidDiscount } from "@/features/student/lib/pricing";
 import { PublicSiteHeader } from "@/features/website/components/public-site-header";
 import { SiteFooter } from "@/features/website/components/site-footer";
 import { findPublicInstructorProfile } from "@/features/website/lib/public-instructors";
@@ -17,12 +18,6 @@ function formatCurrency(amount: number | null | undefined): string {
     currency: "IDR",
     maximumFractionDigits: 0,
   }).format(Number(amount ?? 0));
-}
-
-function hasValidDiscount(price: number | null | undefined, discountPrice: number | null | undefined): boolean {
-  const base = Number(price ?? 0);
-  const discount = Number(discountPrice ?? 0);
-  return discount > 0 && discount < base;
 }
 
 function formatReviewAverage(value: number | null | undefined): string {

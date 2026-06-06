@@ -6,6 +6,7 @@ import { BookOpen, CreditCard, MessageSquareText, Star } from "lucide-react";
 import { getPublishedCourses, getStudentEnrollments, getStudentOrders } from "@/features/student/api/store-api";
 import { buildHiddenCatalogCourseIds } from "@/features/student/lib/catalog-visibility";
 import { buildStudentCheckoutPath } from "@/features/student/lib/checkout";
+import { formatDiscountBadge, hasValidDiscount } from "@/features/student/lib/pricing";
 
 function formatCurrency(amount: number | null | undefined): string {
   const value = Number(amount ?? 0);
@@ -14,12 +15,6 @@ function formatCurrency(amount: number | null | undefined): string {
     currency: "IDR",
     maximumFractionDigits: 0,
   }).format(value);
-}
-
-function hasValidDiscount(price: number | null | undefined, discountPrice: number | null | undefined): boolean {
-  const base = Number(price ?? 0);
-  const discount = Number(discountPrice ?? 0);
-  return discount > 0 && discount < base;
 }
 
 function formatReviewAverage(value: number | null | undefined): string {
@@ -131,7 +126,7 @@ export default function StudentCatalogPage() {
                   {/* Discount badge */}
                   {hasDiscount ? (
                     <span className="absolute right-2.5 top-2.5 inline-flex rounded-lg bg-rose-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
-                      Diskon
+                      {formatDiscountBadge(course.price, course.discount_price)}
                     </span>
                   ) : null}
                 </div>

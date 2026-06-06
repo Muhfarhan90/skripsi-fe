@@ -194,6 +194,11 @@ export function getStudentMobileBackHref(pathname: string): string | null {
     return match ? `/student/enrollments/${match[1]}` : "/student/enrollments";
   }
 
+  if (/^\/student\/enrollments\/\d+\/forum\/\d+$/.test(pathname)) {
+    const match = pathname.match(/^\/student\/enrollments\/(\d+)\/forum\/\d+$/);
+    return match ? `/student/enrollments/${match[1]}/forum` : "/student/enrollments";
+  }
+
   if (/^\/student\/enrollments\/\d+\/learn\/assignments\/\d+$/.test(pathname)) {
     const match = pathname.match(/^\/student\/enrollments\/(\d+)\/learn\/assignments\/\d+$/);
     return match ? `/student/enrollments/${match[1]}/learn?panel=assignments` : "/student/enrollments";
@@ -227,6 +232,10 @@ export function getStudentPageTitle(pathname: string): string {
 
   if (/^\/student\/enrollments\/\d+\/forum$/.test(pathname)) {
     return "Forum Diskusi";
+  }
+
+  if (/^\/student\/enrollments\/\d+\/forum\/\d+$/.test(pathname)) {
+    return "Detail Diskusi";
   }
 
   if (/^\/student\/checkout\/[^/]+$/.test(pathname)) {
@@ -276,6 +285,7 @@ export function getStudentBreadcrumbs(pathname: string): StudentBreadcrumb[] {
     const isDetail = /^\/student\/enrollments\/\d+$/.test(pathname);
     const isLearn = /^\/student\/enrollments\/\d+\/learn$/.test(pathname);
     const isForum = /^\/student\/enrollments\/\d+\/forum$/.test(pathname);
+    const isForumDetail = /^\/student\/enrollments\/\d+\/forum\/\d+$/.test(pathname);
     const isAssignment = /^\/student\/enrollments\/\d+\/learn\/assignments\/\d+$/.test(pathname);
     const isQuiz = /^\/student\/enrollments\/\d+\/learn\/quizzes\/\d+$/.test(pathname);
 
@@ -289,6 +299,11 @@ export function getStudentBreadcrumbs(pathname: string): StudentBreadcrumb[] {
 
     if (isForum) {
       breadcrumbs.push({ label: "Forum Diskusi" });
+    }
+
+    if (isForumDetail) {
+      breadcrumbs.push({ label: "Forum Diskusi", href: pathname.replace(/\/\d+$/, "") });
+      breadcrumbs.push({ label: "Detail Diskusi" });
     }
 
     if (isAssignment) {

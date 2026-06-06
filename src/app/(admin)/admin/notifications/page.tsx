@@ -8,10 +8,10 @@ export default function AdminNotificationsPage() {
     <section className="space-y-5">
       <AdminPageHeader
         title="Notifikasi"
-        description="Pantau seluruh riwayat notifikasi operasional, termasuk pembayaran baru yang perlu direview."
+        description="Pantau seluruh riwayat notifikasi penting untuk aktivitas platform dan course."
       />
 
-      <NotificationHistoryList emptyHref="/admin/orders" emptyLabel="Buka orders" />
+      <NotificationHistoryList emptyHref="/admin" emptyLabel="Kembali ke dashboard" />
     </section>
   );
 }

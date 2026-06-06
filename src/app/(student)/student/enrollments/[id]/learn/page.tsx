@@ -16,6 +16,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Star,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ConfirmAlertDialog } from "@/components/ui/confirm-alert-dialog";
@@ -151,7 +152,7 @@ type SelectedContent =
   | { kind: "quiz"; sectionId: number; data: StoreQuiz }
   | { kind: "assignment"; sectionId: number; data: StoreAssignment };
 
-type LearnPanelTab = "course_content" | "description" | "forum";
+type LearnPanelTab = "course_content" | "forum";
 
 interface LessonMaterialFrameProps {
   title: string;
@@ -283,9 +284,10 @@ export default function StudentEnrollmentLearnPage() {
   const [expandedSectionIds, setExpandedSectionIds] = useState<number[]>([]);
   const [selectedContent, setSelectedContent] = useState<SelectedContent | null>(null);
   const [activeLearnTab, setActiveLearnTab] = useState<LearnPanelTab>(() =>
-    requestedTab === "forum" || requestedTab === "description" ? requestedTab : "course_content",
+    requestedTab === "forum" ? "forum" : "course_content",
   );
   const [isCourseContentSidebarHidden, setIsCourseContentSidebarHidden] = useState(false);
+  const [isMobileCourseContentDrawerOpen, setIsMobileCourseContentDrawerOpen] = useState(false);
   const [activePanel, setActivePanel] = useState<"content" | "certificate">(() =>
     requestedPanel === "certificate" ? "certificate" : "content",
   );
@@ -584,6 +586,7 @@ export default function StudentEnrollmentLearnPage() {
     enabled: Number.isFinite(enrollmentId) && enrollmentId > 0 && Boolean(selectedAssignmentId),
   });
   const activeLesson = lessonDetailQuery.data?.lesson ?? selectedLesson;
+  const activeLessonCompleted = activeLesson ? completedLessonIds.has(activeLesson.id) : false;
   const embedUrl = activeLesson?.lesson_url ? toEmbeddableUrl(activeLesson.lesson_url) : null;
   const lessonWatermarkText = "pre univ upnvjt";
   const assignmentsById = useMemo(
@@ -704,6 +707,27 @@ export default function StudentEnrollmentLearnPage() {
     };
   }, [isCooldownActive]);
 
+  useEffect(() => {
+    if (!isMobileCourseContentDrawerOpen) {
+      return undefined;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    const onKeydown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsMobileCourseContentDrawerOpen(false);
+      }
+    };
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKeydown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeydown);
+    };
+  }, [isMobileCourseContentDrawerOpen]);
+
   if (curriculumQuery.isLoading) {
     return <p className="text-sm text-muted-foreground">Memuat materi course...</p>;
   }
@@ -714,6 +738,7 @@ export default function StudentEnrollmentLearnPage() {
 
   const switchLearnTab = (nextTab: LearnPanelTab) => {
     setActiveLearnTab(nextTab);
+    setIsMobileCourseContentDrawerOpen(false);
 
     const nextParams = new URLSearchParams(searchParams.toString());
     if (nextTab === "course_content") {
@@ -736,6 +761,7 @@ export default function StudentEnrollmentLearnPage() {
   const selectContent = (content: SelectedContent) => {
     switchLearnTab("course_content");
     setActivePanel("content");
+    setIsMobileCourseContentDrawerOpen(false);
     setExpandedSectionIds((current) =>
       current.includes(content.sectionId) ? current : [...current, content.sectionId],
     );
@@ -750,6 +776,7 @@ export default function StudentEnrollmentLearnPage() {
 
     switchLearnTab("course_content");
     setActivePanel("certificate");
+    setIsMobileCourseContentDrawerOpen(false);
     setSelectedContent(null);
   };
 
@@ -1052,18 +1079,70 @@ export default function StudentEnrollmentLearnPage() {
         </p>
       </header>
 
-      <div
-        className={[
-          "grid gap-4",
-          isCourseContentSidebarHidden
-            ? "lg:grid-cols-1"
-            : "lg:grid-cols-[360px_minmax(0,1fr)]",
-        ].join(" ")}
-      >
-        <div className="space-y-4">
-        <article className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-3 shadow-sm sm:p-4">
-          {showCertificatePanel ? (
-            <div className="space-y-5">
+      {activeLearnTab === "course_content" ? (
+        <div className="lg:hidden">
+          <button
+            type="button"
+            onClick={() => setIsMobileCourseContentDrawerOpen(true)}
+            className="inline-flex h-10 items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--card)] px-4 text-sm font-medium text-[var(--foreground)] shadow-sm transition hover:bg-[var(--surface-hover)]"
+          >
+            <PanelLeftOpen className="size-4" />
+            <span>Daftar Materi</span>
+          </button>
+        </div>
+      ) : null}
+
+      <div className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--card)] shadow-sm">
+        <div className="border-b border-[var(--border)] px-3 py-3 sm:px-4">
+          <div className="overflow-x-auto">
+            <div className="flex min-w-max gap-1" role="tablist" aria-label="Course learning tabs">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeLearnTab === "course_content"}
+                onClick={() => switchLearnTab("course_content")}
+                className={[
+                  "relative inline-flex h-11 items-center px-4 text-sm font-semibold transition",
+                  activeLearnTab === "course_content"
+                    ? "text-[var(--foreground)] after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:bg-[var(--secondary)]"
+                    : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]",
+                ].join(" ")}
+              >
+                Materi
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeLearnTab === "forum"}
+                onClick={() => switchLearnTab("forum")}
+                className={[
+                  "relative inline-flex h-11 items-center px-4 text-sm font-semibold transition",
+                  activeLearnTab === "forum"
+                    ? "text-[var(--foreground)] after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:bg-[var(--secondary)]"
+                    : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]",
+                ].join(" ")}
+              >
+                Forum Diskusi
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-3 sm:p-4">
+          {activeLearnTab === "course_content" ? (
+            <div
+              className={[
+                "grid gap-4",
+                isCourseContentSidebarHidden
+                  ? "lg:grid-cols-1"
+                  : "lg:grid-cols-[360px_minmax(0,1fr)]",
+              ].join(" ")}
+            >
+              <div className="space-y-4">
+
+                <article className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-3 shadow-sm sm:p-4">
+            {showCertificatePanel ? (
+              <div className="space-y-5">
               <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-8 text-center">
                 <Award className="mx-auto size-14 text-[var(--primary)]" />
                 <h2 className="mt-4 text-2xl font-semibold text-[var(--foreground)] sm:text-3xl">Selamat!</h2>
@@ -1166,9 +1245,9 @@ export default function StudentEnrollmentLearnPage() {
                   ) : null}
                 </div>
               </form>
-            </div>
-          ) : activeLesson ? (
-            <div className="space-y-4">
+              </div>
+            ) : activeLesson ? (
+              <div className="space-y-4">
               <div>
                 <h2 className="text-xl font-semibold text-[var(--foreground)] sm:text-2xl">{activeLesson.title}</h2>
                 <p className="text-xs text-[var(--muted-foreground)] sm:text-sm">Durasi: {formatLessonDuration(activeLesson.duration)}</p>
@@ -1193,18 +1272,25 @@ export default function StudentEnrollmentLearnPage() {
               )}
 
               <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => setShowMarkCompleteConfirm(true)}
-                  disabled={markCompleteMutation.isPending}
-                  className="inline-flex h-9 items-center rounded-md bg-[var(--secondary)] px-3 text-sm font-medium text-[var(--secondary-foreground)] transition hover:opacity-90 disabled:opacity-70"
-                >
-                  Tandai Selesai
-                </button>
+                {activeLessonCompleted ? (
+                  <span className="inline-flex h-9 items-center gap-2 rounded-md bg-[var(--primary)]/10 px-3 text-sm font-semibold text-[var(--primary)]">
+                    <CheckCircle2 className="size-4" />
+                    Lesson selesai
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowMarkCompleteConfirm(true)}
+                    disabled={markCompleteMutation.isPending}
+                    className="inline-flex h-9 items-center rounded-md bg-[var(--secondary)] px-3 text-sm font-medium text-[var(--secondary-foreground)] transition hover:opacity-90 disabled:opacity-70"
+                  >
+                    Tandai Selesai
+                  </button>
+                )}
               </div>
-            </div>
-          ) : selectedQuiz ? (
-            <div className="space-y-4">
+              </div>
+            ) : selectedQuiz ? (
+              <div className="space-y-4">
               <div>
                 <h2 className="text-xl font-semibold text-[var(--foreground)] sm:text-2xl">{selectedQuiz.title}</h2>
                 <p className="mt-1 text-xs text-[var(--muted-foreground)] sm:text-sm">
@@ -1299,9 +1385,9 @@ export default function StudentEnrollmentLearnPage() {
                   </p>
                 ) : null}
               </div>
-            </div>
-          ) : activeAssignment ? (
-            <div className="space-y-4">
+              </div>
+            ) : activeAssignment ? (
+              <div className="space-y-4">
               <div>
                 <h2 className="text-xl font-semibold text-[var(--foreground)] sm:text-2xl">{activeAssignment.title}</h2>
                 <p className="mt-1 text-xs text-[var(--muted-foreground)] sm:text-sm">
@@ -1401,104 +1487,86 @@ export default function StudentEnrollmentLearnPage() {
                   <p className="text-sm text-red-600">Status assignment belum bisa dimuat.</p>
                 ) : null}
               </div>
+              </div>
+            ) : (
+              <p className="text-sm text-[var(--muted-foreground)]">
+                Pilih lesson, quiz, atau assignment untuk mulai belajar.
+              </p>
+            )}
+                </article>
+
+                {isCourseContentSidebarHidden ? renderCourseContentPanel("hidden lg:block") : null}
+                {!isCourseContentSidebarHidden ? renderDescriptionPanel("hidden lg:block") : null}
+              </div>
+
+              {!isCourseContentSidebarHidden ? (
+              <aside className="hidden lg:order-first lg:block">
+                <div className="sticky top-4 max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <div>
+                      <h2 className="text-base font-semibold text-[var(--foreground)]">Course Content</h2>
+                      <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">Daftar materi kelas</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCourseContentSidebarHidden(true);
+                        switchLearnTab("course_content");
+                      }}
+                      aria-label="Sembunyikan sidebar"
+                      title="Sembunyikan sidebar"
+                      className="inline-flex size-8 items-center justify-center rounded-md border border-[var(--border)] text-[var(--muted-foreground)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--foreground)]"
+                    >
+                      <PanelLeftClose className="size-4" />
+                    </button>
+                  </div>
+                  {renderTableOfContentsItems("space-y-2.5")}
+                </div>
+              </aside>
+              ) : null}
             </div>
           ) : (
-            <p className="text-sm text-[var(--muted-foreground)]">
-              Pilih lesson, quiz, atau assignment untuk mulai belajar.
-            </p>
-          )}
-        </article>
-
-        <div className="overflow-x-auto border-b border-[var(--border)] bg-[var(--card)]">
-          <div className="flex min-w-max gap-1 px-1" role="tablist" aria-label="Course learning tabs">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeLearnTab === "course_content"}
-              onClick={() => switchLearnTab("course_content")}
-              className={[
-                "relative h-11 items-center px-3 text-sm font-semibold transition sm:px-4",
-                isCourseContentSidebarHidden ? "inline-flex" : "inline-flex lg:hidden",
-                activeLearnTab === "course_content"
-                  ? "text-[var(--foreground)] after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:bg-[var(--secondary)]"
-                  : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]",
-              ].join(" ")}
-            >
-              Course Content
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeLearnTab === "description"}
-              onClick={() => switchLearnTab("description")}
-              className={[
-                "relative inline-flex h-11 items-center px-3 text-sm font-semibold transition sm:px-4",
-                activeLearnTab === "description"
-                  ? "text-[var(--foreground)] after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:bg-[var(--secondary)]"
-                  : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]",
-              ].join(" ")}
-            >
-              Deskripsi
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeLearnTab === "forum"}
-              onClick={() => switchLearnTab("forum")}
-              className={[
-                "relative inline-flex h-11 items-center px-3 text-sm font-semibold transition sm:px-4",
-                activeLearnTab === "forum"
-                  ? "text-[var(--foreground)] after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:bg-[var(--secondary)]"
-                  : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]",
-              ].join(" ")}
-            >
-              Forum/Q&A
-            </button>
-          </div>
-        </div>
-
-          {activeLearnTab === "course_content"
-            ? renderCourseContentPanel(isCourseContentSidebarHidden ? "" : "lg:hidden")
-            : null}
-          {activeLearnTab === "course_content" && !isCourseContentSidebarHidden
-            ? renderDescriptionPanel("hidden lg:block")
-            : null}
-          {activeLearnTab === "description" ? renderDescriptionPanel() : null}
-          {activeLearnTab === "forum" ? (
             <StudentCourseForumPanel
               basePath={`/student/enrollments/${enrollmentId}/learn`}
+              enrollmentId={enrollmentId}
               courseId={courseId ?? 0}
               courseTitle={curriculumQuery.data.title}
+              renderDetailInPlace
             />
-          ) : null}
+          )}
         </div>
+      </div>
 
-        {!isCourseContentSidebarHidden ? (
-        <aside className="hidden lg:order-first lg:block">
-          <div className="sticky top-4 max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
-            <div className="mb-3 flex items-center justify-between gap-2">
+      {isMobileCourseContentDrawerOpen ? (
+        <div className="fixed inset-0 z-[70] lg:hidden">
+          <div
+            className="absolute inset-0 bg-slate-950/55 backdrop-blur-[2px]"
+            onClick={() => setIsMobileCourseContentDrawerOpen(false)}
+            aria-hidden
+          />
+          <div className="absolute inset-y-0 left-0 flex w-full max-w-[22rem] flex-col border-r border-[var(--border)] bg-[var(--card)] shadow-[0_20px_50px_-12px_rgba(15,23,42,0.45)]">
+            <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-4">
               <div>
-                <h2 className="text-base font-semibold text-[var(--foreground)]">Course Content</h2>
-                <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">Daftar materi kelas</p>
+                <h2 className="text-base font-semibold text-[var(--foreground)]">Daftar Materi</h2>
+                <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
+                  {curriculumQuery.data.title}
+                </p>
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  setIsCourseContentSidebarHidden(true);
-                  switchLearnTab("course_content");
-                }}
-                aria-label="Sembunyikan sidebar"
-                title="Sembunyikan sidebar"
+                onClick={() => setIsMobileCourseContentDrawerOpen(false)}
                 className="inline-flex size-8 items-center justify-center rounded-md border border-[var(--border)] text-[var(--muted-foreground)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--foreground)]"
+                aria-label="Tutup daftar materi"
               >
-                <PanelLeftClose className="size-4" />
+                <X className="size-4" />
               </button>
             </div>
-            {renderTableOfContentsItems("space-y-2.5")}
+            <div className="overflow-y-auto px-4 py-4">
+              {renderTableOfContentsItems("space-y-2.5")}
+            </div>
           </div>
-        </aside>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
 
       <div className="flex flex-wrap gap-3">
         <Link href={`/student/enrollments/${enrollmentId}`} className="text-sm text-primary hover:underline">

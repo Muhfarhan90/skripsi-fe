@@ -49,7 +49,7 @@ export function LoginClient() {
   useEffect(() => {
     if (!sessionChecked || !user) return;
     // Redirect only when session check completed and user is authenticated.
-    router.replace(redirectTarget ?? getDefaultPathByRole(user.role_id));
+    router.replace(redirectTarget ?? getDefaultPathByRole(user.role_id, user.role_name));
   }, [redirectTarget, router, sessionChecked, user]);
 
   const loginMutation = useMutation({
@@ -58,7 +58,7 @@ export function LoginClient() {
       setUser(data.user);
       setSessionChecked(true);
       toast.success("Berhasil masuk");
-      router.replace(redirectTarget ?? getDefaultPathByRole(data.user.role_id));
+      router.replace(redirectTarget ?? getDefaultPathByRole(data.user.role_id, data.user.role_name));
     },
     onError: (error) => {
       applyApiFieldErrors<LoginSchema>(error, setError);

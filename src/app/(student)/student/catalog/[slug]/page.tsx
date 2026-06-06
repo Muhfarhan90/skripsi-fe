@@ -7,6 +7,7 @@ import { CreditCard, Star, Tags, UserRound } from "lucide-react";
 import { getPublishedCourseBySlug, getStudentCourseReviews } from "@/features/student/api/store-api";
 import { buildStudentCheckoutPath } from "@/features/student/lib/checkout";
 import { formatUtcDateTimeToJakarta } from "@/features/student/lib/date-time";
+import { getDiscountAmount, hasValidDiscount } from "@/features/student/lib/pricing";
 
 function formatCurrency(amount: number | null | undefined): string {
   const value = Number(amount ?? 0);
@@ -15,18 +16,6 @@ function formatCurrency(amount: number | null | undefined): string {
     currency: "IDR",
     maximumFractionDigits: 0,
   }).format(value);
-}
-
-function hasValidDiscount(price: number | null | undefined, discountPrice: number | null | undefined): boolean {
-  const base = Number(price ?? 0);
-  const discount = Number(discountPrice ?? 0);
-  return discount > 0 && discount < base;
-}
-
-function getDiscountAmount(price: number | null | undefined, discountPrice: number | null | undefined): number {
-  const base = Number(price ?? 0);
-  const discount = Number(discountPrice ?? 0);
-  return Math.max(base - discount, 0);
 }
 
 function parseTextItems(text: string | null | undefined): string[] {

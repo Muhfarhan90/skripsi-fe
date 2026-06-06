@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Sortable, { type SortableEvent } from "sortablejs";
 import {
@@ -17,6 +17,7 @@ import {
   Plus,
   RefreshCw,
   Save,
+  Star,
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -28,6 +29,8 @@ import {
   createAdminCourse,
   createAdminSkill,
   createAdminSection,
+  createEmptyAdminPaginationMeta,
+  deleteAdminCourseReview,
   deleteAdminQuiz,
   deleteAdminLesson,
   getAdminCourseAssignments,
@@ -36,10 +39,12 @@ import {
   getAdminCourseQuizzes,
   getAdminSkills,
   getAdminUsers,
+  listAdminCourseReviews,
   upsertAdminCourseCurriculum,
   updateAdminCourseAssignment,
   updateAdminCourseSectionQuiz,
   type AdminAssignment,
+  type AdminCourseReview,
   type AdminQuiz,
   type AdminCourseCurriculum,
   type AdminSkill,
@@ -48,6 +53,8 @@ import {
 } from "@/features/admin/api/master-api";
 import { useUnsavedChangesGuard } from "@/features/admin/hooks/use-unsaved-changes-guard";
 import { AdminModal } from "@/features/admin/components/admin-modal";
+import { AdminOfferingForumPanel } from "@/features/admin/components/admin-offering-forum-panel";
+import { AdminPagination } from "@/features/admin/components/admin-pagination";
 import { ApiError } from "@/lib/api/client";
 import { SkillMultiSelect } from "@/features/admin/components/skill-multi-select";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -60,6 +67,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { formatDateTime } from "@/features/admin/lib/offering-utils";
 
 type CourseFormMode = "create" | "edit";
 type LessonType = "video" | "file";
@@ -126,7 +134,7 @@ interface AssignmentFormState {
 }
 
 type CourseFormErrors = Record<string, string>;
-type CourseWizardStep = "general" | "curriculum";
+type CourseWizardStep = "general" | "curriculum" | "forum" | "reviews";
 
 interface SectionDeleteTarget {
   sectionIndex: number;
@@ -580,6 +588,7 @@ function isCourseFormDirty(currentForm: CourseFormState, baseForm: CourseFormSta
 export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps) {
   // SECTION 1: Basic state and flags.
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const isEditing = mode === "edit";
@@ -598,10 +607,15 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
   const [confirmDeleteQuiz, setConfirmDeleteQuiz] = useState<AdminQuiz | null>(null);
   const [confirmDeleteSection, setConfirmDeleteSection] = useState<SectionDeleteTarget | null>(null);
   const [confirmDeleteLesson, setConfirmDeleteLesson] = useState<LessonDeleteTarget | null>(null);
+  const [reviewPage, setReviewPage] = useState(1);
+  const [reviewToDelete, setReviewToDelete] = useState<AdminCourseReview | null>(null);
   const [contentPopoverSectionKey, setContentPopoverSectionKey] = useState<string | null>(null);
+  const requestedStep = searchParams.get("step");
   const [activeStepIndex, setActiveStepIndex] = useState<number>(() =>
     getStepIndexFromParam(searchParams.get("step")),
   );
+  const highlightedForumPostId = parsePositiveIntegerOrNull(searchParams.get("forumPostId") ?? "");
+  const highlightedReviewId = parsePositiveIntegerOrNull(searchParams.get("reviewId") ?? "");
   const [lastAutosavedAt, setLastAutosavedAt] = useState<Date | null>(null);
   const [autosaveErrorMessage, setAutosaveErrorMessage] = useState<string | null>(null);
   const sectionListRef = useRef<HTMLDivElement | null>(null);
@@ -616,7 +630,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
 
   const userQuery = useQuery({
     queryKey: ["admin", "users"],
-    queryFn: () => getAdminUsers(),
+    queryFn: () => getAdminUsers({ role_group: "instructors" }),
   });
 
   const skillQuery = useQuery({
@@ -655,6 +669,17 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
       return getAdminCourseAssignments(validCourseId);
     },
     enabled: isEditing && validCourseId !== null,
+  });
+
+  const courseReviewsQuery = useQuery({
+    queryKey: ["admin", "courses", "reviews", validCourseId, reviewPage],
+    queryFn: () => {
+      if (validCourseId === null) {
+        throw new Error("ID course tidak valid");
+      }
+      return listAdminCourseReviews(validCourseId, { page: reviewPage });
+    },
+    enabled: isEditing && validCourseId !== null && activeStepIndex === 3,
   });
 
   // SECTION 3: Base form source and updater helpers.
@@ -725,6 +750,8 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
       return acc;
     }, new Map());
   }, [courseAssignmentsQuery.data]);
+  const courseReviewRows = courseReviewsQuery.data?.items ?? [];
+  const courseReviewMeta = courseReviewsQuery.data?.meta ?? createEmptyAdminPaginationMeta(reviewPage);
 
   const updateForm = useCallback(
     (updater: (prev: CourseFormState) => CourseFormState, shouldClearErrors = false) => {
@@ -807,6 +834,40 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
   const isDirty = useMemo(() => isCourseFormDirty(form, baseForm), [baseForm, form]);
   const canManageQuizzes = isEditing && validCourseId !== null;
   const { confirmLeave } = useUnsavedChangesGuard(isDirty);
+
+  useEffect(() => {
+    if (!isEditing || validCourseId === null) {
+      return;
+    }
+
+    if (requestedStep === "forum") {
+      const nextParams = new URLSearchParams();
+      nextParams.set("courseId", String(validCourseId));
+      if (highlightedForumPostId) {
+        nextParams.set("forumPostId", String(highlightedForumPostId));
+      }
+
+      router.replace(`/admin/course-activity/forum?${nextParams.toString()}`, { scroll: false });
+      return;
+    }
+
+    if (requestedStep === "reviews") {
+      const nextParams = new URLSearchParams();
+      nextParams.set("courseId", String(validCourseId));
+      if (highlightedReviewId) {
+        nextParams.set("reviewId", String(highlightedReviewId));
+      }
+
+      router.replace(`/admin/course-reviews?${nextParams.toString()}`, { scroll: false });
+    }
+  }, [
+    highlightedForumPostId,
+    highlightedReviewId,
+    isEditing,
+    requestedStep,
+    router,
+    validCourseId,
+  ]);
 
   // SECTION 5: Save mutation.
   const saveMutation = useMutation({
@@ -1089,6 +1150,23 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
       queryClient.invalidateQueries({ queryKey: ["admin", "courses", "quizzes", validCourseId] });
       toast.success(message || "Quiz berhasil dihapus");
       setConfirmDeleteQuiz(null);
+    },
+    onError: (error) => {
+      toast.error(normalizeError(error));
+    },
+  });
+
+  const deleteReviewMutation = useMutation({
+    mutationFn: (reviewId: number) => {
+      if (validCourseId === null) {
+        throw new Error("ID course tidak valid");
+      }
+      return deleteAdminCourseReview(validCourseId, reviewId);
+    },
+    onSuccess: (message) => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "courses", "reviews", validCourseId] });
+      toast.success(message || "Review berhasil dihapus");
+      setReviewToDelete(null);
     },
     onError: (error) => {
       toast.error(normalizeError(error));
@@ -1473,14 +1551,37 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
     if (nextStepIndex === activeStepIndex) return;
     if (nextStepIndex < 0 || nextStepIndex >= COURSE_WIZARD_STEPS.length) return;
 
+    const setActiveCourseStep = (stepIndex: number) => {
+      const nextStepKey = COURSE_WIZARD_STEPS[stepIndex]?.key ?? "general";
+      const nextParams = new URLSearchParams(searchParams.toString());
+
+      if (nextStepKey === "general") {
+        nextParams.delete("step");
+      } else {
+        nextParams.set("step", nextStepKey);
+      }
+
+      if (nextStepKey !== "forum") {
+        nextParams.delete("forumPostId");
+      }
+
+      if (nextStepKey !== "reviews") {
+        nextParams.delete("reviewId");
+      }
+
+      const nextQuery = nextParams.toString();
+      setActiveStepIndex(stepIndex);
+      router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+    };
+
     if (nextStepIndex < activeStepIndex) {
-      setActiveStepIndex(nextStepIndex);
+      setActiveCourseStep(nextStepIndex);
       return;
     }
 
     for (let stepIndex = activeStepIndex; stepIndex < nextStepIndex; stepIndex += 1) {
       if (!validateStep(stepIndex)) {
-        setActiveStepIndex(stepIndex);
+        setActiveCourseStep(stepIndex);
         return;
       }
     }
@@ -1490,7 +1591,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
       return;
     }
 
-    setActiveStepIndex(nextStepIndex);
+    setActiveCourseStep(nextStepIndex);
   };
 
   const handleNextStep = () => {
@@ -1505,6 +1606,14 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
     const stepIndexesToValidate = [0, 1] as const;
     for (const stepIndex of stepIndexesToValidate) {
       if (!validateStep(stepIndex)) {
+        const nextStepKey = COURSE_WIZARD_STEPS[stepIndex]?.key ?? "general";
+        const nextParams = new URLSearchParams(searchParams.toString());
+        if (nextStepKey === "general") {
+          nextParams.delete("step");
+        } else {
+          nextParams.set("step", nextStepKey);
+        }
+        router.replace(nextParams.toString() ? `${pathname}?${nextParams.toString()}` : pathname, { scroll: false });
         setActiveStepIndex(stepIndex);
         return;
       }
@@ -1727,7 +1836,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
 
         <CardContent className="space-y-6 p-5">
           <section className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--muted)] p-4">
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
               {COURSE_WIZARD_STEPS.map((step, stepIndex) => {
                 const isCurrent = activeStepIndex === stepIndex;
                 const isCompleted = activeStepIndex > stepIndex;
@@ -2264,6 +2373,139 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
             </section>
           ) : null}
 
+          {activeStepIndex === 2 ? (
+            <section className="space-y-4 rounded-lg border border-[var(--border)] bg-[var(--muted)] p-4">
+              {isEditing && validCourseId !== null ? (
+                <AdminOfferingForumPanel
+                  courseId={validCourseId}
+                  courseTitle={form.title || "Course"}
+                  initialPostId={highlightedForumPostId}
+                />
+              ) : (
+                <div className="rounded-md border border-dashed border-[var(--border)] bg-[var(--card)] px-4 py-5 text-center text-sm text-[var(--muted-foreground)]">
+                  Simpan course terlebih dahulu sebelum membuka forum.
+                </div>
+              )}
+            </section>
+          ) : null}
+
+          {activeStepIndex === 3 ? (
+            <section className="space-y-4 rounded-lg border border-[var(--border)] bg-[var(--muted)] p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--foreground)]">
+                    <Star className="size-4 text-amber-500" />
+                    <span>Reviews Course</span>
+                  </h3>
+                  <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+                    Pantau rating dan ulasan student untuk course ini.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => courseReviewsQuery.refetch()}
+                  disabled={courseReviewsQuery.isFetching}
+                  className="border-[var(--border)] bg-[var(--card)]"
+                >
+                  {courseReviewsQuery.isFetching ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="size-4" />
+                  )}
+                  <span>Refresh</span>
+                </Button>
+              </div>
+
+              {!isEditing || validCourseId === null ? (
+                <div className="rounded-md border border-dashed border-[var(--border)] bg-[var(--card)] px-4 py-5 text-center text-sm text-[var(--muted-foreground)]">
+                  Simpan course terlebih dahulu sebelum membuka reviews.
+                </div>
+              ) : null}
+
+              {isEditing && validCourseId !== null && courseReviewsQuery.isLoading ? (
+                <div className="flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--card)] px-4 py-4 text-sm text-[var(--muted-foreground)]">
+                  <Loader2 className="size-4 animate-spin" />
+                  Memuat review course...
+                </div>
+              ) : null}
+
+              {isEditing && validCourseId !== null && courseReviewsQuery.isError ? (
+                <div className="rounded-md border border-[var(--danger-soft-border)] bg-[var(--danger-soft-bg)] px-4 py-4 text-sm text-[var(--danger-soft-foreground)]">
+                  Review course belum bisa dimuat.
+                </div>
+              ) : null}
+
+              {isEditing &&
+              validCourseId !== null &&
+              courseReviewsQuery.isSuccess &&
+              courseReviewRows.length === 0 ? (
+                <div className="rounded-md border border-dashed border-[var(--border)] bg-[var(--card)] px-4 py-8 text-center text-sm text-[var(--muted-foreground)]">
+                  Belum ada review untuk course ini.
+                </div>
+              ) : null}
+
+              {courseReviewRows.length > 0 ? (
+                <div className="space-y-3">
+                  {courseReviewRows.map((review) => {
+                    const isHighlighted = highlightedReviewId === review.id;
+                    const reviewerName = review.user?.fullname ?? `Student #${review.user_id}`;
+                    const reviewerEmail = review.user?.email ?? null;
+
+                    return (
+                      <div
+                        key={review.id}
+                        className={[
+                          "rounded-md border bg-[var(--card)] p-4",
+                          isHighlighted ? "border-[var(--primary)] ring-2 ring-[var(--primary)]/15" : "border-[var(--border)]",
+                        ].join(" ")}
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-[var(--foreground)]">{reviewerName}</p>
+                            {reviewerEmail ? (
+                              <p className="text-xs text-[var(--muted-foreground)]">{reviewerEmail}</p>
+                            ) : null}
+                            <p className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-amber-600">
+                              <Star className="size-3.5 fill-current" />
+                              <span>{review.rating}/5</span>
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-[var(--muted-foreground)]">
+                              {formatDateTime(review.created_at)}
+                            </span>
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="icon-sm"
+                              onClick={() => setReviewToDelete(review)}
+                              className="border-[var(--danger-soft-border)] bg-[var(--danger-soft-bg)] text-[var(--danger-soft-foreground)] hover:opacity-90"
+                              aria-label={`Hapus review ${reviewerName}`}
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </div>
+                        </div>
+                        <p className="mt-3 whitespace-pre-line text-sm leading-6 text-[var(--muted-foreground)]">
+                          {review.review?.trim() || "Tidak ada komentar tertulis."}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null}
+
+              {courseReviewMeta.total > 0 ? (
+                <AdminPagination
+                  meta={courseReviewMeta}
+                  isLoading={courseReviewsQuery.isLoading}
+                  onPageChange={setReviewPage}
+                />
+              ) : null}
+            </section>
+          ) : null}
+
         </CardContent>
       </Card>
 
@@ -2657,6 +2899,27 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
       />
 
       <ConfirmAlertDialog
+        open={reviewToDelete !== null}
+        title="Hapus Review"
+        description={
+          reviewToDelete
+            ? `Review dari "${reviewToDelete.user?.fullname ?? `Student #${reviewToDelete.user_id}`}" akan dihapus. Aksi ini tidak dapat dibatalkan.`
+            : ""
+        }
+        confirmLabel="Ya, Hapus"
+        cancelLabel="Batal"
+        isPending={deleteReviewMutation.isPending}
+        onClose={() => {
+          if (deleteReviewMutation.isPending) return;
+          setReviewToDelete(null);
+        }}
+        onConfirm={() => {
+          if (!reviewToDelete) return;
+          deleteReviewMutation.mutate(reviewToDelete.id);
+        }}
+      />
+
+      <ConfirmAlertDialog
         open={confirmDeleteSection !== null}
         title="Hapus Section"
         description={
@@ -2726,15 +2989,28 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
                   <span>Previous</span>
                 </Button>
 
-                <Button
-                  type="button"
-                  onClick={handleSaveCourseFromAnyStep}
-                  disabled={isPrimaryActionPending}
-                  className="bg-[var(--primary)] text-[var(--primary-foreground)] hover:brightness-95"
-                >
-                  {isPrimaryActionPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-                  <span>{isLastStep ? "Simpan" : "Next"}</span>
-                </Button>
+                {activeStepIndex <= 1 ? (
+                  <Button
+                    type="button"
+                    onClick={handleSaveCourseFromAnyStep}
+                    disabled={isPrimaryActionPending}
+                    className="bg-[var(--primary)] text-[var(--primary-foreground)] hover:brightness-95"
+                  >
+                    {isPrimaryActionPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+                    <span>Simpan</span>
+                  </Button>
+                ) : null}
+
+                {!isLastStep ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleNextStep}
+                    disabled={isPrimaryActionPending}
+                  >
+                    <span>Next</span>
+                  </Button>
+                ) : null}
               </>
             )}
           </div>

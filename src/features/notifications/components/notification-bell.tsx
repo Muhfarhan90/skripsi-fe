@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { syncCurrentBrowserFcmDevice } from "@/features/auth/lib/fcm-device-sync";
+import { isStudentRole } from "@/features/auth/lib/roles";
 import { useAuthStore } from "@/features/auth/store/auth-store";
 import {
   getNotifications,
@@ -53,6 +54,7 @@ export function NotificationBell() {
   const user = useAuthStore((state) => state.user);
   const userId = user?.id ?? null;
   const roleId = user?.role_id ?? null;
+  const roleName = user?.role_name ?? null;
   const sessionChecked = useAuthStore((state) => state.sessionChecked);
   const notificationsQuery = useQuery({
     queryKey: notificationQueryKeys.feed(1, NOTIFICATION_FETCH_LIMIT),
@@ -83,7 +85,7 @@ export function NotificationBell() {
     : unreadCount > 0
       ? "Tandai semua"
       : "Sudah dibaca";
-  const notificationListHref = roleId === 3 ? "/student/notifications" : "/admin/notifications";
+  const notificationListHref = isStudentRole(roleName, roleId) ? "/student/notifications" : "/admin/notifications";
 
   const headerDescription = useMemo(() => {
     if (notificationsQuery.isLoading) {

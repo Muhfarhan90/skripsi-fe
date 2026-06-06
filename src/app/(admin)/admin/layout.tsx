@@ -9,7 +9,7 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   const user = await getServerCurrentUser();
-  const boundary = getRoleBoundary(user?.role_id);
+  const boundary = getRoleBoundary(user?.role_id, user?.role_name);
 
   if (!user) {
     redirect("/login?redirect=/admin");
@@ -20,7 +20,7 @@ export default async function AdminLayout({
   }
 
   return (
-    <AdminLayoutClient fullName={user.fullname} email={user.email}>
+    <AdminLayoutClient fullName={user.fullname} email={user.email} roleName={user.role_name}>
       {children}
     </AdminLayoutClient>
   );

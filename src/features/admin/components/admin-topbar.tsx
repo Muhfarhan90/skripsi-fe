@@ -27,6 +27,7 @@ type DashboardTheme = "light" | "dark";
 interface AdminTopbarProps {
   fullName: string;
   email: string;
+  roleName?: string | null;
   theme: DashboardTheme;
   isSidebarCollapsed: boolean;
   onToggleTheme: () => void;
@@ -39,6 +40,7 @@ const MAX_QUICK_RESULTS = 6;
 export function AdminTopbar({
   fullName,
   email,
+  roleName,
   theme,
   isSidebarCollapsed,
   onToggleTheme,
@@ -47,7 +49,7 @@ export function AdminTopbar({
 }: AdminTopbarProps) {
   const router = useRouter();
   const logoutMutation = useLogoutAction();
-  const quickNavigationItems = useMemo(() => getAdminQuickNavigationItems(), []);
+  const quickNavigationItems = useMemo(() => getAdminQuickNavigationItems(roleName), [roleName]);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [showSearchResults, setShowSearchResults] = useState(false);
 

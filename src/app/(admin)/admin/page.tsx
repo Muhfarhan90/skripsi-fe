@@ -59,8 +59,8 @@ export default function AdminPage() {
       ) : null}
 
       <AdminPageHeader
-        title="Dashboard Admin"
-        description="Pantau ringkasan platform dan akses cepat ke modul utama manajemen LMS."
+        title="Dashboard"
+        description="Pantau ringkasan platform, aktivitas course, dan akses cepat ke modul utama LMS."
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -145,7 +145,7 @@ export default function AdminPage() {
               </div>
             ) : (
               <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-soft)] px-4 py-6 text-sm text-[var(--muted-foreground)]">
-                Belum ada notifikasi baru. Update operasional untuk admin akan muncul di sini saat ada hal penting yang perlu dipantau.
+                Belum ada notifikasi baru. Update penting untuk akun ini akan muncul di sini saat ada aktivitas yang perlu dipantau.
               </div>
             )}
           </CardContent>
@@ -159,15 +159,15 @@ export default function AdminPage() {
               </div>
               <CardTitle className="text-base font-semibold text-[var(--foreground)]">Manajemen Data</CardTitle>
               <p className="text-sm text-[var(--muted-foreground)]">
-                Kelola users, categories, courses, dan vouchers dalam satu modul.
+                Kelola siswa, instructor, categories, courses, dan vouchers dalam satu modul.
               </p>
             </CardHeader>
             <CardContent>
               <Link
-                href="/admin/master-data/users"
+                href="/admin/master-data/students"
                 className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--primary)] hover:opacity-80"
               >
-                Buka Data Users
+                Buka Data Siswa
                 <ArrowRight className="size-4" />
               </Link>
             </CardContent>

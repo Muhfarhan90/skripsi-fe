@@ -9,7 +9,7 @@ export default async function StudentLayout({
   children: React.ReactNode;
 }) {
   const user = await getServerCurrentUser();
-  const boundary = getRoleBoundary(user?.role_id);
+  const boundary = getRoleBoundary(user?.role_id, user?.role_name);
 
   if (!user) {
     redirect("/login?redirect=/student");

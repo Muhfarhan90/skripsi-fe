@@ -10,10 +10,11 @@ import { cn } from "@/lib/utils/cn";
 interface AdminLayoutClientProps {
   fullName: string;
   email: string;
+  roleName?: string | null;
   children: React.ReactNode;
 }
 
-export function AdminLayoutClient({ fullName, email, children }: AdminLayoutClientProps) {
+export function AdminLayoutClient({ fullName, email, roleName, children }: AdminLayoutClientProps) {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
   const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(false);
@@ -52,6 +53,7 @@ export function AdminLayoutClient({ fullName, email, children }: AdminLayoutClie
     <div className="min-h-screen bg-background text-foreground">
       <AdminSidebar
         pathname={pathname}
+        roleName={roleName}
         collapsed={isDesktopSidebarCollapsed}
         mobileOpen={isMobileSidebarOpen}
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
@@ -66,6 +68,7 @@ export function AdminLayoutClient({ fullName, email, children }: AdminLayoutClie
         <AdminTopbar
           fullName={fullName}
           email={email}
+          roleName={roleName}
           theme={activeTheme}
           isSidebarCollapsed={isDesktopSidebarCollapsed}
           onToggleTheme={() => setTheme(activeTheme === "light" ? "dark" : "light")}

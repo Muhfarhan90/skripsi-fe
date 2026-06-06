@@ -17,6 +17,8 @@ import {
   buildStudentCheckoutLoginRedirect,
   buildStudentCheckoutPath,
 } from "@/features/student/lib/checkout";
+import { formatDiscountBadge, hasValidDiscount } from "@/features/student/lib/pricing";
+import { isStudentRole } from "@/features/auth/lib/roles";
 import { useAuthStore } from "@/features/auth/store/auth-store";
 import { PublicSiteHeader } from "@/features/website/components/public-site-header";
 import { SiteFooter } from "@/features/website/components/site-footer";
@@ -31,12 +33,6 @@ function formatCurrency(amount: number | null | undefined): string {
   }).format(Number(amount ?? 0));
 }
 
-function hasValidDiscount(price: number | null | undefined, discountPrice: number | null | undefined): boolean {
-  const base = Number(price ?? 0);
-  const discount = Number(discountPrice ?? 0);
-  return discount > 0 && discount < base;
-}
-
 export default function CoursesPage() {
   return (
     <Suspense fallback={<div className="min-h-screen bg-[var(--background)]" />}>
@@ -49,7 +45,7 @@ function CoursesPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const user = useAuthStore((state) => state.user);
-  const isStudentUser = user?.role_id === 3;
+  const isStudentUser = isStudentRole(user?.role_name, user?.role_id);
 
   const courseQuery = useQuery({
     queryKey: ["store", "courses"],
@@ -114,7 +110,7 @@ function CoursesPageContent() {
       return;
     }
 
-    if (user.role_id !== 3) {
+    if (!isStudentRole(user.role_name, user.role_id)) {
       toast.error("Fitur pembelian hanya tersedia untuk akun student");
       return;
     }
@@ -161,7 +157,7 @@ function CoursesPageContent() {
           </div>
 
           {categories.length > 0 ? (
-            <div className="mt-6 flex gap-2 overflow-x-auto pb-1">
+            <div className="native-horizontal-scroll mt-6 flex gap-2 overflow-x-auto pb-1">
               <Link
                 href={searchKeyword ? `/courses?search=${encodeURIComponent(searchKeyword)}` : "/courses"}
                 className={`whitespace-nowrap rounded-full border px-4 py-2 text-xs font-bold transition ${
@@ -251,7 +247,7 @@ function CoursesPageContent() {
                     ) : null}
                     {hasDiscount ? (
                       <span className="absolute right-3 top-3 rounded-full bg-rose-500 px-3 py-1 text-[10px] font-black text-white shadow">
-                        DISKON
+                        {formatDiscountBadge(course.price, course.discount_price)}
                       </span>
                     ) : null}
                     {course.instructor_name ? (
