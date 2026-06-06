@@ -13,7 +13,7 @@ interface RoleGuardProps {
 export function RoleGuard({ allowed, children }: RoleGuardProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { sessionChecked, isAuthenticated, roleId } = useAuthStatus();
+  const { sessionChecked, isAuthenticated, roleId, roleName } = useAuthStatus();
 
   useEffect(() => {
     if (!sessionChecked) return;
@@ -23,13 +23,13 @@ export function RoleGuard({ allowed, children }: RoleGuardProps) {
       return;
     }
 
-    const boundary = getRoleBoundary(roleId);
+    const boundary = getRoleBoundary(roleId, roleName);
 
     // Keep route gating simple at top-level boundary: student vs admin.
     if (!boundary || !allowed.includes(boundary)) {
-      router.replace(getDefaultPathByRole(roleId));
+      router.replace(getDefaultPathByRole(roleId, roleName));
     }
-  }, [allowed, sessionChecked, isAuthenticated, pathname, roleId, router]);
+  }, [allowed, sessionChecked, isAuthenticated, pathname, roleId, roleName, router]);
 
   if (!sessionChecked) {
     return (
@@ -41,7 +41,7 @@ export function RoleGuard({ allowed, children }: RoleGuardProps) {
 
   if (!isAuthenticated) return null;
 
-  const boundary = getRoleBoundary(roleId);
+  const boundary = getRoleBoundary(roleId, roleName);
   if (!boundary || !allowed.includes(boundary)) return null;
 
   return <>{children}</>;

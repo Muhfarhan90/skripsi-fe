@@ -1,6 +1,7 @@
 export interface AuthUser {
   id: number;
   role_id: number;
+  role_name: string | null;
   fullname: string;
   email: string;
   nisn: string | null;

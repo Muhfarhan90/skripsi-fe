@@ -19,6 +19,7 @@ const ALLOWED_ADMIN_RESOURCES = new Set([
   "orders",
   "enrollments",
   "transactions",
+  "reports",
   "course-offerings",
   "academic-periods",
   "assignment-submissions",
@@ -80,6 +81,10 @@ function resolveTargetPath(pathSegments: string[] | undefined): string | null {
     return `/admin/courses/${maybeId}/forum`;
   }
 
+  if (resource === "courses" && pathSegments.length === 3 && maybeId && action === "reviews") {
+    return `/admin/courses/${maybeId}/reviews`;
+  }
+
   if (resource === "courses" && pathSegments.length === 4 && maybeId && action === "forum") {
     const [, , , postId] = pathSegments;
     if (postId) {
@@ -101,6 +106,13 @@ function resolveTargetPath(pathSegments: string[] | undefined): string | null {
     const [, , , assignmentId] = pathSegments;
     if (assignmentId) {
       return `/admin/courses/${maybeId}/assignments/${assignmentId}`;
+    }
+  }
+
+  if (resource === "courses" && pathSegments.length === 4 && maybeId && action === "reviews") {
+    const [, , , reviewId] = pathSegments;
+    if (reviewId) {
+      return `/admin/courses/${maybeId}/reviews/${reviewId}`;
     }
   }
 

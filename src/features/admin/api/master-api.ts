@@ -255,6 +255,23 @@ export interface AdminForumPost {
   updated_at: string | null;
 }
 
+export interface AdminCourseReview {
+  id: number;
+  user_id: number;
+  course_id: number;
+  enrollment_id: number | null;
+  rating: number;
+  review: string | null;
+  user?: {
+    id: number;
+    fullname: string;
+    email?: string | null;
+    avatar?: string | null;
+  } | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
 export interface AdminQuestion {
   id: number;
   quiz_id: number;
@@ -296,6 +313,7 @@ export interface AdminVoucher {
 export interface AdminUser {
   id: number;
   role_id: number;
+  role_name: string | null;
   fullname: string;
   email: string;
   nisn: string | null;
@@ -307,17 +325,29 @@ export interface AdminUser {
   date_of_birth: string | null;
   school_origin: string | null;
   is_active: boolean;
+  orders_count?: number | null;
   created_at: string | null;
   updated_at: string | null;
 }
 
 export interface AdminOrderItem {
-  course_id: number;
+  course_id: number | null;
+  course_offering_id?: number | null;
   price: number;
   course?: {
     id: number;
     title: string;
-  };
+  } | null;
+  course_offering?: {
+    id: number;
+    course_id: number;
+    academic_period_id: number | null;
+    title?: string | null;
+    capacity: number | null;
+    price: number | string | null;
+    discount_price: number | string | null;
+    is_active: boolean;
+  } | null;
 }
 
 export interface AdminOrder {
@@ -500,6 +530,50 @@ export interface AdminDashboard {
   recent_activities: AdminDashboardActivity[];
 }
 
+export interface AdminSalesReportFilters {
+  from?: string;
+  to?: string;
+  academic_period_id?: number;
+}
+
+export interface AdminSalesReportStatusBucket {
+  status: "pending" | "success" | "failed" | string;
+  label: string;
+  count: number;
+  amount: number;
+}
+
+export interface AdminSalesReportTopCourse {
+  course_offering_id: number | null;
+  course_id: number | null;
+  course_title: string;
+  course_slug: string;
+  instructor_name: string;
+  academic_period_id: number | null;
+  academic_period_name: string | null;
+  academic_period_code: string | null;
+  units_sold: number;
+  unique_buyers: number;
+  revenue: number;
+}
+
+export interface AdminSalesReportSummary {
+  filters: {
+    from: string;
+    to: string;
+    academic_period_id: number | null;
+    timezone: string;
+  };
+  summary: {
+    total_sales: number;
+    successful_transactions: number;
+    completed_orders: number;
+    unique_buyers: number;
+  };
+  status_breakdown: AdminSalesReportStatusBucket[];
+  top_courses: AdminSalesReportTopCourse[];
+}
+
 export interface AdminActivityLog {
   id: number;
   activity: string;
@@ -587,6 +661,8 @@ export interface AdminOfferingAssignmentSubmissionQuery extends AdminPaginatedQu
 
 export type AdminCourseForumQuery = AdminPaginatedQuery;
 
+export type AdminCourseReviewQuery = AdminPaginatedQuery;
+
 export interface AdminAcademicPeriodQuery extends AdminPaginatedQuery {
   is_active?: boolean | string;
 }
@@ -597,7 +673,9 @@ export type AdminSkillQuery = AdminPaginatedQuery;
 
 export type AdminCategoryQuery = AdminPaginatedQuery;
 
-export type AdminUserQuery = AdminPaginatedQuery;
+export interface AdminUserQuery extends AdminPaginatedQuery {
+  role_group?: "all" | "students" | "instructors" | "staff" | string;
+}
 
 export type AdminVoucherQuery = AdminPaginatedQuery;
 
@@ -811,6 +889,12 @@ export function getAdminDashboard() {
   });
 }
 
+export function getAdminSalesReportSummary(query: AdminSalesReportFilters = {}) {
+  return apiRequest<AdminSalesReportSummary>(`/api/admin/reports/sales-summary${buildQuerySuffix(query as QueryParams)}`, {
+    method: "GET",
+  });
+}
+
 export async function listAdminActivityLogs(
   query: AdminActivityLogQuery = {},
 ): Promise<AdminPaginatedResponse<AdminActivityLog>> {
@@ -954,6 +1038,13 @@ export async function listAdminCourseForumPosts(
   return listAdminCollection<AdminForumPost>(`/api/admin/courses/${courseId}/forum`, withListPagination(query));
 }
 
+export async function listAdminCourseReviews(
+  courseId: number,
+  query: AdminCourseReviewQuery = {},
+): Promise<AdminPaginatedResponse<AdminCourseReview>> {
+  return listAdminCollection<AdminCourseReview>(`/api/admin/courses/${courseId}/reviews`, withListPagination(query));
+}
+
 export function getAdminCourseForumPost(courseId: number, postId: number) {
   return apiRequest<AdminForumPost>(`/api/admin/courses/${courseId}/forum/${postId}`, {
     method: "GET",
@@ -1026,6 +1117,12 @@ export function deleteAdminCourseForumPost(courseId: number, postId: number) {
 
 export function deleteAdminCourseForumReply(replyId: number) {
   return apiMessageOnly(`/api/admin/forum-replies/${replyId}`, {
+    method: "DELETE",
+  });
+}
+
+export function deleteAdminCourseReview(courseId: number, reviewId: number) {
+  return apiMessageOnly(`/api/admin/courses/${courseId}/reviews/${reviewId}`, {
     method: "DELETE",
   });
 }
@@ -1594,6 +1691,12 @@ export function getAdminOrders(query: AdminOrderQuery = {}) {
 
 export async function listAdminOrders(query: AdminOrderQuery = {}): Promise<AdminPaginatedResponse<AdminOrder>> {
   return listAdminCollection<AdminOrder>("/api/admin/orders", withListPagination(query));
+}
+
+export function getAdminOrderById(id: number) {
+  return apiRequest<AdminOrder>(`/api/admin/orders/${id}`, {
+    method: "GET",
+  });
 }
 
 export async function listAdminTransactions(

@@ -30,12 +30,15 @@ import {
   type UserPayload,
 } from "@/features/admin/api/master-api";
 import { useUnsavedChangesGuard } from "@/features/admin/hooks/use-unsaved-changes-guard";
+import { cn } from "@/lib/utils/cn";
 
 type UserFormMode = "create" | "edit";
+type UserFormScope = "generic" | "student" | "instructor";
 
 interface AdminUserFormPageProps {
   mode: UserFormMode;
   userId?: number;
+  scope?: UserFormScope;
 }
 
 interface UserFormState {
@@ -72,6 +75,41 @@ const defaultForm: UserFormState = {
   date_of_birth: "",
 };
 
+const USER_FORM_SCOPE_CONFIG: Record<
+  UserFormScope,
+  {
+    label: string;
+    backHref: string;
+    lockedRoleName: string | null;
+  }
+> = {
+  generic: {
+    label: "User",
+    backHref: "/admin/master-data/users",
+    lockedRoleName: null,
+  },
+  student: {
+    label: "Siswa",
+    backHref: "/admin/master-data/students",
+    lockedRoleName: "user",
+  },
+  instructor: {
+    label: "Instructor",
+    backHref: "/admin/master-data/instructors",
+    lockedRoleName: "instructor",
+  },
+};
+
+function formatRoleLabel(roleName: string | null | undefined): string {
+  const normalized = roleName?.trim().toLowerCase();
+
+  if (normalized === "user") return "Siswa";
+  if (normalized === "admin") return "Admin";
+  if (normalized === "instructor") return "Instructor";
+
+  return roleName?.trim() || "-";
+}
+
 function mapUserToFormState(user: AdminUser): UserFormState {
   return {
     role_id: String(user.role_id),
@@ -90,7 +128,6 @@ function mapUserToFormState(user: AdminUser): UserFormState {
   };
 }
 
-// Build payload terstandar agar form create dan edit memakai kontrak API yang sama.
 function buildPayload(form: UserFormState, isEditing: boolean): UserPayload {
   const payload: UserPayload = {
     role_id: Number(form.role_id),
@@ -114,7 +151,6 @@ function buildPayload(form: UserFormState, isEditing: boolean): UserPayload {
   return payload;
 }
 
-// Validasi lokal diprioritaskan untuk feedback cepat sebelum request ke server.
 function validateUserForm(form: UserFormState, isEditing: boolean): UserFormErrors {
   const errors: UserFormErrors = {};
 
@@ -134,7 +170,6 @@ function validateUserForm(form: UserFormState, isEditing: boolean): UserFormErro
   return errors;
 }
 
-// Mapping error API -> error form supaya pesan field dari backend tetap terbaca jelas.
 function mapApiError(error: unknown): UserFormErrors {
   if (!(error instanceof ApiError)) {
     return {
@@ -165,10 +200,11 @@ function mapApiError(error: unknown): UserFormErrors {
   return fieldErrors;
 }
 
-export function AdminUserFormPage({ mode, userId }: AdminUserFormPageProps) {
+export function AdminUserFormPage({ mode, userId, scope = "generic" }: AdminUserFormPageProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const isEditing = mode === "edit";
+  const scopeConfig = USER_FORM_SCOPE_CONFIG[scope];
   const [draftForm, setDraftForm] = useState<UserFormState | null>(null);
   const [formErrors, setFormErrors] = useState<UserFormErrors>({});
 
@@ -183,7 +219,7 @@ export function AdminUserFormPage({ mode, userId }: AdminUserFormPageProps) {
     enabled: isEditing && Boolean(userId),
   });
 
-  const baseForm = useMemo<UserFormState>(() => {
+  const rawBaseForm = useMemo<UserFormState>(() => {
     if (isEditing && userDetailQuery.data) {
       return mapUserToFormState(userDetailQuery.data);
     }
@@ -191,11 +227,38 @@ export function AdminUserFormPage({ mode, userId }: AdminUserFormPageProps) {
     return defaultForm;
   }, [isEditing, userDetailQuery.data]);
 
-  const form = draftForm ?? baseForm;
   const roleLabelMap = useMemo(() => {
+    return new Map((rolesQuery.data ?? []).map((role) => [String(role.id), formatRoleLabel(role.name)]));
+  }, [rolesQuery.data]);
+  const roleNameMap = useMemo(() => {
     return new Map((rolesQuery.data ?? []).map((role) => [String(role.id), role.name]));
   }, [rolesQuery.data]);
+  const lockedRoleId = useMemo(() => {
+    if (!scopeConfig.lockedRoleName) return null;
+
+    return (rolesQuery.data ?? []).find((role) => role.name === scopeConfig.lockedRoleName)?.id ?? null;
+  }, [rolesQuery.data, scopeConfig.lockedRoleName]);
+  const baseForm = useMemo<UserFormState>(() => {
+    if (!isEditing && lockedRoleId) {
+      return {
+        ...rawBaseForm,
+        role_id: String(lockedRoleId),
+      };
+    }
+
+    return rawBaseForm;
+  }, [isEditing, lockedRoleId, rawBaseForm]);
+  const form = draftForm ?? baseForm;
+  const isLockedRole = Boolean(scopeConfig.lockedRoleName);
   const selectedRoleLabel = form.role_id ? roleLabelMap.get(form.role_id) : undefined;
+  const selectedRoleName = (form.role_id ? roleNameMap.get(form.role_id) : userDetailQuery.data?.role_name)?.trim().toLowerCase() ?? "";
+  const isStudentSelected = scopeConfig.lockedRoleName === "user" || selectedRoleName === "user";
+  const roleMismatch = Boolean(
+    isEditing &&
+    isLockedRole &&
+    userDetailQuery.data &&
+    userDetailQuery.data.role_name?.trim().toLowerCase() !== scopeConfig.lockedRoleName,
+  );
 
   const setForm = (updater: (prev: UserFormState) => UserFormState) => {
     setDraftForm((prev) => updater(prev ?? baseForm));
@@ -214,8 +277,8 @@ export function AdminUserFormPage({ mode, userId }: AdminUserFormPageProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
-      toast.success(isEditing ? "User berhasil diperbarui" : "User berhasil ditambahkan");
-      router.push("/admin/master-data/users");
+      toast.success(isEditing ? `${scopeConfig.label} berhasil diperbarui` : `${scopeConfig.label} berhasil ditambahkan`);
+      router.push(scopeConfig.backHref);
       router.refresh();
     },
     onError: (error) => {
@@ -238,17 +301,17 @@ export function AdminUserFormPage({ mode, userId }: AdminUserFormPageProps) {
 
   const handleCancel = () => {
     if (!confirmLeave()) return;
-    router.push("/admin/master-data/users");
+    router.push(scopeConfig.backHref);
   };
 
   if (isEditing && userDetailQuery.isLoading) {
     return (
       <section className="space-y-5">
-        <AdminPageHeader title="Edit User" description="Memuat detail user..." />
+        <AdminPageHeader title={`Edit ${scopeConfig.label}`} description="Memuat detail data..." />
         <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
           <CardContent className="flex items-center gap-2 p-5 text-sm text-[var(--muted-foreground)]">
             <Loader2 className="size-4 animate-spin" />
-            Memuat data user...
+            Memuat data...
           </CardContent>
         </Card>
       </section>
@@ -259,15 +322,37 @@ export function AdminUserFormPage({ mode, userId }: AdminUserFormPageProps) {
     return (
       <section className="space-y-5">
         <AdminPageHeader
-          title="Edit User"
-          description="Data user tidak dapat dimuat. Coba kembali ke daftar user."
+          title={`Edit ${scopeConfig.label}`}
+          description={`Data ${scopeConfig.label.toLowerCase()} tidak dapat dimuat. Coba kembali ke daftar.`}
         />
         <Card className="border border-[var(--danger-soft-border)] bg-[var(--danger-soft-bg)] shadow-sm">
           <CardContent className="space-y-3 p-5">
-            <p className="text-sm text-[var(--danger-soft-foreground)]">Gagal memuat data user untuk proses edit.</p>
-            <Button type="button" variant="outline" onClick={() => router.push("/admin/master-data/users")}>
+            <p className="text-sm text-[var(--danger-soft-foreground)]">Gagal memuat data untuk proses edit.</p>
+            <Button type="button" variant="outline" onClick={() => router.push(scopeConfig.backHref)}>
               <ArrowLeft className="size-4" />
-              <span>Kembali ke daftar user</span>
+              <span>Kembali ke daftar</span>
+            </Button>
+          </CardContent>
+        </Card>
+      </section>
+    );
+  }
+
+  if (roleMismatch) {
+    return (
+      <section className="space-y-5">
+        <AdminPageHeader
+          title={`Edit ${scopeConfig.label}`}
+          description={`Akun yang dipilih tidak termasuk kategori ${scopeConfig.label.toLowerCase()}.`}
+        />
+        <Card className="border border-[var(--danger-soft-border)] bg-[var(--danger-soft-bg)] shadow-sm">
+          <CardContent className="space-y-3 p-5">
+            <p className="text-sm text-[var(--danger-soft-foreground)]">
+              Halaman ini hanya dipakai untuk {scopeConfig.label.toLowerCase()}. Buka akun tersebut dari modul yang sesuai.
+            </p>
+            <Button type="button" variant="outline" onClick={() => router.push(scopeConfig.backHref)}>
+              <ArrowLeft className="size-4" />
+              <span>Kembali ke daftar</span>
             </Button>
           </CardContent>
         </Card>
@@ -278,8 +363,12 @@ export function AdminUserFormPage({ mode, userId }: AdminUserFormPageProps) {
   return (
     <section className="space-y-5">
       <AdminPageHeader
-        title={isEditing ? "Edit User" : "Buat User"}
-        description="Form terpisah untuk mempercepat input data user dalam jumlah besar."
+        title={isEditing ? `Edit ${scopeConfig.label}` : `Buat ${scopeConfig.label}`}
+        description={
+          isStudentSelected
+            ? "Form terpisah untuk memastikan data siswa seperti NISN dan asal sekolah tercatat rapi."
+            : "Form terpisah untuk mempercepat input data akun sesuai kategori user."
+        }
       />
 
       <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
@@ -287,10 +376,12 @@ export function AdminUserFormPage({ mode, userId }: AdminUserFormPageProps) {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle className="text-base font-semibold text-[var(--foreground)]">
-                {isEditing ? "Perbarui Data User" : "Tambah Data User Baru"}
+                {isEditing ? `Perbarui Data ${scopeConfig.label}` : `Tambah Data ${scopeConfig.label} Baru`}
               </CardTitle>
               <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-                Lengkapi data akun, profil, dan status akses user.
+                {isStudentSelected
+                  ? "Lengkapi data siswa untuk kebutuhan analisis sekolah asal, identitas akademik, dan status akses."
+                  : "Lengkapi data akun, profil, dan status akses user."}
               </p>
             </div>
 
@@ -313,34 +404,49 @@ export function AdminUserFormPage({ mode, userId }: AdminUserFormPageProps) {
             <h3 className="text-sm font-semibold text-[var(--foreground)]">Akses & Identitas</h3>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label>Role</Label>
-                <Select
-                  value={form.role_id}
-                  onValueChange={(value) => setForm((prev) => ({ ...prev, role_id: value ?? "" }))}
-                >
-                  <SelectTrigger className="h-9 w-full border-[var(--border)] bg-[var(--card)]">
-                    <SelectValue>
-                      {() => {
-                        const label = selectedRoleLabel ?? "Pilih role";
-                        return (
-                          <span className={selectedRoleLabel ? undefined : "text-[var(--muted-foreground)]"}>
-                            {label}
-                          </span>
-                        );
-                      }}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(rolesQuery.data ?? []).map((role) => (
-                      <SelectItem key={role.id} value={String(role.id)}>
-                        {role.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {formErrors.role_id ? <p className="text-xs text-red-600">{formErrors.role_id}</p> : null}
-              </div>
+              {isLockedRole ? (
+                <div className="space-y-1.5">
+                  <Label>Role</Label>
+                  <div
+                    aria-disabled="true"
+                    className={cn(
+                      "flex h-10 items-center rounded-md border px-3 text-sm font-medium",
+                      "cursor-not-allowed border-zinc-200 bg-zinc-100 text-zinc-500",
+                    )}
+                  >
+                    {scopeConfig.label}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <Label>Role</Label>
+                  <Select
+                    value={form.role_id}
+                    onValueChange={(value) => setForm((prev) => ({ ...prev, role_id: value ?? "" }))}
+                  >
+                    <SelectTrigger className="h-9 w-full border-[var(--border)] bg-[var(--card)]">
+                      <SelectValue>
+                        {() => {
+                          const label = selectedRoleLabel ?? "Pilih role";
+                          return (
+                            <span className={selectedRoleLabel ? undefined : "text-[var(--muted-foreground)]"}>
+                              {label}
+                            </span>
+                          );
+                        }}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(rolesQuery.data ?? []).map((role) => (
+                        <SelectItem key={role.id} value={String(role.id)}>
+                          {formatRoleLabel(role.name)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {formErrors.role_id ? <p className="text-xs text-red-600">{formErrors.role_id}</p> : null}
+                </div>
+              )}
 
               <div className="space-y-1.5">
                 <Label htmlFor="user-fullname">Nama Lengkap</Label>
@@ -363,16 +469,6 @@ export function AdminUserFormPage({ mode, userId }: AdminUserFormPageProps) {
                   className="border-[var(--border)] bg-[var(--card)]"
                 />
                 {formErrors.email ? <p className="text-xs text-red-600">{formErrors.email}</p> : null}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="user-nisn">NISN</Label>
-                <Input
-                  id="user-nisn"
-                  value={form.nisn}
-                  onChange={(event) => setForm((prev) => ({ ...prev, nisn: event.target.value }))}
-                  className="border-[var(--border)] bg-[var(--card)]"
-                />
               </div>
 
               <div className="space-y-1.5">
@@ -404,25 +500,48 @@ export function AdminUserFormPage({ mode, userId }: AdminUserFormPageProps) {
           </section>
 
           <section className="space-y-4 rounded-lg border border-[var(--border)] bg-[var(--muted)] p-4">
-            <h3 className="text-sm font-semibold text-[var(--foreground)]">Profil Akademik</h3>
+            <div className="space-y-1">
+              <h3 className="text-sm font-semibold text-[var(--foreground)]">
+                {isStudentSelected ? "Profil Siswa" : "Profil Tambahan"}
+              </h3>
+              <p className="text-xs text-[var(--muted-foreground)]">
+                {isStudentSelected
+                  ? "NISN dan asal sekolah diprioritaskan untuk akun siswa agar pendaftaran dan pembelian bisa dianalisis per sekolah."
+                  : "Field akademik khusus siswa disembunyikan pada role admin atau instructor agar form tetap fokus."}
+              </p>
+            </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {isStudentSelected ? (
+                <>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="user-nisn">NISN</Label>
+                    <Input
+                      id="user-nisn"
+                      value={form.nisn}
+                      onChange={(event) => setForm((prev) => ({ ...prev, nisn: event.target.value }))}
+                      className="border-[var(--border)] bg-[var(--card)]"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="user-school">Asal Sekolah</Label>
+                    <Input
+                      id="user-school"
+                      value={form.school_origin}
+                      onChange={(event) => setForm((prev) => ({ ...prev, school_origin: event.target.value }))}
+                      className="border-[var(--border)] bg-[var(--card)]"
+                    />
+                  </div>
+                </>
+              ) : null}
+
               <div className="space-y-1.5">
                 <Label htmlFor="user-phone">No. Telepon</Label>
                 <Input
                   id="user-phone"
                   value={form.phone}
                   onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))}
-                  className="border-[var(--border)] bg-[var(--card)]"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="user-school">Asal Sekolah</Label>
-                <Input
-                  id="user-school"
-                  value={form.school_origin}
-                  onChange={(event) => setForm((prev) => ({ ...prev, school_origin: event.target.value }))}
                   className="border-[var(--border)] bg-[var(--card)]"
                 />
               </div>
@@ -439,7 +558,18 @@ export function AdminUserFormPage({ mode, userId }: AdminUserFormPageProps) {
                   }
                 >
                   <SelectTrigger className="h-9 w-full border-[var(--border)] bg-[var(--card)]">
-                    <SelectValue placeholder="Pilih gender" />
+                    <SelectValue>
+                      {() => {
+                        const label =
+                          form.gender === "laki-laki"
+                            ? "Laki-laki"
+                            : form.gender === "perempuan"
+                              ? "Perempuan"
+                              : "Tidak diisi";
+
+                        return <span>{label}</span>;
+                      }}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="unspecified">Tidak diisi</SelectItem>
@@ -501,15 +631,14 @@ export function AdminUserFormPage({ mode, userId }: AdminUserFormPageProps) {
           <Button
             type="button"
             onClick={handleSave}
-            disabled={saveMutation.isPending}
+            disabled={saveMutation.isPending || (isLockedRole && !lockedRoleId)}
             className="bg-[var(--primary)] text-[var(--primary-foreground)] hover:brightness-95"
           >
             {saveMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-            <span>{isEditing ? "Simpan Perubahan" : "Simpan User"}</span>
+            <span>{isEditing ? "Simpan Perubahan" : `Simpan ${scopeConfig.label}`}</span>
           </Button>
         </div>
       </div>
     </section>
   );
 }
-

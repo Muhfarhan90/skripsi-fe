@@ -1,5 +1,5 @@
-import { AdminUserFormPage } from "@/features/admin/components/user-form-page";
+import { redirect } from "next/navigation";
 
 export default function AdminUserCreatePage() {
-  return <AdminUserFormPage key="create-user" mode="create" />;
+  redirect("/admin/master-data/students/new");
 }
