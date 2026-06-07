@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { getFirebaseWebConfig } from "@/lib/env";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const dynamic = "force-static";
 
 const FIREBASE_COMPAT_SDK_VERSION = "10.13.2";
 const ENABLE_OFFLINE = process.env.NODE_ENV === "production";
