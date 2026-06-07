@@ -1,23 +1,19 @@
-import { redirect } from "next/navigation";
-import { getServerCurrentUser } from "@/features/auth/lib/server";
-import { getRoleBoundary } from "@/features/auth/lib/roles";
-import { StudentLayoutClient } from "@/features/student/components/student-layout-client";
+"use client";
 
-export default async function StudentLayout({
+import { RoleGuard } from "@/components/shared/role-guard";
+import { StudentLayoutClient } from "@/features/student/components/student-layout-client";
+import { useAuthStore } from "@/features/auth/store/auth-store";
+
+export default function StudentLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const user = await getServerCurrentUser();
-  const boundary = getRoleBoundary(user?.role_id, user?.role_name);
+  const user = useAuthStore((state) => state.user);
 
-  if (!user) {
-    redirect("/login?redirect=/student");
-  }
-
-  if (boundary !== "student") {
-    redirect(boundary === "admin" ? "/admin" : "/login");
-  }
-
-  return <StudentLayoutClient fullName={user.fullname}>{children}</StudentLayoutClient>;
+  return (
+    <RoleGuard allowed={["student"]}>
+      <StudentLayoutClient fullName={user?.fullname ?? ""}>{children}</StudentLayoutClient>
+    </RoleGuard>
+  );
 }

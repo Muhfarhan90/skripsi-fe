@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { ClientRedirect } from "@/components/shared/client-redirect";
 
 export default function AdminDataRedirectPage() {
-  redirect("/admin/master-data/students");
+  return <ClientRedirect href="/admin/master-data/students" />;
 }

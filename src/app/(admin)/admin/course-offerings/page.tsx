@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { ClientRedirect } from "@/components/shared/client-redirect";
 
 export default function AdminCourseOfferingsPage() {
-  redirect("/admin/academic-periods");
+  return <ClientRedirect href="/admin/academic-periods" />;
 }

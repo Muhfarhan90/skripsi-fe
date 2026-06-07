@@ -1,58 +1,50 @@
-import { cookies } from "next/headers";
-import { notFound, redirect } from "next/navigation";
-import { buildApiUrl } from "@/features/auth/lib/server";
-import { AUTH_COOKIE_NAME } from "@/features/auth/lib/constants";
+"use client";
 
-interface AdminCourseOfferingDetailPageProps {
-  params: Promise<{ id: string }>;
-}
+import { useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import { getAdminCourseOfferingById } from "@/features/admin/api/master-api";
 
-interface CourseOfferingLookupPayload {
-  success?: boolean;
-  data?: {
-    id: number;
-    academic_period_id: number | null;
-  } | null;
-}
-
-async function resolveOfferingPeriodId(offeringId: number): Promise<number | null> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
-
-  if (!token) {
-    return null;
-  }
-
-  const response = await fetch(buildApiUrl(`/api/admin/course-offerings/${offeringId}`), {
-    method: "GET",
-    headers: {
-      Accept: "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    cache: "no-store",
+export default function AdminCourseOfferingDetailPage() {
+  const params = useParams<{ id: string }>();
+  const router = useRouter();
+  const id = params.id;
+  const offeringId = Number(id);
+  const offeringQuery = useQuery({
+    queryKey: ["admin", "course-offerings", offeringId, "redirect"],
+    queryFn: () => getAdminCourseOfferingById(offeringId),
+    enabled: Number.isInteger(offeringId) && offeringId > 0,
+    retry: 0,
   });
 
-  if (!response.ok) {
-    return null;
-  }
+  useEffect(() => {
+    if (!Number.isInteger(offeringId) || offeringId <= 0) {
+      router.replace("/admin/academic-periods");
+      return;
+    }
 
-  const payload = (await response.json().catch(() => null)) as CourseOfferingLookupPayload | null;
-  return payload?.success ? payload.data?.academic_period_id ?? null : null;
-}
+    if (!offeringQuery.isSuccess) {
+      return;
+    }
 
-export default async function AdminCourseOfferingDetailPage({ params }: AdminCourseOfferingDetailPageProps) {
-  const { id } = await params;
-  const offeringId = Number(id);
+    const periodId = offeringQuery.data?.academic_period_id;
+    if (periodId && Number.isInteger(periodId) && periodId > 0) {
+      router.replace(`/admin/academic-periods/${periodId}/offerings/${offeringId}`);
+      return;
+    }
 
-  if (!Number.isInteger(offeringId) || offeringId <= 0) {
-    notFound();
-  }
+    router.replace("/admin/academic-periods");
+  }, [offeringId, offeringQuery.data, offeringQuery.isSuccess, router]);
 
-  const periodId = await resolveOfferingPeriodId(offeringId);
+  useEffect(() => {
+    if (offeringQuery.isError) {
+      router.replace("/admin/academic-periods");
+    }
+  }, [offeringQuery.isError, router]);
 
-  if (periodId && Number.isInteger(periodId) && periodId > 0) {
-    redirect(`/admin/academic-periods/${periodId}/offerings/${offeringId}`);
-  }
-
-  redirect("/admin/academic-periods");
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-zinc-50">
+      <p className="text-sm text-zinc-600">Mengalihkan halaman...</p>
+    </div>
+  );
 }

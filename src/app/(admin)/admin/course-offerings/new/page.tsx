@@ -1,18 +1,21 @@
-import { redirect } from "next/navigation";
+"use client";
 
-interface AdminCourseOfferingCreatePageProps {
-  searchParams: Promise<{
-    academic_period_id?: string;
-  }>;
-}
+import { useMemo } from "react";
+import { useSearchParams } from "next/navigation";
+import { ClientRedirect } from "@/components/shared/client-redirect";
 
-export default async function AdminCourseOfferingCreatePage({ searchParams }: AdminCourseOfferingCreatePageProps) {
-  const { academic_period_id: academicPeriodIdParam } = await searchParams;
+export default function AdminCourseOfferingCreatePage() {
+  const searchParams = useSearchParams();
+  const academicPeriodIdParam = searchParams.get("academic_period_id");
   const academicPeriodId = Number(academicPeriodIdParam);
 
-  if (Number.isInteger(academicPeriodId) && academicPeriodId > 0) {
-    redirect(`/admin/academic-periods/${academicPeriodId}/offerings/new`);
-  }
+  const targetHref = useMemo(() => {
+    if (Number.isInteger(academicPeriodId) && academicPeriodId > 0) {
+      return `/admin/academic-periods/${academicPeriodId}/offerings/new`;
+    }
 
-  redirect("/admin/academic-periods");
+    return "/admin/academic-periods";
+  }, [academicPeriodId]);
+
+  return <ClientRedirect href={targetHref} />;
 }

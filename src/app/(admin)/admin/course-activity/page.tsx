@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { ClientRedirect } from "@/components/shared/client-redirect";
 
 export default function AdminCourseActivityPage() {
-  redirect("/admin/course-activity/forum");
+  return <ClientRedirect href="/admin/course-activity/forum" />;
 }

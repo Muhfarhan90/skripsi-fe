@@ -1,27 +1,25 @@
-import { redirect } from "next/navigation";
-import { getServerCurrentUser } from "@/features/auth/lib/server";
-import { getRoleBoundary } from "@/features/auth/lib/roles";
-import { AdminLayoutClient } from "@/features/admin/components/admin-layout-client";
+"use client";
 
-export default async function AdminLayout({
+import { RoleGuard } from "@/components/shared/role-guard";
+import { AdminLayoutClient } from "@/features/admin/components/admin-layout-client";
+import { useAuthStore } from "@/features/auth/store/auth-store";
+
+export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const user = await getServerCurrentUser();
-  const boundary = getRoleBoundary(user?.role_id, user?.role_name);
-
-  if (!user) {
-    redirect("/login?redirect=/admin");
-  }
-
-  if (boundary !== "admin") {
-    redirect(boundary === "student" ? "/student" : "/login");
-  }
+  const user = useAuthStore((state) => state.user);
 
   return (
-    <AdminLayoutClient fullName={user.fullname} email={user.email} roleName={user.role_name}>
-      {children}
-    </AdminLayoutClient>
+    <RoleGuard allowed={["admin"]}>
+      <AdminLayoutClient
+        fullName={user?.fullname ?? ""}
+        email={user?.email ?? ""}
+        roleName={user?.role_name ?? null}
+      >
+        {children}
+      </AdminLayoutClient>
+    </RoleGuard>
   );
 }
