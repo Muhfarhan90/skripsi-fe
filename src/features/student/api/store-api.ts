@@ -1,4 +1,5 @@
-import { ApiError } from "@/lib/api/client";
+import { ApiError, resolveRequestUrl } from "@/lib/api/client";
+import { getStoredAuthToken } from "@/features/auth/lib/token-storage";
 import type { WebsiteFaq, WebsiteFaqCategory, WebsitePage, WebsiteSetting } from "@/types/website";
 import type {
   StoreAssignment,
@@ -39,12 +40,14 @@ async function studentRequestEnvelope<T>(
   init: RequestInit,
 ): Promise<StudentApiEnvelope<T>> {
   const isFormData = typeof FormData !== "undefined" && init.body instanceof FormData;
+  const token = getStoredAuthToken();
 
-  const response = await fetch(endpoint, {
+  const response = await fetch(resolveRequestUrl(endpoint), {
     ...init,
     headers: {
       Accept: "application/json",
       ...(init.body && !isFormData ? { "Content-Type": "application/json" } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(init.headers || {}),
     },
   });

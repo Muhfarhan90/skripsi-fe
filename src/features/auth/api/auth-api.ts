@@ -1,5 +1,9 @@
 import { apiMessageOnly, apiRequest } from "@/lib/api/client";
 import { getApiBaseUrl } from "@/lib/env";
+import {
+  clearStoredAuthToken,
+  setStoredAuthToken,
+} from "@/features/auth/lib/token-storage";
 import type {
   AuthUser,
   ForgotPasswordRequest,
@@ -40,6 +44,9 @@ export function login(payload: LoginRequest) {
   return apiRequest<LoginResponse>("/api/auth/login", {
     method: "POST",
     body: JSON.stringify(payload),
+  }).then((response) => {
+    setStoredAuthToken(response.token);
+    return response;
   });
 }
 
@@ -54,6 +61,8 @@ export function register(payload: Omit<RegisterRequest, "role_id">) {
 export function logout() {
   return apiMessageOnly("/api/auth/logout", {
     method: "POST",
+  }).finally(() => {
+    clearStoredAuthToken();
   });
 }
 

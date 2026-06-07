@@ -1,3 +1,5 @@
+import { createAuthorizedHtmlObjectUrl } from "@/lib/api/browser-files";
+
 const CERTIFICATE_PRINT_FINISHED = "student-certificate-print-finished";
 
 export function printCertificatePreview(previewUrl: string): Promise<void> {
@@ -8,11 +10,15 @@ export function printCertificatePreview(previewUrl: string): Promise<void> {
     }
 
     const iframe = document.createElement("iframe");
+    let objectUrl: string | null = null;
     let settled = false;
 
     const cleanup = () => {
       window.removeEventListener("message", handleMessage);
       window.clearTimeout(fallbackTimer);
+      if (objectUrl) {
+        window.URL.revokeObjectURL(objectUrl);
+      }
       iframe.remove();
     };
 
@@ -60,13 +66,16 @@ export function printCertificatePreview(previewUrl: string): Promise<void> {
     iframe.style.border = "0";
     iframe.style.opacity = "0";
     iframe.style.pointerEvents = "none";
-    iframe.src = previewUrl;
-    iframe.onload = () => undefined;
-    iframe.onerror = () => {
-      fail("Halaman sertifikat tidak bisa dimuat.");
-    };
-
     window.addEventListener("message", handleMessage);
     document.body.appendChild(iframe);
+
+    void createAuthorizedHtmlObjectUrl(previewUrl)
+      .then((nextObjectUrl) => {
+        objectUrl = nextObjectUrl;
+        iframe.src = nextObjectUrl;
+      })
+      .catch(() => {
+        fail("Halaman sertifikat tidak bisa dimuat.");
+      });
   });
 }

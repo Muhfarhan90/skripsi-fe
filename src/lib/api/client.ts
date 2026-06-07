@@ -1,5 +1,6 @@
 import type { ApiEnvelope, ApiPaginationMeta } from "@/types/auth";
 import { getApiBaseUrl } from "@/lib/env";
+import { getStoredAuthToken } from "@/features/auth/lib/token-storage";
 
 export class ApiError extends Error {
   status: number;
@@ -17,16 +18,40 @@ export class ApiError extends Error {
   }
 }
 
-function resolveRequestUrl(endpoint: string): string {
+function normalizeApiPath(endpoint: string): string {
+  const path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+
+  if (!path.startsWith("/api/")) {
+    return path;
+  }
+
+  const relativePath = path.slice(5);
+
+  if (relativePath === "auth/me") {
+    return "/user";
+  }
+
+  if (relativePath.startsWith("auth/")) {
+    return `/${relativePath}`;
+  }
+
+  if (relativePath.startsWith("public/")) {
+    return `/${relativePath.slice("public/".length)}`;
+  }
+
+  if (relativePath.startsWith("student/")) {
+    return `/${relativePath.slice("student/".length)}`;
+  }
+
+  return `/${relativePath}`;
+}
+
+export function resolveRequestUrl(endpoint: string): string {
   if (endpoint.startsWith("http://") || endpoint.startsWith("https://")) {
     return endpoint;
   }
 
-  if (endpoint.startsWith("/api/")) {
-    return endpoint;
-  }
-
-  return `${getApiBaseUrl()}${endpoint}`;
+  return `${getApiBaseUrl()}${normalizeApiPath(endpoint)}`;
 }
 
 interface ApiRequestOptions extends RequestInit {
@@ -44,10 +69,11 @@ function buildRequestHeaders(
   body: BodyInit | null | undefined,
 ): Headers {
   const requestHeaders = new Headers(headers);
+  const resolvedToken = token === undefined ? getStoredAuthToken() : token;
   requestHeaders.set("Accept", "application/json");
 
-  if (token) {
-    requestHeaders.set("Authorization", `Bearer ${token}`);
+  if (resolvedToken) {
+    requestHeaders.set("Authorization", `Bearer ${resolvedToken}`);
   }
 
   const hasBody = body !== undefined && body !== null;

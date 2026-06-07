@@ -10,6 +10,10 @@ import { ApiError } from "@/lib/api/client";
 import { subscribeToForegroundMessages } from "@/lib/firebase";
 import { notificationQueryKeys } from "@/features/notifications/api/notification-api";
 import { useAuthStore } from "@/features/auth/store/auth-store";
+import {
+  clearStoredAuthToken,
+  hasStoredAuthToken,
+} from "@/features/auth/lib/token-storage";
 
 function invalidateNotificationQueries(queryClient: ReturnType<typeof useQueryClient>) {
   void queryClient.invalidateQueries({ queryKey: notificationQueryKeys.all });
@@ -18,6 +22,7 @@ function invalidateNotificationQueries(queryClient: ReturnType<typeof useQueryCl
 
 export function AuthBootstrap() {
   const queryClient = useQueryClient();
+  const hasToken = hasStoredAuthToken();
   const user = useAuthStore((state) => state.user);
   const userId = user?.id ?? null;
   const sessionChecked = useAuthStore((state) => state.sessionChecked);
@@ -29,7 +34,7 @@ export function AuthBootstrap() {
   const currentUserQuery = useQuery({
     queryKey: ["auth", "me"],
     queryFn: getCurrentUser,
-    enabled: !sessionChecked,
+    enabled: !sessionChecked && hasToken,
     retry: 2,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 4000),
     staleTime: 60_000,
@@ -37,6 +42,14 @@ export function AuthBootstrap() {
   const isUnauthorized =
     currentUserQuery.error instanceof ApiError &&
     (currentUserQuery.error.status === 401 || currentUserQuery.error.status === 403);
+
+  useEffect(() => {
+    if (sessionChecked || hasToken) {
+      return;
+    }
+
+    clearAuth();
+  }, [clearAuth, hasToken, sessionChecked]);
 
   useEffect(() => {
     if (currentUserQuery.data) {
@@ -47,15 +60,17 @@ export function AuthBootstrap() {
   useEffect(() => {
     // Clear auth state only when token is actually unauthorized.
     if (isUnauthorized) {
+      clearStoredAuthToken();
       clearAuth();
     }
   }, [clearAuth, isUnauthorized]);
 
   useEffect(() => {
     if (sessionChecked) return;
-    if (!currentUserQuery.isSuccess && !isUnauthorized) return;
-    setSessionChecked(true);
-  }, [currentUserQuery.isSuccess, isUnauthorized, sessionChecked, setSessionChecked]);
+    if (!hasToken || currentUserQuery.isSuccess || isUnauthorized) {
+      setSessionChecked(true);
+    }
+  }, [currentUserQuery.isSuccess, hasToken, isUnauthorized, sessionChecked, setSessionChecked]);
 
   useEffect(() => {
     if (!sessionChecked || !userId) {

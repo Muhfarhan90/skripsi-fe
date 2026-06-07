@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { AdminPagination } from "@/features/admin/components/admin-pagination";
 import { StatusBadge } from "@/features/admin/components/status-badge";
+import { downloadAuthorizedFile } from "@/lib/api/browser-files";
 import {
   createEmptyAdminPaginationMeta,
   listAdminOrders,
@@ -72,11 +73,13 @@ export default function AdminOrdersPage() {
             </div>
 
             <Button
-              render={<a href={exportHref} />}
               type="button"
               variant="outline"
               size="sm"
               className="w-full sm:w-auto"
+              onClick={() => {
+                void downloadAuthorizedFile(exportHref, "orders.csv");
+              }}
             >
               <Download className="size-4" />
               Export CSV

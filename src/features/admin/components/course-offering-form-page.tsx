@@ -64,6 +64,7 @@ import { StatusBadge } from "@/features/admin/components/status-badge";
 import { useUnsavedChangesGuard } from "@/features/admin/hooks/use-unsaved-changes-guard";
 import { formatCurrency, formatDate, formatDateTime, toStatusLabel } from "@/features/admin/lib/offering-utils";
 import { ApiError } from "@/lib/api/client";
+import { downloadAuthorizedFile } from "@/lib/api/browser-files";
 
 type CourseOfferingFormMode = "create" | "edit";
 type CourseOfferingTab = "overview" | "curriculum" | "students" | "forum" | "assignment-review" | "certificates";
@@ -1750,7 +1751,17 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
                             <TableCell>
                               <div className="flex flex-wrap gap-2">
                                 {downloadHref ? (
-                                  <Button render={<a href={downloadHref} />} type="button" variant="outline" size="sm">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      void downloadAuthorizedFile(
+                                        downloadHref,
+                                        `certificate-${enrollment.certificate?.certificate_number ?? enrollment.id}.pdf`,
+                                      );
+                                    }}
+                                  >
                                     <Download className="size-4" />
                                     <span>Download</span>
                                   </Button>

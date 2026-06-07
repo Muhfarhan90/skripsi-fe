@@ -17,6 +17,7 @@ import {
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { AdminPagination } from "@/features/admin/components/admin-pagination";
 import { StatusBadge } from "@/features/admin/components/status-badge";
+import { downloadAuthorizedFile } from "@/lib/api/browser-files";
 import { ApiError } from "@/lib/api/client";
 import { resolvePublicFileUrl } from "@/lib/file-url";
 import {
@@ -138,11 +139,13 @@ export default function AdminTransactionsPage() {
             </div>
 
             <Button
-              render={<a href={exportHref} />}
               type="button"
               variant="outline"
               size="sm"
               className="w-full sm:w-auto"
+              onClick={() => {
+                void downloadAuthorizedFile(exportHref, "transactions.csv");
+              }}
             >
               <Download className="size-4" />
               Export CSV

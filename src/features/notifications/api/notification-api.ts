@@ -1,4 +1,5 @@
-import { ApiError } from "@/lib/api/client";
+import { ApiError, resolveRequestUrl } from "@/lib/api/client";
+import { getStoredAuthToken } from "@/features/auth/lib/token-storage";
 import type { ApiEnvelope } from "@/types/auth";
 import type {
   MarkAllNotificationsReadResponse,
@@ -21,12 +22,14 @@ async function notificationRequestEnvelope<T>(
   endpoint: string,
   init: RequestInit,
 ): Promise<NotificationApiEnvelope<T>> {
-  const response = await fetch(endpoint, {
+  const token = getStoredAuthToken();
+  const response = await fetch(resolveRequestUrl(endpoint), {
     ...init,
     cache: "no-store",
     headers: {
       Accept: "application/json",
       ...(init.body ? { "Content-Type": "application/json" } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(init.headers || {}),
     },
   });

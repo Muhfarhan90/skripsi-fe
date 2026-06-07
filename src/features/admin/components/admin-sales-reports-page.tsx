@@ -33,6 +33,7 @@ import {
 } from "@/features/admin/api/master-api";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { OverviewMetricCard } from "@/features/admin/components/overview-metric-card";
+import { downloadAuthorizedFile } from "@/lib/api/browser-files";
 import { cn } from "@/lib/utils/cn";
 
 interface ReportFilterState {
@@ -218,11 +219,13 @@ export function AdminSalesReportsPage() {
             </div>
 
             <Button
-              render={<a href={exportHref} />}
               type="button"
               variant="outline"
               size="sm"
               className="w-full sm:w-auto"
+              onClick={() => {
+                void downloadAuthorizedFile(exportHref, "sales-report.csv");
+              }}
             >
               <Download className="size-4" />
               Export CSV

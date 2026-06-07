@@ -7,6 +7,7 @@ import {
   deactivateCurrentDevice,
   logout,
 } from "@/features/auth/api/auth-api";
+import { clearStoredAuthToken } from "@/features/auth/lib/token-storage";
 import { getStoredBrowserDeviceId } from "@/features/auth/lib/device";
 import { useAuthStore } from "@/features/auth/store/auth-store";
 import { revokeFirebaseMessagingToken } from "@/lib/firebase";
@@ -32,11 +33,13 @@ export function useLogoutAction(options?: UseLogoutActionOptions) {
       return logout();
     },
     onSuccess: () => {
+      clearStoredAuthToken();
       clearAuth();
       toast.success("Logout berhasil");
       router.replace(redirectTo);
     },
     onError: () => {
+      clearStoredAuthToken();
       clearAuth();
       router.replace(redirectTo);
     },
