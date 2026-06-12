@@ -10,29 +10,20 @@ import {
   LayoutDashboard,
   PlayCircle,
   Search,
-  Star,
   TrendingUp,
 } from "lucide-react";
 import { useAuthStore } from "@/features/auth/store/auth-store";
 import { getDefaultPathByRole, isStudentRole } from "@/features/auth/lib/roles";
 import { getPublicWebsiteSettings, getPublishedCourses } from "@/features/student/api/store-api";
-import { formatDiscountBadge, hasValidDiscount } from "@/features/student/lib/pricing";
+import { buildStudentCheckoutLoginRedirect, buildStudentCheckoutPath } from "@/features/student/lib/checkout";
 import { HeroMediaSlider, type HeroMediaSlide } from "@/features/website/components/hero-media-slider";
+import { CourseCatalogCard } from "@/features/website/components/course-catalog-card";
 import { SiteFooter } from "@/features/website/components/site-footer";
 import { PublicSiteHeader } from "@/features/website/components/public-site-header";
-import { getCourseInstructorHref, getPublicInstructorInitials } from "@/features/website/lib/public-instructors";
 import {
   createDefaultWebsiteSetting,
   getWebsiteFeatureIconMeta,
 } from "@/features/website/lib/website-settings";
-
-function formatCurrency(amount: number | null | undefined): string {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    maximumFractionDigits: 0,
-  }).format(Number(amount ?? 0));
-}
 
 function buildHeroSlides(
   websiteSettings: ReturnType<typeof createDefaultWebsiteSetting>,
@@ -248,92 +239,15 @@ export default function RootPage() {
 
               <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
                 {previewCourses.map((course) => {
-                  const hasDiscount = hasValidDiscount(course.price, course.discount_price);
-                  const activePrice = hasDiscount ? Number(course.discount_price ?? 0) : Number(course.price ?? 0);
-                  const rating = Number(course.reviews_avg_rating ?? 0);
-                  const reviewCount = course.reviews_count ?? 0;
-                  const instructorHref = getCourseInstructorHref(course);
-
+                  const canCheckout = isStudentRole(user?.role_name, user?.role_id);
                   return (
-                    <article
+                    <CourseCatalogCard
                       key={course.id}
-                      className="group overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--card)] shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
-                    >
-                      <div className="relative aspect-[16/10] bg-gradient-to-br from-[var(--primary)]/12 to-[var(--secondary)]/20">
-                        {course.thumbnail ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={course.thumbnail} alt={course.title} className="h-full w-full object-cover" />
-                        ) : (
-                          <div className="flex h-full items-center justify-center">
-                            <BookOpen className="size-12 text-[var(--primary)]/30" />
-                          </div>
-                        )}
-                        {hasDiscount ? (
-                          <span className="absolute right-3 top-3 rounded-full bg-rose-500 px-3 py-1 text-[10px] font-black text-white shadow">
-                            {formatDiscountBadge(course.price, course.discount_price)}
-                          </span>
-                        ) : null}
-                        {course.instructor_name ? (
-                          <span className="absolute -bottom-6 right-4 inline-flex size-12 items-center justify-center rounded-full border-4 border-white bg-[var(--primary)] text-xs font-black text-white shadow-lg">
-                            {getPublicInstructorInitials(course.instructor_name)}
-                          </span>
-                        ) : null}
-                      </div>
-
-                      <div className="p-5 pt-8">
-                        {course.category_name ? (
-                          <p className="text-[10px] font-black uppercase tracking-[0.12em] text-[var(--primary)]">
-                            {course.category_name}
-                          </p>
-                        ) : null}
-                        <h3 className="mt-2 line-clamp-2 text-base font-black leading-snug transition group-hover:text-[var(--primary)]">
-                          {course.title}
-                        </h3>
-                        {course.instructor_name ? (
-                          instructorHref ? (
-                            <Link
-                              href={instructorHref}
-                              className="mt-2 inline-flex text-xs font-semibold text-[var(--muted-foreground)] transition hover:text-[var(--primary)]"
-                            >
-                              {course.instructor_name}
-                            </Link>
-                          ) : (
-                            <p className="mt-2 text-xs font-semibold text-[var(--muted-foreground)]">{course.instructor_name}</p>
-                          )
-                        ) : null}
-                        {reviewCount > 0 ? (
-                          <div className="mt-3 flex items-center gap-1.5">
-                            <span className="text-xs font-black text-amber-500">{rating.toFixed(1)}</span>
-                            <div className="flex">
-                              {[1, 2, 3, 4, 5].map((s) => (
-                                <Star
-                                  key={s}
-                                  className={`size-3 ${s <= Math.round(rating) ? "fill-amber-400 text-amber-400" : "fill-[var(--border)] text-[var(--border)]"}`}
-                                />
-                              ))}
-                            </div>
-                            <span className="text-[11px] text-[var(--muted-foreground)]">({reviewCount})</span>
-                          </div>
-                        ) : null}
-                        {course.description ? (
-                          <p className="mt-3 line-clamp-2 text-xs leading-5 text-[var(--muted-foreground)]">{course.description}</p>
-                        ) : null}
-                        <div className="mt-5 flex items-center justify-between gap-3">
-                          <div>
-                            {hasDiscount ? (
-                              <p className="text-[11px] text-[var(--muted-foreground)] line-through">{formatCurrency(course.price)}</p>
-                            ) : null}
-                            <p className="text-base font-black text-[var(--secondary)]">{formatCurrency(activePrice)}</p>
-                          </div>
-                          <Link
-                            href={`/courses/${course.slug}`}
-                            className="inline-flex h-9 items-center rounded-full bg-[var(--primary)] px-4 text-xs font-black text-white transition hover:opacity-90 active:scale-95"
-                          >
-                            Detail
-                          </Link>
-                        </div>
-                      </div>
-                    </article>
+                      actionHref={canCheckout ? buildStudentCheckoutPath(course.slug) : !isLoggedIn ? buildStudentCheckoutLoginRedirect(course.slug) : undefined}
+                      actionLabel={canCheckout ? "Checkout" : !isLoggedIn ? "Masuk" : undefined}
+                      course={course}
+                      detailHref={`/courses/${course.slug}`}
+                    />
                   );
                 })}
               </div>

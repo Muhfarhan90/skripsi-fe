@@ -17,6 +17,7 @@ export interface StoreCourse {
   status: string;
   requirements: string | null;
   outcomes: string | null;
+  sections?: StoreCurriculumSection[];
   created_at: string;
 }
 

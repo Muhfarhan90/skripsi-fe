@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -8,9 +8,13 @@ import {
   ArrowLeft,
   BookOpen,
   CheckCircle2,
+  ChevronDown,
   CreditCard,
-  GraduationCap,
+  FileText,
+  HelpCircle,
+  Lock,
   MessageSquareText,
+  Play,
   Star,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -26,6 +30,7 @@ import { getCourseInstructorHref } from "@/features/website/lib/public-instructo
 import { createDefaultWebsiteSetting } from "@/features/website/lib/website-settings";
 import { isStudentRole } from "@/features/auth/lib/roles";
 import { useAuthStore } from "@/features/auth/store/auth-store";
+import type { StoreCourse } from "@/types/store";
 
 function formatCurrency(amount: number | null | undefined): string {
   const value = Number(amount ?? 0);
@@ -47,6 +52,8 @@ function formatReviewAverage(value: number | null | undefined): string {
   const numeric = Number(value ?? 0);
   return numeric > 0 ? numeric.toFixed(1) : "0.0";
 }
+
+type CurriculumSection = NonNullable<StoreCourse["sections"]>[number];
 
 export default function CourseDetailPage() {
   const router = useRouter();
@@ -126,7 +133,7 @@ export default function CourseDetailPage() {
   const activePrice = hasDiscount ? Number(course.discount_price ?? 0) : Number(course.price ?? 0);
   const requirements = parseTextItems(course.requirements);
   const outcomes = parseTextItems(course.outcomes);
-  const reviewCount = course.reviews_count ?? 0;
+  const reviewCount = Number(course.reviews_count ?? 0);
   const buyLabel = user ? "Beli sekarang" : "Masuk untuk beli";
   const instructorHref = getCourseInstructorHref(course);
 
@@ -134,69 +141,53 @@ export default function CourseDetailPage() {
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
       <PublicSiteHeader settings={websiteSettings} courses={[course]} />
 
-      <main className="pb-24 md:pb-12">
-        <section className="border-b border-[var(--border)] bg-[var(--card)]">
-          <div className="mx-auto grid max-w-6xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[1fr_23rem] lg:py-10">
+      <main className="pb-24 md:pb-16">
+        <section className="relative overflow-hidden border-b border-[var(--border)]/70 bg-[radial-gradient(circle_at_top_right,rgba(15,122,90,0.06),transparent_45%),radial-gradient(circle_at_bottom_left,rgba(217,175,0,0.04),transparent_35%)] bg-[var(--card)] py-6 lg:py-10">
+          <div className="mx-auto grid max-w-6xl gap-8 px-4 sm:px-6 lg:grid-cols-[1fr_23rem]">
             <div className="space-y-6">
               <Link
                 href={catalogHref}
-                className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--primary)] transition hover:opacity-80"
+                className="inline-flex items-center gap-2 rounded-full border border-[var(--border)]/60 bg-white/70 px-4 py-2 text-xs font-bold text-[var(--primary)] shadow-sm transition hover:-translate-y-0.5 hover:bg-white active:scale-95"
               >
-                <ArrowLeft className="size-4" />
+                <ArrowLeft className="size-3.5" />
                 Kembali ke katalog
               </Link>
 
               <div className="space-y-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-md bg-[var(--surface-soft)] px-2.5 py-1 text-[11px] font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <span className="rounded-full bg-[var(--primary)]/10 px-3.5 py-1 text-[10px] font-black uppercase tracking-wider text-[var(--primary)]">
                     {course.status}
                   </span>
                   {course.category_name ? (
-                    <span className="rounded-md border border-[var(--border)] px-2.5 py-1 text-[11px] font-semibold text-[var(--foreground)]">
+                    <span className="rounded-full border border-[var(--border)] bg-white/70 px-3.5 py-1 text-[10px] font-black uppercase tracking-wider text-[var(--foreground)]">
                       {course.category_name}
                     </span>
                   ) : null}
                 </div>
 
-                <div className="max-w-3xl space-y-3">
-                  <h1 className="text-3xl font-semibold leading-tight tracking-normal text-[var(--foreground)] sm:text-4xl">
+                <div className="max-w-3xl space-y-4">
+                  <h1 className="text-3xl font-black leading-[1.15] tracking-tight text-[var(--foreground)] sm:text-4xl md:text-5xl">
                     {course.title}
                   </h1>
-                  <p className="max-w-2xl text-sm leading-7 text-[var(--muted-foreground)] sm:text-base">
+                  <p className="max-w-2xl text-sm leading-relaxed text-[var(--muted-foreground)] sm:text-base">
                     {course.description || "Deskripsi course belum tersedia."}
                   </p>
                 </div>
 
-                <div className="flex flex-wrap gap-3 text-sm text-[var(--muted-foreground)]">
-                  {course.instructor_name ? (
-                    instructorHref ? (
-                      <Link
-                        href={instructorHref}
-                        className="inline-flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 transition hover:border-[var(--primary)]/30 hover:text-[var(--primary)]"
-                      >
-                        <GraduationCap className="size-4 text-[var(--primary)]" />
-                        {course.instructor_name}
-                      </Link>
-                    ) : (
-                      <span className="inline-flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2">
-                        <GraduationCap className="size-4 text-[var(--primary)]" />
-                        {course.instructor_name}
-                      </span>
-                    )
-                  ) : null}
-                  <span className="inline-flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2">
-                    <Star className="size-4 text-[var(--secondary)]" />
-                    {formatReviewAverage(course.reviews_avg_rating)} rating
+                <div className="flex flex-wrap gap-2.5 text-xs font-bold text-[var(--muted-foreground)]">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)]/75 bg-white/60 px-3.5 py-2">
+                    <Star className="size-4 fill-amber-400 text-amber-400" />
+                    <span className="text-[var(--foreground)]">{formatReviewAverage(course.reviews_avg_rating)} rating</span>
                   </span>
-                  <span className="inline-flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)]/75 bg-white/60 px-3.5 py-2">
                     <MessageSquareText className="size-4 text-[var(--primary)]" />
-                    {reviewCount} review
+                    <span>{reviewCount} review</span>
                   </span>
                 </div>
               </div>
             </div>
 
-            <aside className="hidden lg:block">
+            <aside className="relative z-10 hidden lg:block">
               <PurchasePanel
                 thumbnail={course.thumbnail}
                 title={course.title}
@@ -215,9 +206,9 @@ export default function CourseDetailPage() {
             <div className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--card)] lg:hidden">
               {course.thumbnail ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={course.thumbnail} alt={course.title} className="aspect-[16/9] w-full object-cover" />
+                <img src={course.thumbnail} alt={course.title} className="aspect-[16/8] max-h-64 w-full object-cover" />
               ) : (
-                <div className="flex aspect-[16/9] items-center justify-center bg-[var(--surface-soft)] text-[var(--muted-foreground)]">
+                <div className="flex aspect-[16/8] max-h-64 items-center justify-center bg-[var(--surface-soft)] text-[var(--muted-foreground)]">
                   <BookOpen className="size-12" />
                 </div>
               )}
@@ -241,6 +232,10 @@ export default function CourseDetailPage() {
               )}
             </ContentSection>
 
+            <ContentSection title="Materi yang akan dipelajari">
+              <CurriculumAccordion sections={course.sections} />
+            </ContentSection>
+
             <ContentSection title="Persiapan sebelum belajar">
               {requirements.length > 0 ? (
                 <div className="space-y-3">
@@ -254,24 +249,42 @@ export default function CourseDetailPage() {
                 </p>
               )}
             </ContentSection>
+
+            <div className="space-y-6 lg:hidden">
+              {course.instructor_name ? (
+                <InstructorDetailCard
+                  instructorName={course.instructor_name}
+                  instructorBio={course.instructor_bio}
+                  instructorHref={instructorHref}
+                />
+              ) : null}
+              <ReviewSummaryCard
+                reviewAverage={course.reviews_avg_rating}
+                reviewCount={reviewCount}
+              />
+            </div>
           </div>
 
           <aside className="hidden lg:block">
-            <div className="sticky top-24">
-              <ContentSection title="Informasi kelas">
-                <dl className="space-y-3 text-sm">
-                  <InfoRow label="Status" value={course.status} />
-                  <InfoRow label="Kategori" value={course.category_name || "-"} />
-                  <InfoRow label="Instructor" value={course.instructor_name || "-"} />
-                  <InfoRow label="Review" value={`${reviewCount} review`} />
-                </dl>
-              </ContentSection>
+            <div className="sticky top-24 space-y-6">
+              {course.instructor_name ? (
+                <InstructorDetailCard
+                  instructorName={course.instructor_name}
+                  instructorBio={course.instructor_bio}
+                  instructorHref={instructorHref}
+                />
+              ) : null}
+
+              <ReviewSummaryCard
+                reviewAverage={course.reviews_avg_rating}
+                reviewCount={reviewCount}
+              />
             </div>
           </aside>
         </section>
       </main>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--border)] bg-[var(--card)] p-3 shadow-[0_-10px_28px_rgba(15,23,42,0.08)] md:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--border)] bg-[var(--card)] px-3 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-10px_28px_rgba(15,23,42,0.08)] md:hidden">
         <div className="flex items-center gap-3">
           <div className="min-w-0 flex-1">
             {hasDiscount ? (
@@ -312,41 +325,43 @@ function PurchasePanel({
   onCheckout: () => void;
 }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--card)] shadow-sm">
-      {thumbnail ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={thumbnail} alt={title} className="aspect-[16/9] w-full object-cover" />
-      ) : (
-        <div className="flex aspect-[16/9] items-center justify-center bg-[var(--surface-soft)] text-[var(--muted-foreground)]">
-          <BookOpen className="size-12" />
-        </div>
-      )}
+    <div className="overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--card)] shadow-[0_20px_50px_rgba(15,23,42,0.08)]">
+      <div className="relative aspect-[16/9] overflow-hidden">
+        {thumbnail ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={thumbnail} alt={title} className="h-full w-full object-cover transition-transform duration-500 hover:scale-105" />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-[var(--surface-soft)] text-[var(--muted-foreground)]">
+            <BookOpen className="size-12" />
+          </div>
+        )}
+      </div>
 
-      <div className="space-y-4 p-5">
+      <div className="space-y-5 p-6">
         <div>
           {hasDiscount ? (
-            <p className="text-sm text-[var(--muted-foreground)] line-through">{formatCurrency(price)}</p>
+            <p className="mb-0.5 text-xs font-semibold text-[var(--muted-foreground)] line-through">{formatCurrency(price)}</p>
           ) : null}
-          <p className="text-2xl font-semibold text-[var(--primary)]">{formatCurrency(activePrice)}</p>
+          <p className="text-3xl font-black text-[var(--primary)]">{formatCurrency(activePrice)}</p>
         </div>
 
         <div className="grid gap-2">
           <button
             type="button"
             onClick={onCheckout}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[var(--primary)] px-4 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-70"
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-6 text-sm font-extrabold text-white shadow-lg shadow-emerald-950/10 transition hover:-translate-y-0.5 hover:shadow-xl active:scale-95 disabled:opacity-70"
           >
             <CreditCard className="size-4" />
             {checkoutLabel}
           </button>
         </div>
 
-        <div className="space-y-2 border-t border-[var(--border)] pt-4 text-xs text-[var(--muted-foreground)]">
-          <p className="flex items-center gap-2">
+        <div className="space-y-2.5 border-t border-[var(--border)]/65 pt-4 text-xs font-medium text-[var(--muted-foreground)]">
+          <p className="flex items-center gap-2.5">
             <CheckCircle2 className="size-4 text-[var(--primary)]" />
             Akses materi setelah pembayaran berhasil.
           </p>
-          <p className="flex items-center gap-2">
+          <p className="flex items-center gap-2.5">
             <CheckCircle2 className="size-4 text-[var(--primary)]" />
             Sertifikat tersedia jika syarat course selesai.
           </p>
@@ -356,10 +371,181 @@ function PurchasePanel({
   );
 }
 
+function CurriculumAccordion({ sections = [] }: { sections?: CurriculumSection[] }) {
+  const [expandedSections, setExpandedSections] = useState<Record<number, boolean>>(() => {
+    if (sections.length > 0) {
+      return { [sections[0].id]: true };
+    }
+
+    return {};
+  });
+
+  const toggleSection = (sectionId: number) => {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [sectionId]: !prev[sectionId],
+    }));
+  };
+
+  if (sections.length === 0) {
+    return (
+      <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-6 text-center text-sm text-[var(--muted-foreground)]">
+        Kurikulum belum tersedia untuk course ini.
+      </div>
+    );
+  }
+
+  const totalLessons = sections.reduce((acc, section) => acc + (section.lessons?.length || 0), 0);
+  const totalQuizzes = sections.reduce((acc, section) => acc + (section.quizzes?.length || 0), 0);
+  const totalAssignments = sections.reduce((acc, section) => acc + (section.assignments?.length || 0), 0);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)]/45 pb-3 text-xs font-semibold text-[var(--muted-foreground)]">
+        <div className="flex flex-wrap gap-x-4 gap-y-1">
+          <span>{sections.length} Section</span>
+          <span>|</span>
+          <span>{totalLessons} Lesson</span>
+          {totalQuizzes > 0 ? (
+            <>
+              <span>|</span>
+              <span>{totalQuizzes} Kuis</span>
+            </>
+          ) : null}
+          {totalAssignments > 0 ? (
+            <>
+              <span>|</span>
+              <span>{totalAssignments} Tugas</span>
+            </>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="divide-y divide-[var(--border)]/45 overflow-hidden rounded-2xl border border-[var(--border)]/70 bg-[var(--card)] shadow-sm">
+        {sections.map((section, idx) => {
+          const isExpanded = expandedSections[section.id];
+          const itemsCount =
+            (section.lessons?.length || 0) +
+            (section.quizzes?.length || 0) +
+            (section.assignments?.length || 0);
+
+          return (
+            <div key={section.id} className="group/section">
+              <button
+                type="button"
+                onClick={() => toggleSection(section.id)}
+                className="flex w-full items-center justify-between bg-[var(--surface-soft)]/45 px-5 py-4 text-left transition hover:bg-[var(--surface-soft)]/80"
+              >
+                <div className="min-w-0 pr-4">
+                  <span className="mb-1 block text-[10px] font-extrabold uppercase tracking-wider text-[var(--primary)]">
+                    Bagian {idx + 1}
+                  </span>
+                  <span className="block text-sm font-extrabold leading-snug text-[var(--foreground)] sm:text-base">
+                    {section.title}
+                  </span>
+                </div>
+                <div className="flex shrink-0 items-center gap-3">
+                  <span className="hidden text-xs font-semibold text-[var(--muted-foreground)] sm:inline">
+                    {itemsCount} materi
+                  </span>
+                  <span
+                    className={`inline-flex size-7 items-center justify-center rounded-full border border-[var(--border)]/65 bg-white text-[var(--foreground)] shadow-sm transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`}
+                  >
+                    <ChevronDown className="size-4" />
+                  </span>
+                </div>
+              </button>
+
+              {isExpanded ? (
+                <div className="divide-y divide-[var(--border)]/30 bg-white/50">
+                  {section.lessons?.map((lesson) => (
+                    <div key={lesson.id} className="flex flex-col gap-3 px-4 py-3.5 text-sm sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                      <div className="flex min-w-0 items-start gap-3">
+                        <Play className="mt-0.5 size-4 shrink-0 fill-[var(--primary)]/10 text-[var(--primary)]" />
+                        <div className="min-w-0">
+                          <span className="block font-semibold leading-snug text-[var(--foreground)] sm:truncate">
+                            {lesson.title}
+                          </span>
+                          {lesson.description ? (
+                            <span className="mt-0.5 block max-w-md text-xs leading-5 text-[var(--muted-foreground)] sm:truncate">
+                              {lesson.description}
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-3 pl-7 sm:pl-0">
+                        {lesson.is_preview ? (
+                          <span className="rounded-full bg-[var(--primary)]/10 px-2.5 py-0.5 text-[10px] font-black text-[var(--primary)]">
+                            Preview
+                          </span>
+                        ) : (
+                          <Lock className="size-3.5 text-[var(--muted-foreground)]/60" />
+                        )}
+                        {lesson.duration ? (
+                          <span className="text-xs font-medium text-[var(--muted-foreground)]">{lesson.duration} mnt</span>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))}
+
+                  {section.quizzes?.map((quiz) => (
+                    <div key={quiz.id} className="flex flex-col gap-3 bg-amber-500/[0.02] px-4 py-3.5 text-sm sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                      <div className="flex min-w-0 items-start gap-3">
+                        <HelpCircle className="mt-0.5 size-4 shrink-0 text-amber-500" />
+                        <div className="min-w-0">
+                          <span className="block font-semibold leading-snug text-[var(--foreground)] sm:truncate">
+                            {quiz.title} (Kuis)
+                          </span>
+                          {quiz.passing_score ? (
+                            <span className="mt-0.5 block text-xs text-[var(--muted-foreground)]">
+                              Passing score: {quiz.passing_score}%
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2 pl-7 sm:pl-0">
+                        <Lock className="size-3.5 text-[var(--muted-foreground)]/60" />
+                        {quiz.duration ? (
+                          <span className="text-xs font-medium text-[var(--muted-foreground)]">{quiz.duration} mnt</span>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))}
+
+                  {section.assignments?.map((assignment) => (
+                    <div key={assignment.id} className="flex flex-col gap-3 bg-rose-500/[0.02] px-4 py-3.5 text-sm sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                      <div className="flex min-w-0 items-start gap-3">
+                        <FileText className="mt-0.5 size-4 shrink-0 text-rose-500" />
+                        <div className="min-w-0">
+                          <span className="block font-semibold leading-snug text-[var(--foreground)] sm:truncate">
+                            {assignment.title} (Tugas Mandiri)
+                          </span>
+                          {assignment.is_required_for_certificate ? (
+                            <span className="mt-0.5 block text-xs font-medium text-rose-500">
+                              Wajib untuk sertifikat
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2 pl-7 sm:pl-0">
+                        <Lock className="size-3.5 text-[var(--muted-foreground)]/60" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function ContentSection({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm">
-      <h2 className="text-lg font-semibold text-[var(--foreground)]">{title}</h2>
+    <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm sm:p-6">
+      <h2 className="text-lg font-extrabold text-[var(--foreground)]">{title}</h2>
       <div className="mt-4">{children}</div>
     </section>
   );
@@ -367,18 +553,81 @@ function ContentSection({ title, children }: { title: string; children: ReactNod
 
 function InfoItem({ text }: { text: string }) {
   return (
-    <div className="flex gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3 text-sm text-[var(--foreground)]">
+    <div className="flex gap-3 rounded-xl border border-[var(--border)]/60 bg-[var(--surface-soft)] p-3.5 text-sm text-[var(--foreground)]">
       <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[var(--primary)]" />
       <span className="leading-6">{text}</span>
     </div>
   );
 }
 
-function InfoRow({ label, value }: { label: string; value: string }) {
+function InstructorDetailCard({
+  instructorName,
+  instructorBio,
+  instructorHref,
+}: {
+  instructorName: string;
+  instructorBio: string | null | undefined;
+  instructorHref: string | null;
+}) {
   return (
-    <div className="flex items-center justify-between gap-4">
-      <dt className="text-[var(--muted-foreground)]">{label}</dt>
-      <dd className="text-right font-medium text-[var(--foreground)]">{value}</dd>
-    </div>
+    <ContentSection title="Instruktur">
+      <div className="space-y-3">
+        {instructorHref ? (
+          <Link
+            href={instructorHref}
+            className="inline-flex text-base font-extrabold text-[var(--foreground)] transition hover:text-[var(--primary)]"
+          >
+            {instructorName}
+          </Link>
+        ) : (
+          <p className="text-base font-extrabold text-[var(--foreground)]">{instructorName}</p>
+        )}
+        <p className="text-sm leading-7 text-[var(--muted-foreground)]">
+          {instructorBio?.trim() || "Bio instruktur belum tersedia."}
+        </p>
+      </div>
+    </ContentSection>
+  );
+}
+
+function ReviewSummaryCard({
+  reviewAverage,
+  reviewCount,
+}: {
+  reviewAverage: number | null | undefined;
+  reviewCount: number;
+}) {
+  const averageLabel = formatReviewAverage(reviewAverage);
+  const hasReviews = reviewCount > 0;
+
+  return (
+    <ContentSection title="Review kelas">
+      {hasReviews ? (
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl font-black text-[var(--foreground)]">{averageLabel}</span>
+            <div className="flex items-center gap-1">
+              {[1, 2, 3, 4, 5].map((item) => (
+                <Star
+                  key={item}
+                  className={`size-4 ${item <= Math.round(Number(reviewAverage ?? 0)) ? "fill-amber-400 text-amber-400" : "text-[var(--border)]"}`}
+                />
+              ))}
+            </div>
+          </div>
+          <p className="text-sm font-semibold text-[var(--foreground)]">{reviewCount} review dari peserta</p>
+          <p className="text-sm leading-6 text-[var(--muted-foreground)]">
+            Penilaian ini berasal dari peserta yang sudah mengikuti course.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-[var(--foreground)]">Belum ada review</p>
+          <p className="text-sm leading-6 text-[var(--muted-foreground)]">
+            Review akan tampil setelah peserta memberikan penilaian untuk course ini.
+          </p>
+        </div>
+      )}
+    </ContentSection>
   );
 }

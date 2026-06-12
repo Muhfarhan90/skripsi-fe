@@ -55,7 +55,7 @@ export default function StudentCheckoutPage() {
       const paymentUrl = order.transactions.at(0)?.payment_url;
 
       if (paymentUrl) {
-        toast.success("Checkout berhasil dibuat. Mengarahkan ke pembayaran Midtrans.");
+        toast.success("Order berhasil dibuat. Mengarahkan ke halaman pembayaran.");
         window.location.assign(paymentUrl);
         return;
       }
@@ -98,7 +98,7 @@ export default function StudentCheckoutPage() {
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--primary)]">Checkout Course</p>
         <h1 className="mt-1 text-xl font-bold text-[var(--foreground)]">Buat Order Course</h1>
         <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-          Periksa ringkasan pesanan. Pembayaran akan diproses otomatis melalui Midtrans.
+          Periksa ringkasan pesanan sebelum melanjutkan pembayaran.
         </p>
       </header>
 
@@ -125,10 +125,9 @@ export default function StudentCheckoutPage() {
                 <CreditCard className="size-5" />
               </span>
               <div>
-                <p className="text-sm font-bold text-[var(--foreground)]">Pembayaran Gateway</p>
+                <p className="text-sm font-bold text-[var(--foreground)]">Pembayaran Online</p>
                 <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-                  Setelah order dibuat, kamu akan diarahkan ke halaman Midtrans untuk memilih dan menyelesaikan pembayaran.
-                  Status order akan berubah otomatis saat pembayaran berhasil.
+                  Lanjutkan ke halaman pembayaran untuk memilih metode yang tersedia dan menyelesaikan transaksi dengan aman.
                 </p>
               </div>
             </div>
@@ -137,10 +136,10 @@ export default function StudentCheckoutPage() {
           <div className="space-y-1.5">
             <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--foreground)]">
               <CreditCard className="size-3.5" />
-              Virtual Account
+              Instruksi Pembayaran
             </label>
             <p className="rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-sm text-[var(--muted-foreground)]">
-              Kode bayar/VA akan dibuat oleh Midtrans setelah tombol checkout ditekan.
+              Detail pembayaran akan tersedia setelah Anda melanjutkan proses checkout.
             </p>
           </div>
 
@@ -179,7 +178,7 @@ export default function StudentCheckoutPage() {
                   <span className="text-base font-bold text-[var(--primary)]">{formatCurrency(activePrice)}</span>
                 </div>
                 <p className="mt-1 text-[11px] text-[var(--muted-foreground)]">
-                  Total akhir bisa berubah jika voucher valid diterapkan.
+                  Total akhir mengikuti voucher yang valid.
                 </p>
               </div>
             </div>
@@ -210,7 +209,7 @@ export default function StudentCheckoutPage() {
           >
             {checkoutMutation.isPending
               ? "Memproses..."
-              : "Bayar dengan Midtrans"}
+              : "Lanjutkan Pembayaran"}
           </button>
 
           <Link

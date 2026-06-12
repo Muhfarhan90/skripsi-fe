@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { BookOpen, CreditCard, MessageSquareText, Search, Star } from "lucide-react";
+import { BookOpen, Search } from "lucide-react";
 import { toast } from "sonner";
 import {
   getPublicWebsiteSettings,
@@ -17,21 +17,12 @@ import {
   buildStudentCheckoutLoginRedirect,
   buildStudentCheckoutPath,
 } from "@/features/student/lib/checkout";
-import { formatDiscountBadge, hasValidDiscount } from "@/features/student/lib/pricing";
 import { isStudentRole } from "@/features/auth/lib/roles";
 import { useAuthStore } from "@/features/auth/store/auth-store";
+import { CourseCatalogCard } from "@/features/website/components/course-catalog-card";
 import { PublicSiteHeader } from "@/features/website/components/public-site-header";
 import { SiteFooter } from "@/features/website/components/site-footer";
-import { getCourseInstructorHref, getPublicInstructorInitials } from "@/features/website/lib/public-instructors";
 import { createDefaultWebsiteSetting } from "@/features/website/lib/website-settings";
-
-function formatCurrency(amount: number | null | undefined): string {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    maximumFractionDigits: 0,
-  }).format(Number(amount ?? 0));
-}
 
 export default function CoursesPage() {
   return (
@@ -218,119 +209,16 @@ function CoursesPageContent() {
         ) : null}
 
         {!isLoading && !isError ? (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {visibleCourses.map((course) => {
-              const hasDiscount = hasValidDiscount(course.price, course.discount_price);
-              const activePrice = hasDiscount ? Number(course.discount_price ?? 0) : Number(course.price ?? 0);
-              const rating = Number(course.reviews_avg_rating ?? 0);
-              const reviewCount = course.reviews_count ?? 0;
-              const instructorHref = getCourseInstructorHref(course);
-
-              return (
-                <article
-                  key={course.id}
-                  className="group overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--card)] shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
-                >
-                  <div className="relative aspect-[16/10] bg-gradient-to-br from-[var(--primary)]/10 to-[var(--secondary)]/20">
-                    {course.thumbnail ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={course.thumbnail} alt={course.title} className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="flex h-full items-center justify-center">
-                        <BookOpen className="size-14 text-[var(--primary)]/30" />
-                      </div>
-                    )}
-                    {course.category_name ? (
-                      <span className="absolute left-3 top-3 rounded-full bg-black/55 px-3 py-1 text-[10px] font-bold text-white backdrop-blur">
-                        {course.category_name}
-                      </span>
-                    ) : null}
-                    {hasDiscount ? (
-                      <span className="absolute right-3 top-3 rounded-full bg-rose-500 px-3 py-1 text-[10px] font-black text-white shadow">
-                        {formatDiscountBadge(course.price, course.discount_price)}
-                      </span>
-                    ) : null}
-                    {course.instructor_name ? (
-                      <span className="absolute -bottom-7 right-5 inline-flex size-14 items-center justify-center rounded-full border-4 border-white bg-[var(--primary)] text-sm font-black text-white shadow-lg">
-                        {getPublicInstructorInitials(course.instructor_name)}
-                      </span>
-                    ) : null}
-                  </div>
-
-                  <div className="p-5 pt-8">
-                    <h2 className="line-clamp-2 text-base font-black leading-snug text-[var(--foreground)] transition group-hover:text-[var(--primary)]">
-                      {course.title}
-                    </h2>
-                    {course.instructor_name ? (
-                      instructorHref ? (
-                        <Link
-                          href={instructorHref}
-                          className="mt-2 inline-flex text-xs font-semibold text-[var(--muted-foreground)] transition hover:text-[var(--primary)]"
-                        >
-                          {course.instructor_name}
-                        </Link>
-                      ) : (
-                        <p className="mt-2 text-xs font-semibold text-[var(--muted-foreground)]">
-                          {course.instructor_name}
-                        </p>
-                      )
-                    ) : null}
-                    {reviewCount > 0 ? (
-                      <div className="mt-3 flex items-center gap-1.5">
-                        <span className="text-xs font-black text-amber-500">{rating.toFixed(1)}</span>
-                        <div className="flex">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <Star
-                              key={star}
-                              className={`size-3 ${
-                                star <= Math.round(rating)
-                                  ? "fill-amber-400 text-amber-400"
-                                  : "fill-[var(--border)] text-[var(--border)]"
-                              }`}
-                            />
-                          ))}
-                        </div>
-                        <span className="flex items-center gap-0.5 text-[11px] text-[var(--muted-foreground)]">
-                          <MessageSquareText className="size-3" />
-                          {reviewCount}
-                        </span>
-                      </div>
-                    ) : null}
-                    {course.description ? (
-                      <p className="mt-3 line-clamp-2 text-sm leading-6 text-[var(--muted-foreground)]">
-                        {course.description}
-                      </p>
-                    ) : null}
-                    <div className="mt-5 flex items-end justify-between gap-3">
-                      <div>
-                        {hasDiscount ? (
-                          <p className="text-[11px] text-[var(--muted-foreground)] line-through">
-                            {formatCurrency(course.price)}
-                          </p>
-                        ) : null}
-                        <p className="text-lg font-black text-[var(--secondary)]">{formatCurrency(activePrice)}</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Link
-                          href={`/courses/${course.slug}`}
-                          className="inline-flex h-9 items-center rounded-full border border-[var(--border)] bg-[var(--surface-soft)] px-4 text-xs font-bold text-[var(--foreground)] transition hover:bg-[var(--surface-hover)]"
-                        >
-                          Detail
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={() => handleStartCheckout(course.slug)}
-                          className="inline-flex h-9 items-center gap-1.5 rounded-full bg-[var(--primary)] px-4 text-xs font-bold text-white transition hover:opacity-90 disabled:opacity-70"
-                        >
-                          <CreditCard className="size-3.5" />
-                          {user ? "Checkout" : "Masuk"}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
+          <div className="grid grid-cols-1 items-start gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {visibleCourses.map((course) => (
+              <CourseCatalogCard
+                key={course.id}
+                actionLabel={user ? "Checkout" : "Masuk"}
+                course={course}
+                detailHref={`/courses/${course.slug}`}
+                onAction={() => handleStartCheckout(course.slug)}
+              />
+            ))}
           </div>
         ) : null}
       </main>

@@ -27,34 +27,6 @@ interface HelpContact {
   icon: LucideIcon;
 }
 
-const fallbackContacts = {
-  email: "support@skripsilms.com",
-  phone: "+62 812-3456-7890",
-};
-
-const fallbackPages = {
-  "about-us": {
-    title: "Tentang Kami",
-    content:
-      "SkripsiLMS menyediakan ekosistem belajar online yang menggabungkan course, materi, kuis, diskusi, progress belajar, dan sertifikat dalam satu platform.\n\nKami membantu siswa mempersiapkan diri menuju jenjang pendidikan berikutnya melalui alur belajar yang rapi, instructor yang mendampingi, dan konten pembelajaran yang dapat terus diperbarui melalui CMS.",
-  },
-  "help-center": {
-    title: "Help Center",
-    content:
-      "Tim bantuan SkripsiLMS siap membantu kendala akun, akses course, pembayaran, forum diskusi, progress belajar, dan penerbitan sertifikat.\n\nSertakan detail kendala, nama akun, email terdaftar, dan course yang sedang diakses agar tim admin dapat menindaklanjuti lebih cepat.",
-  },
-  terms: {
-    title: "Syarat & Ketentuan",
-    content:
-      "Dengan menggunakan SkripsiLMS, pengguna menyetujui ketentuan penggunaan platform, termasuk menjaga keamanan akun, menggunakan materi pembelajaran secara bertanggung jawab, dan mengikuti aturan pada setiap course.\n\nAkses course, sertifikat, forum diskusi, dan fitur pembelajaran mengikuti kebijakan yang berlaku pada platform.",
-  },
-  "privacy-policy": {
-    title: "Kebijakan Privasi",
-    content:
-      "SkripsiLMS menggunakan data pengguna untuk mengelola akun, enrollment course, progress belajar, transaksi, notifikasi, dan penerbitan sertifikat.\n\nData kontak dapat digunakan untuk keperluan bantuan, verifikasi, dan komunikasi terkait layanan platform sesuai kebutuhan operasional.",
-  },
-} satisfies Record<string, { title: string; content: string }>;
-
 export default function PublicCmsPage() {
   const params = useParams<{ slug: string }>();
   const slug = String(params.slug ?? "");
@@ -77,11 +49,10 @@ export default function PublicCmsPage() {
   });
 
   const websiteSettings = websiteSettingsQuery.data ?? createDefaultWebsiteSetting();
-  const fallbackPage = fallbackPages[slug as keyof typeof fallbackPages];
-  const page = pageQuery.data ?? fallbackPage;
+  const page = pageQuery.data ?? null;
   const isHelpCenter = slug === "help-center";
-  const contactEmail = websiteSettings.contact_email?.trim() || fallbackContacts.email;
-  const contactPhone = websiteSettings.contact_phone?.trim() || fallbackContacts.phone;
+  const contactEmail = websiteSettings.contact_email?.trim() || "";
+  const contactPhone = websiteSettings.contact_phone?.trim() || "";
   const whatsAppNumber = normalizeWhatsAppNumber(contactPhone);
   const helpContacts = [
     whatsAppNumber
@@ -109,7 +80,7 @@ export default function PublicCmsPage() {
       <PublicSiteHeader settings={websiteSettings} courses={courseQuery.data ?? []} />
 
       <main className="px-4 py-8 sm:px-6 sm:py-12">
-        {pageQuery.isLoading && !fallbackPage ? (
+        {pageQuery.isLoading ? (
           <div className="mx-auto max-w-7xl space-y-4">
             <div className="h-6 w-40 animate-pulse rounded bg-[var(--border)]" />
             <div className="h-12 w-2/3 animate-pulse rounded bg-[var(--border)]" />
@@ -128,7 +99,7 @@ export default function PublicCmsPage() {
               <div className="px-6 py-8 sm:px-10">
                 <WebsiteRichContent
                   content={page.content}
-                  emptyText="Informasi lengkap tersedia melalui kanal resmi SkripsiLMS."
+                  emptyText="Informasi lengkap tersedia melalui kanal resmi platform."
                 />
               </div>
             </article>
@@ -169,7 +140,7 @@ export default function PublicCmsPage() {
                     })
                   ) : (
                     <div className="rounded-3xl border border-dashed border-[var(--border)] bg-[var(--surface-soft)] p-4 text-sm leading-7 text-[var(--muted-foreground)]">
-                      Tim SkripsiLMS dapat dihubungi melalui kanal resmi platform.
+                      Kontak bantuan akan tampil di sini setelah diatur melalui panel admin.
                     </div>
                   )}
                 </div>

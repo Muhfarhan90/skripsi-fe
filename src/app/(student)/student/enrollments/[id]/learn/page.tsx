@@ -1596,7 +1596,7 @@ export default function StudentEnrollmentLearnPage() {
       <ConfirmAlertDialog
         open={showClaimCertificateConfirm}
         title="Klaim sertifikat sekarang?"
-        description="Pastikan Anda sudah memahami keseluruhan materi kelas. Setelah diklaim, sertifikat akan dibuat dan siap diunduh dari halaman ini."
+        description="Pastikan Anda sudah memahami keseluruhan materi kelas. Setelah diklaim, sertifikat siap diunduh dari halaman ini."
         confirmLabel="Ya, klaim sertifikat"
         cancelLabel="Nanti saja"
         confirmTone="primary"

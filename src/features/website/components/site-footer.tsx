@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight, Mail, MapPin, Phone } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { BrandLogo } from "@/components/shared/brand-logo";
 import { cn } from "@/lib/utils";
 import { formatWebsiteFooterText, resolveWebsiteSocialIcon } from "@/features/website/lib/website-settings";
@@ -25,17 +25,12 @@ function isExternalUrl(url: string): boolean {
   return /^https?:\/\//i.test(url);
 }
 
-const fallbackContact = {
-  email: "support@skripsilms.com",
-  phone: "+62 812-3456-7890",
-  address: "Jl. Pendidikan No. 10, Jakarta",
-};
-
 export function SiteFooter({ settings, className }: SiteFooterProps) {
   const footerText = formatWebsiteFooterText(settings.footer_text, settings.site_name);
-  const contactEmail = settings.contact_email?.trim() || fallbackContact.email;
-  const contactPhone = settings.contact_phone?.trim() || fallbackContact.phone;
-  const contactAddress = settings.address?.trim() || fallbackContact.address;
+  const contactEmail = settings.contact_email?.trim() || "";
+  const contactPhone = settings.contact_phone?.trim() || "";
+  const contactAddress = settings.address?.trim() || "";
+  const footerDescription = settings.site_tagline?.trim() || "";
   const hasContact = Boolean(contactEmail || contactPhone || contactAddress);
 
   return (
@@ -60,11 +55,11 @@ export function SiteFooter({ settings, className }: SiteFooterProps) {
               subtitleClassName="text-sm text-white/60"
             />
 
-            <div className="mt-6 max-w-md rounded-3xl border border-white/10 bg-white/[0.05] p-5">
-              <p className="text-sm leading-7 text-white/70">
-                Platform belajar online untuk mengelola course, progress belajar, diskusi, dan sertifikat dalam satu ekosistem.
-              </p>
-            </div>
+            {footerDescription ? (
+              <div className="mt-6 max-w-md rounded-3xl border border-white/10 bg-white/[0.05] p-5">
+                <p className="text-sm leading-7 text-white/70">{footerDescription}</p>
+              </div>
+            ) : null}
 
           </div>
 
@@ -102,29 +97,27 @@ export function SiteFooter({ settings, className }: SiteFooterProps) {
           {hasContact ? (
             <div>
               <p className="text-xs font-black uppercase tracking-[0.18em] text-white/45">Kontak</p>
-              <div className="mt-5 space-y-3">
+              <div className="mt-5 space-y-4">
                 {contactEmail ? (
-                  <a
-                    href={`mailto:${contactEmail}`}
-                    className="flex gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-sm text-white/70 transition hover:bg-white/[0.08] hover:text-white"
-                  >
-                    <Mail className="mt-0.5 size-4 shrink-0 text-[var(--secondary)]" />
-                    <span className="min-w-0 break-all">{contactEmail}</span>
-                  </a>
+                  <div className="space-y-1">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/40">Email</p>
+                    <a href={`mailto:${contactEmail}`} className="min-w-0 break-all text-sm text-white/75 transition hover:text-white">
+                      {contactEmail}
+                    </a>
+                  </div>
                 ) : null}
                 {contactPhone ? (
-                  <a
-                    href={`tel:${contactPhone}`}
-                    className="flex gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-sm text-white/70 transition hover:bg-white/[0.08] hover:text-white"
-                  >
-                    <Phone className="mt-0.5 size-4 shrink-0 text-[var(--secondary)]" />
-                    <span>{contactPhone}</span>
-                  </a>
+                  <div className="space-y-1">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/40">Telepon</p>
+                    <a href={`tel:${contactPhone}`} className="text-sm text-white/75 transition hover:text-white">
+                      {contactPhone}
+                    </a>
+                  </div>
                 ) : null}
                 {contactAddress ? (
-                  <div className="flex gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-sm leading-6 text-white/70">
-                    <MapPin className="mt-0.5 size-4 shrink-0 text-[var(--secondary)]" />
-                    <span>{contactAddress}</span>
+                  <div className="space-y-1">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/40">Alamat</p>
+                    <p className="text-sm leading-6 text-white/75">{contactAddress}</p>
                   </div>
                 ) : null}
               </div>
@@ -148,8 +141,8 @@ export function SiteFooter({ settings, className }: SiteFooterProps) {
                       className="group flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white/75 transition hover:-translate-y-0.5 hover:bg-white/[0.09] hover:text-white"
                     >
                       <span className="flex min-w-0 items-center gap-3">
-                        <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-[var(--secondary)]">
-                          <Icon className="size-4" />
+                        <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-2xl bg-white px-2 py-2 shadow-sm">
+                          <Icon className="size-5 text-[var(--primary)]" />
                         </span>
                         <span className="truncate">{link.label}</span>
                       </span>

@@ -601,6 +601,7 @@ export interface CoursePayload {
   category_id: number;
   instructor_id: number;
   skill_ids?: number[];
+  thumbnail?: File | null;
   price?: number | null;
   discount_price?: number | null;
   requirements?: string | null;
@@ -812,6 +813,38 @@ function normalizePayload<T extends object>(payload: T): Record<string, unknown>
   });
 
   return normalized;
+}
+
+function hasFilePayload(payload: Record<string, unknown>): boolean {
+  return Object.values(payload).some((value) => typeof File !== "undefined" && value instanceof File);
+}
+
+function buildFormDataPayload(payload: Record<string, unknown>, method?: "PUT" | "PATCH"): FormData {
+  const formData = new FormData();
+
+  if (method) {
+    formData.set("_method", method);
+  }
+
+  Object.entries(payload).forEach(([key, value]) => {
+    if (value === undefined) {
+      return;
+    }
+
+    if (Array.isArray(value)) {
+      value.forEach((item) => formData.append(`${key}[]`, String(item)));
+      return;
+    }
+
+    if (typeof File !== "undefined" && value instanceof File) {
+      formData.set(key, value);
+      return;
+    }
+
+    formData.set(key, value === null ? "" : String(value));
+  });
+
+  return formData;
 }
 
 type QueryValue = string | number | boolean | undefined | null;
@@ -1459,16 +1492,26 @@ export function getAdminCourseCurriculum(id: number) {
 }
 
 export function createAdminCourse(payload: CoursePayload) {
+  const normalizedPayload = normalizePayload(payload);
+  const body = hasFilePayload(normalizedPayload)
+    ? buildFormDataPayload(normalizedPayload)
+    : JSON.stringify(normalizedPayload);
+
   return apiRequest<AdminCourse>("/api/admin/courses", {
     method: "POST",
-    body: JSON.stringify(normalizePayload(payload)),
+    body,
   });
 }
 
 export function updateAdminCourse(id: number, payload: CoursePayload) {
+  const normalizedPayload = normalizePayload(payload);
+  const hasFile = hasFilePayload(normalizedPayload);
+
   return apiRequest<AdminCourse>(`/api/admin/courses/${id}`, {
-    method: "PUT",
-    body: JSON.stringify(normalizePayload(payload)),
+    method: hasFile ? "POST" : "PUT",
+    body: hasFile
+      ? buildFormDataPayload(normalizedPayload, "PUT")
+      : JSON.stringify(normalizedPayload),
   });
 }
 

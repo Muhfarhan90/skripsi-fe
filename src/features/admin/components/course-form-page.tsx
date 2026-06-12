@@ -12,6 +12,7 @@ import {
   CircleHelp,
   FileText,
   GripVertical,
+  ImageIcon,
   Loader2,
   Pencil,
   Plus,
@@ -41,6 +42,7 @@ import {
   getAdminUsers,
   listAdminCourseReviews,
   upsertAdminCourseCurriculum,
+  updateAdminCourse,
   updateAdminCourseAssignment,
   updateAdminCourseSectionQuiz,
   type AdminAssignment,
@@ -56,6 +58,7 @@ import { AdminModal } from "@/features/admin/components/admin-modal";
 import { AdminOfferingForumPanel } from "@/features/admin/components/admin-offering-forum-panel";
 import { AdminPagination } from "@/features/admin/components/admin-pagination";
 import { ApiError } from "@/lib/api/client";
+import { resolvePublicFileUrl } from "@/lib/file-url";
 import { SkillMultiSelect } from "@/features/admin/components/skill-multi-select";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -101,6 +104,7 @@ interface CourseFormState {
   category_id: string;
   instructor_id: string;
   skill_ids: string[];
+  thumbnail: File | string | null;
   description: string;
   requirements: string;
   outcomes: string;
@@ -201,6 +205,7 @@ const DEFAULT_FORM: CourseFormState = {
   category_id: "",
   instructor_id: "",
   skill_ids: [],
+  thumbnail: null,
   description: "",
   requirements: "",
   outcomes: "",
@@ -250,6 +255,7 @@ const courseMetadataKeys: Array<Exclude<keyof CourseFormState, "sections">> = [
   "title",
   "category_id",
   "instructor_id",
+  "thumbnail",
   "description",
   "requirements",
   "outcomes",
@@ -320,6 +326,7 @@ function mapCurriculumToFormState(curriculum: AdminCourseCurriculum): CourseForm
     category_id: String(curriculum.category_id),
     instructor_id: String(curriculum.instructor_id),
     skill_ids: curriculum.skills.map((skill) => String(skill.id)),
+    thumbnail: curriculum.thumbnail ?? null,
     description: curriculum.description ?? "",
     requirements: curriculum.requirements ?? "",
     outcomes: curriculum.outcomes ?? "",
@@ -347,6 +354,7 @@ function buildCoursePayload(form: CourseFormState): CoursePayload {
     description: form.description.trim() || null,
     category_id: Number(form.category_id),
     instructor_id: Number(form.instructor_id),
+    ...(form.thumbnail instanceof File ? { thumbnail: form.thumbnail } : {}),
     skill_ids: form.skill_ids
       .map((skillId) => Number(skillId))
       .filter((skillId) => Number.isInteger(skillId) && skillId > 0),
@@ -692,6 +700,12 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
 
   const form = draftForm ?? baseForm;
   const autosaveFingerprint = useMemo(() => JSON.stringify(form), [form]);
+  const thumbnailPreviewUrl = useMemo(() => {
+    const thumbnail = form.thumbnail;
+    if (!thumbnail) return null;
+    if (thumbnail instanceof File) return URL.createObjectURL(thumbnail);
+    return resolvePublicFileUrl(thumbnail) ?? thumbnail;
+  }, [form.thumbnail]);
   const categoryLabelMap = useMemo(() => {
     return new Map((categoryQuery.data ?? []).map((category) => [String(category.id), category.name]));
   }, [categoryQuery.data]);
@@ -711,6 +725,14 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
       .map((skillId) => skillMap.get(skillId))
       .filter((label): label is string => Boolean(label));
   }, [form.skill_ids, skillQuery.data]);
+
+  useEffect(() => {
+    if (!(form.thumbnail instanceof File) || !thumbnailPreviewUrl) {
+      return;
+    }
+
+    return () => URL.revokeObjectURL(thumbnailPreviewUrl);
+  }, [form.thumbnail, thumbnailPreviewUrl]);
   const selectedQuizSectionLabel = useMemo(() => {
     if (!quizForm.section_id) return undefined;
 
@@ -879,19 +901,27 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
       includeSections: boolean;
     }) => {
       const curriculumSectionsPayload = includeSections ? buildCurriculumPayloadSections(submittedForm) : undefined;
+      const coursePayload = buildCoursePayload(submittedForm);
+      const { thumbnail: thumbnailPayload, ...courseMetadataPayload } = coursePayload;
 
       if (isEditing) {
         if (validCourseId === null) {
           throw new Error("ID course tidak valid untuk proses update");
         }
 
-        return upsertAdminCourseCurriculum(validCourseId, {
-          course: buildCoursePayload(submittedForm),
+        const updatedCurriculum = await upsertAdminCourseCurriculum(validCourseId, {
+          course: courseMetadataPayload,
           ...(includeSections ? { sections: curriculumSectionsPayload ?? [] } : {}),
         });
+
+        if (thumbnailPayload instanceof File) {
+          await updateAdminCourse(validCourseId, coursePayload);
+        }
+
+        return updatedCurriculum;
       }
 
-      const createdCourse = await createAdminCourse(buildCoursePayload(submittedForm));
+      const createdCourse = await createAdminCourse(coursePayload);
 
       if (includeSections && (curriculumSectionsPayload?.length ?? 0) > 0) {
         await upsertAdminCourseCurriculum(createdCourse.id, {
@@ -2003,6 +2033,49 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
                         Terpilih: {selectedSkillLabels.join(", ")}
                       </p>
                     ) : null}
+                  </div>
+
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="course-thumbnail">Thumbnail Course</Label>
+                    <div className="flex flex-col gap-3 rounded-md border border-[var(--border)] bg-[var(--card)] p-3 sm:flex-row sm:items-center">
+                      <div className="flex aspect-video w-full max-w-56 items-center justify-center overflow-hidden rounded-md border border-[var(--border)] bg-[var(--muted)] text-[var(--muted-foreground)]">
+                        {thumbnailPreviewUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={thumbnailPreviewUrl} alt="Preview thumbnail course" className="h-full w-full object-cover" />
+                        ) : (
+                          <ImageIcon className="size-8" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <Input
+                          id="course-thumbnail"
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp"
+                          onChange={(event) => {
+                            const file = event.target.files?.[0] ?? null;
+                            if (file) {
+                              updateField("thumbnail", file);
+                            }
+                          }}
+                          className="border-[var(--border)] bg-[var(--card)]"
+                        />
+                        <p className="text-xs leading-5 text-[var(--muted-foreground)]">
+                          Gunakan gambar rasio 16:9. Format JPG, PNG, atau WebP maksimal 2MB.
+                        </p>
+                        {form.thumbnail instanceof File ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => updateField("thumbnail", baseForm.thumbnail)}
+                            className="h-8"
+                          >
+                            Batalkan pilihan gambar
+                          </Button>
+                        ) : null}
+                      </div>
+                    </div>
+                    {getFieldError("thumbnail") ? <p className="text-xs text-red-600">{getFieldError("thumbnail")}</p> : null}
                   </div>
 
                   <div className="space-y-1.5 md:col-span-2">

@@ -11,6 +11,7 @@ import { BrandLogo } from "@/components/shared/brand-logo";
 import { useAuthStore } from "@/features/auth/store/auth-store";
 import { useLogoutAction } from "@/features/auth/hooks/use-logout-action";
 import { getDefaultPathByRole } from "@/features/auth/lib/roles";
+import { PublicThemeLock } from "@/features/website/components/public-theme-lock";
 import type { StoreCourse } from "@/types/store";
 import type { WebsiteHomeContent } from "@/types/website";
 
@@ -43,6 +44,7 @@ export function PublicSiteHeader({
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-[var(--border)] bg-[var(--card)]/92 backdrop-blur-xl">
+      <PublicThemeLock />
       <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3 sm:px-6">
         <BrandLogo
           href="/"
