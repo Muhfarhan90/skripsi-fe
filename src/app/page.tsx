@@ -11,6 +11,9 @@ import {
   PlayCircle,
   Search,
   TrendingUp,
+  Award,
+  Monitor,
+  MessageSquareText,
 } from "lucide-react";
 import { useAuthStore } from "@/features/auth/store/auth-store";
 import { getDefaultPathByRole, isStudentRole } from "@/features/auth/lib/roles";
@@ -21,15 +24,80 @@ import { CourseCatalogCard } from "@/features/website/components/course-catalog-
 import { SiteFooter } from "@/features/website/components/site-footer";
 import { PublicSiteHeader } from "@/features/website/components/public-site-header";
 import { resolvePublicFileUrl } from "@/lib/file-url";
-import {
-  createDefaultWebsiteSetting,
-  getWebsiteFeatureIconMeta,
-} from "@/features/website/lib/website-settings";
+import { createDefaultWebsiteSetting } from "@/features/website/lib/website-settings";
+
+const STATIC_FEATURES = [
+  {
+    title: "Kurikulum Transisi Terarah",
+    description: "Materi belajar dirancang khusus oleh akademisi untuk menjembatani materi sekolah menengah dengan standar kompetensi perkuliahan.",
+    icon: BookOpen,
+    colorClass: "bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-400",
+  },
+  {
+    title: "Belajar Mandiri & Fleksibel",
+    description: "Akses modul pembelajaran kapan saja dan di mana saja. Atur ritme belajar Anda sendiri secara mandiri tanpa batasan waktu.",
+    icon: Monitor,
+    colorClass: "bg-cyan-100 text-cyan-600 dark:bg-cyan-950 dark:text-cyan-400",
+  },
+  {
+    title: "Evaluasi Kuis & Umpan Balik",
+    description: "Uji pemahaman Anda melalui kuis interaktif di setiap akhir bab pelajaran dan dapatkan umpan balik instan atas performa Anda.",
+    icon: MessageSquareText,
+    colorClass: "bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400",
+  },
+  {
+    title: "Sertifikat Kelulusan Kelas",
+    description: "Raih sertifikat kelulusan setelah menyelesaikan materi dan kuis sebagai portofolio kesiapan akademik Anda.",
+    icon: Award,
+    colorClass: "bg-amber-100 text-amber-600 dark:bg-amber-950 dark:text-amber-400",
+  },
+];
+
+const STATIC_STEPS = [
+  {
+    title: "Pilih Kelas",
+    description: "Pilih kelas persiapan yang relevan dengan minat atau rumpun jurusan perguruan tinggi impian Anda.",
+    icon: Search,
+  },
+  {
+    title: "Pelajari Modul",
+    description: "Pelajari materi video dan bacaan modul secara bertahap dengan pelacak kemajuan (progress tracker) otomatis.",
+    icon: PlayCircle,
+  },
+  {
+    title: "Selesaikan Kuis",
+    description: "Kerjakan kuis evaluasi di setiap modul untuk menguji pemahaman konsep materi yang telah dipelajari.",
+    icon: CheckCircle,
+  },
+  {
+    title: "Dapatkan Sertifikat",
+    description: "Raih sertifikat kelulusan resmi sebagai bukti valid atas kesiapan Anda dalam menempuh pendidikan tinggi.",
+    icon: Award,
+  },
+];
+
+const STATIC_FAQS = [
+  {
+    question: "Siapa saja yang dapat bergabung dan belajar di platform ini?",
+    answer: "Program ini terbuka untuk seluruh siswa SMA/SMK/MA sederajat, gap year, maupun masyarakat umum yang ingin memantapkan fondasi akademik mereka sebelum memulai perkuliahan.",
+  },
+  {
+    question: "Apakah kelas di platform ini berbayar?",
+    answer: "Semua kelas persiapan pre-university dapat diakses secara gratis. Anda hanya perlu mendaftarkan akun untuk mulai mengakses seluruh modul dan kuis.",
+  },
+  {
+    question: "Bagaimana sistem pembelajaran kelas berjalan?",
+    answer: "Pembelajaran dilakukan secara mandiri (self-paced online learning). Anda bebas menentukan kapan ingin membaca modul, menonton video penjelasan, dan mengerjakan kuis.",
+  },
+  {
+    question: "Bagaimana cara mendapatkan sertifikat kelulusan?",
+    answer: "Sertifikat akan otomatis diterbitkan di dashboard Anda setelah Anda menyelesaikan seluruh materi modul kelas dan lulus nilai batas minimum kuis evaluasi.",
+  },
+];
 
 function buildHeroSlides(
   websiteSettings: ReturnType<typeof createDefaultWebsiteSetting>,
   previewCourses: Awaited<ReturnType<typeof getPublishedCourses>>,
-  heroTitle: string,
   catalogHref: string,
 ): HeroMediaSlide[] {
   const slides = new Map<string, HeroMediaSlide>();
@@ -46,9 +114,9 @@ function buildHeroSlides(
   registerSlide({
     id: "hero-primary",
     imageUrl: resolvePublicFileUrl(websiteSettings.hero_image_url),
-    eyebrow: websiteSettings.hero_badge || "Highlight",
-    title: heroTitle,
-    description: websiteSettings.hero_description || websiteSettings.site_tagline,
+    eyebrow: "Platform Persiapan Kuliah Pre-University",
+    title: "Kuasai Materi Dasar & Jangkau Kampus Impianmu",
+    description: "Mempersiapkan transisi akademik Anda dari sekolah menengah ke perguruan tinggi. Akses materi belajar terstruktur, uji pemahaman lewat kuis, dan raih sertifikat kesiapan kuliah.",
     href: catalogHref,
     hrefLabel: "Buka katalog",
   });
@@ -155,15 +223,8 @@ export default function RootPage() {
   const courses = courseQuery.data ?? [];
   const previewCourses = courses.slice(0, 4);
   const websiteSettings = websiteSettingsQuery.data ?? createDefaultWebsiteSetting();
-  const faqItems = (websiteSettings.faqs ?? []).slice(0, 6);
 
-  const heroTitle = websiteSettings.hero_title || websiteSettings.site_name;
-  const hasHeroCopy = Boolean(heroTitle || websiteSettings.hero_highlight || websiteSettings.hero_description);
-  const hasFeatures = websiteSettings.feature_items.length > 0;
-  const hasLearningPaths = websiteSettings.learning_path_items.length > 0;
-  const hasFaq = faqItems.length > 0;
-  const hasCta = Boolean(websiteSettings.bottom_cta_title || websiteSettings.bottom_cta_description);
-  const heroSlides = buildHeroSlides(websiteSettings, previewCourses, heroTitle, catalogHref);
+  const heroSlides = buildHeroSlides(websiteSettings, previewCourses, catalogHref);
   const featuredSectionClass = "relative overflow-hidden bg-white dark:bg-[var(--card)]";
   const featuresSectionClass = "relative overflow-hidden bg-[var(--surface-soft)]";
   const learningSectionClass = "relative overflow-hidden border-y border-[var(--border)]/60 bg-white dark:bg-[var(--card)]";
@@ -175,8 +236,8 @@ export default function RootPage() {
       <PublicSiteHeader
         settings={websiteSettings}
         courses={courses}
-        showFeatures={hasFeatures}
-        showFaq={hasFaq}
+        showFeatures={true}
+        showFaq={true}
       />
 
       <main>
@@ -188,28 +249,19 @@ export default function RootPage() {
 
           <div className="relative mx-auto grid max-w-7xl items-center gap-10 xl:grid-cols-[minmax(0,1fr)_minmax(380px,0.82fr)] xl:gap-14">
             <div className="relative z-10 min-w-0">
-              {websiteSettings.hero_badge ? (
-                <span className="inline-flex items-center gap-2 rounded-full border border-[var(--primary)]/20 bg-white/70 px-4 py-2 text-xs font-bold text-[var(--primary)] shadow-sm">
-                  <TrendingUp className="size-4" />
-                  {websiteSettings.hero_badge}
-                </span>
-              ) : null}
+              <span className="inline-flex items-center gap-2 rounded-full border border-[var(--primary)]/20 bg-white/70 px-4 py-2 text-xs font-bold text-[var(--primary)] shadow-sm">
+                <TrendingUp className="size-4" />
+                Platform Persiapan Kuliah Pre-University
+              </span>
 
-              {hasHeroCopy ? (
-                <div className="mt-6">
-                  <h1 className="max-w-2xl text-3xl font-black leading-[1.05] tracking-tight text-[var(--foreground)] sm:text-5xl xl:text-6xl">
-                    {heroTitle}
-                    {websiteSettings.hero_highlight ? (
-                      <span className="block text-[var(--primary)]">{websiteSettings.hero_highlight}</span>
-                    ) : null}
-                  </h1>
-                  {websiteSettings.hero_description ? (
-                    <p className="mt-5 max-w-2xl text-base leading-8 text-[var(--muted-foreground)] sm:text-lg">
-                      {websiteSettings.hero_description}
-                    </p>
-                  ) : null}
-                </div>
-              ) : null}
+              <div className="mt-6">
+                <h1 className="max-w-2xl text-3xl font-black leading-[1.05] tracking-tight text-[var(--foreground)] sm:text-5xl xl:text-6xl">
+                  Kuasai Materi Dasar & <span className="block text-[var(--primary)]">Jangkau Kampus Impianmu</span>
+                </h1>
+                <p className="mt-5 max-w-2xl text-base leading-8 text-[var(--muted-foreground)] sm:text-lg">
+                  Mempersiapkan transisi akademik Anda dari sekolah menengah ke perguruan tinggi. Akses materi belajar terstruktur, uji pemahaman lewat kuis, dan raih sertifikat kesiapan kuliah.
+                </p>
+              </div>
 
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 {isLoggedIn ? (
@@ -231,24 +283,20 @@ export default function RootPage() {
                   </>
                 ) : (
                   <>
-                    {websiteSettings.hero_primary_cta_label ? (
-                      <Link
-                        href={websiteSettings.hero_primary_cta_url || "/register"}
-                        className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-6 text-sm font-extrabold text-white shadow-lg shadow-emerald-900/10 transition hover:-translate-y-0.5 hover:shadow-xl active:scale-95"
-                      >
-                        {websiteSettings.hero_primary_cta_label}
-                        <ArrowRight className="size-4" />
-                      </Link>
-                    ) : null}
-                    {websiteSettings.hero_secondary_cta_label ? (
-                      <Link
-                        href={websiteSettings.hero_secondary_cta_url || catalogHref}
-                        className="inline-flex h-12 items-center justify-center gap-2 rounded-full border border-[var(--border)] bg-white/80 px-6 text-sm font-extrabold text-[var(--foreground)] shadow-sm transition hover:-translate-y-0.5 hover:bg-white active:scale-95"
-                      >
-                        <PlayCircle className="size-4" />
-                        {websiteSettings.hero_secondary_cta_label}
-                      </Link>
-                    ) : null}
+                    <Link
+                      href="/register"
+                      className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-6 text-sm font-extrabold text-white shadow-lg shadow-emerald-900/10 transition hover:-translate-y-0.5 hover:shadow-xl active:scale-95"
+                    >
+                      Mulai Belajar Sekarang
+                      <ArrowRight className="size-4" />
+                    </Link>
+                    <Link
+                      href="/login"
+                      className="inline-flex h-12 items-center justify-center gap-2 rounded-full border border-[var(--border)] bg-white/80 px-6 text-sm font-extrabold text-[var(--foreground)] shadow-sm transition hover:-translate-y-0.5 hover:bg-white active:scale-95"
+                    >
+                      <PlayCircle className="size-4" />
+                      Masuk Ke Platform
+                    </Link>
                   </>
                 )}
               </div>
@@ -261,8 +309,8 @@ export default function RootPage() {
                   <Search className="size-5" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-extrabold text-[var(--foreground)]">Cari course atau instructor</span>
-                  <span className="block truncate text-xs text-[var(--muted-foreground)]">Masuk ke katalog untuk menemukan kelas yang tersedia</span>
+                  <span className="block text-sm font-extrabold text-[var(--foreground)]">Cari Kelas Persiapan Kuliah</span>
+                  <span className="block truncate text-xs text-[var(--muted-foreground)]">Temukan materi pelajaran yang sesuai dengan program studi impian Anda</span>
                 </span>
                 <ArrowRight className="size-5 shrink-0 text-[var(--primary)]" />
               </Link>
@@ -279,21 +327,15 @@ export default function RootPage() {
             <div className="relative mx-auto max-w-7xl">
               <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                  {websiteSettings.featured_courses_badge ? (
-                    <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--primary)]">
-                      {websiteSettings.featured_courses_badge}
-                    </p>
-                  ) : null}
-                  {websiteSettings.featured_courses_title ? (
-                    <h2 className="mt-2 text-xl font-black tracking-tight sm:text-4xl">
-                      {websiteSettings.featured_courses_title}
-                    </h2>
-                  ) : null}
-                  {websiteSettings.featured_courses_description ? (
-                    <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--muted-foreground)]">
-                      {websiteSettings.featured_courses_description}
-                    </p>
-                  ) : null}
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--primary)]">
+                    Katalog Kelas
+                  </p>
+                  <h2 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">
+                    Materi Belajar Kesiapan Kuliah
+                  </h2>
+                  <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--muted-foreground)]">
+                    Pilihlah kelas persiapan yang sesuai dengan minat dan rumpun jurusan perguruan tinggi impian Anda.
+                  </p>
                 </div>
                 <Link
                   href={catalogHref}
@@ -322,180 +364,147 @@ export default function RootPage() {
           </section>
         ) : null}
 
-        {hasFeatures ? (
-          <section id="features" className={`${featuresSectionClass} px-4 py-14 sm:px-6`}>
-            <div className="relative mx-auto max-w-7xl">
-              <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
-                <div className="lg:sticky lg:top-24">
-                  {websiteSettings.features_badge ? (
-                    <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--primary)]">
-                      {websiteSettings.features_badge}
-                    </p>
-                  ) : null}
-                  {websiteSettings.features_title ? (
-                    <h2 className="mt-2 text-xl font-black tracking-tight sm:text-4xl">{websiteSettings.features_title}</h2>
-                  ) : null}
-                  {websiteSettings.features_description ? (
-                    <p className="mt-4 text-sm leading-7 text-[var(--muted-foreground)]">{websiteSettings.features_description}</p>
-                  ) : null}
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {websiteSettings.feature_items.map((feat, index) => {
-                    const iconMeta = getWebsiteFeatureIconMeta(feat.icon);
-                    const Icon = iconMeta.icon;
-
-                    return (
-                      <article
-                        key={`${feat.title}-${index}`}
-                        className="rounded-3xl bg-[var(--card)] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-border/30 transition hover:-translate-y-1 hover:shadow-md"
-                      >
-                        <span className={`mb-5 inline-flex size-12 items-center justify-center rounded-2xl ${iconMeta.colorClass}`}>
-                          <Icon className="size-5" />
-                        </span>
-                        <h3 className="text-base font-black">{feat.title}</h3>
-                        <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">{feat.description}</p>
-                      </article>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </section>
-        ) : null}
-
-        {hasLearningPaths ? (
-          <section id="learning-paths" className={`${learningSectionClass} px-4 py-14 sm:px-6`}>
-            <div className="relative mx-auto max-w-7xl">
-              <div className="mb-8 max-w-3xl">
-                {websiteSettings.learning_path_badge ? (
-                  <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--primary)]">
-                    {websiteSettings.learning_path_badge}
-                  </p>
-                ) : null}
-                {websiteSettings.learning_path_title ? (
-                  <h2 className="mt-2 text-xl font-black tracking-tight sm:text-4xl">{websiteSettings.learning_path_title}</h2>
-                ) : null}
-                {websiteSettings.learning_path_description ? (
-                  <p className="mt-3 text-sm leading-7 text-[var(--muted-foreground)]">{websiteSettings.learning_path_description}</p>
-                ) : null}
+        <section id="features" className={`${featuresSectionClass} px-4 py-14 sm:px-6`}>
+          <div className="relative mx-auto max-w-7xl">
+            <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
+              <div className="lg:sticky lg:top-24">
+                <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--primary)]">
+                  Keunggulan Platform
+                </p>
+                <h2 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">Metode Pembelajaran Terintegrasi</h2>
+                <p className="mt-4 text-sm leading-7 text-[var(--muted-foreground)]">Kami menyediakan ekosistem belajar yang lengkap untuk memastikan kesiapan akademik Anda memasuki gerbang perguruan tinggi.</p>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {websiteSettings.learning_path_items.map((item, index) => {
-                  const iconMeta = getWebsiteFeatureIconMeta(item.icon);
-                  const Icon = iconMeta.icon;
+              <div className="grid gap-4 sm:grid-cols-2">
+                {STATIC_FEATURES.map((feat, index) => {
+                  const Icon = feat.icon;
 
                   return (
                     <article
-                      key={`${item.title}-${index}`}
-                      className="relative overflow-hidden rounded-3xl bg-[var(--card)] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-border/30 transition hover:-translate-y-1 hover:shadow-md"
+                      key={`${feat.title}-${index}`}
+                      className="rounded-3xl bg-[var(--card)] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-border/30 transition hover:-translate-y-1 hover:shadow-md"
                     >
-                      <span className="absolute right-5 top-5 text-5xl font-black text-[var(--primary)]/10">
-                        {String(index + 1).padStart(2, "0")}
-                      </span>
-                      <span className={`relative mb-6 inline-flex size-12 items-center justify-center rounded-2xl ${iconMeta.colorClass}`}>
+                      <span className={`mb-5 inline-flex size-12 items-center justify-center rounded-2xl ${feat.colorClass}`}>
                         <Icon className="size-5" />
                       </span>
-                      <div className="relative">
-                        <h3 className="text-base font-black">{item.title}</h3>
-                        <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">{item.description}</p>
-                      </div>
+                      <h3 className="text-base font-black">{feat.title}</h3>
+                      <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">{feat.description}</p>
                     </article>
                   );
                 })}
               </div>
             </div>
-          </section>
-        ) : null}
+          </div>
+        </section>
 
-        {hasFaq ? (
-          <section id="faq" className={`${faqSectionClass} px-4 py-14 sm:px-6`}>
-            <div className="relative mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.8fr_1.2fr]">
-              <div>
-                {websiteSettings.faq_badge ? (
-                  <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--primary)]">
-                    {websiteSettings.faq_badge}
-                  </p>
-                ) : null}
-                {websiteSettings.faq_title ? (
-                  <h2 className="mt-2 text-xl font-black tracking-tight sm:text-4xl">{websiteSettings.faq_title}</h2>
-                ) : null}
-                {websiteSettings.faq_description ? (
-                  <p className="mt-4 text-sm leading-7 text-[var(--muted-foreground)]">{websiteSettings.faq_description}</p>
-                ) : null}
-              </div>
-
-              <div className="divide-y divide-[var(--border)]">
-                {faqItems.map((faq, index) => (
-                  <details
-                    key={faq.id || faq.question}
-                    className="group py-5 transition first:pt-0 last:pb-0"
-                    open={index === 0}
-                  >
-                    <summary className="flex cursor-pointer list-none items-start justify-between gap-4">
-                      <span>
-                        {faq.category?.name || faq.category_name ? (
-                          <span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--primary)]">
-                            {faq.category?.name ?? faq.category_name}
-                          </span>
-                        ) : null}
-                        <span className="block text-base font-bold leading-6 text-[var(--foreground)] group-hover:text-[var(--primary)] transition-colors">{faq.question}</span>
-                      </span>
-                      <span className="mt-1 inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--surface-soft)] text-[var(--primary)] transition group-open:rotate-180">
-                        <ChevronDown className="size-4" />
-                      </span>
-                    </summary>
-                    <p className="mt-3 text-sm leading-7 text-[var(--muted-foreground)] pr-12">
-                      {faq.answer}
-                    </p>
-                  </details>
-                ))}
-              </div>
+        <section id="learning-paths" className={`${learningSectionClass} px-4 py-14 sm:px-6`}>
+          <div className="relative mx-auto max-w-7xl">
+            <div className="mb-12 text-center max-w-3xl mx-auto">
+              <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--primary)]">
+                Alur Pembelajaran
+              </p>
+              <h2 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">Bagaimana Cara Mulai Belajar?</h2>
+              <p className="mt-3 text-sm leading-7 text-[var(--muted-foreground)]">Ikuti langkah terarah berikut untuk memaksimalkan persiapan akademik Anda menuju bangku kuliah.</p>
             </div>
-          </section>
-        ) : null}
 
-        {hasCta && !isLoggedIn ? (
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 relative">
+              <div className="hidden lg:block absolute top-1/2 left-4 right-4 h-0.5 bg-gradient-to-r from-[var(--primary)]/20 via-[var(--primary)]/40 to-[var(--primary)]/20 -translate-y-1/2 z-0" />
+              
+              {STATIC_STEPS.map((item, index) => {
+                const Icon = item.icon;
+
+                return (
+                  <article
+                    key={`${item.title}-${index}`}
+                    className="relative z-10 overflow-hidden rounded-3xl bg-[var(--card)] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-border/30 transition hover:-translate-y-1 hover:shadow-md"
+                  >
+                    <span className="absolute right-5 top-5 text-5xl font-black text-[var(--primary)]/10">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    <span className="relative mb-6 inline-flex size-12 items-center justify-center rounded-2xl bg-[var(--primary)]/10 text-[var(--primary)]">
+                      <Icon className="size-5" />
+                    </span>
+                    <div className="relative">
+                      <h3 className="text-base font-black">Langkah {index + 1}: {item.title}</h3>
+                      <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">{item.description}</p>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        <section id="faq" className={`${faqSectionClass} px-4 py-14 sm:px-6`}>
+          <div className="relative mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.8fr_1.2fr]">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--primary)]">
+                Tanya Jawab
+              </p>
+              <h2 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">Pertanyaan Umum</h2>
+              <p className="mt-4 text-sm leading-7 text-[var(--muted-foreground)]">Temukan jawaban atas beberapa pertanyaan umum yang sering diajukan mengenai platform persiapan kuliah pre-university.</p>
+            </div>
+
+            <div className="divide-y divide-[var(--border)]">
+              {STATIC_FAQS.map((faq, index) => (
+                <details
+                  key={faq.question}
+                  className="group py-5 transition first:pt-0 last:pb-0"
+                  open={index === 0}
+                >
+                  <summary className="flex cursor-pointer list-none items-start justify-between gap-4">
+                    <span>
+                      <span className="block text-base font-bold leading-6 text-[var(--foreground)] group-hover:text-[var(--primary)] transition-colors">{faq.question}</span>
+                    </span>
+                    <span className="mt-1 inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--surface-soft)] text-[var(--primary)] transition group-open:rotate-180">
+                      <ChevronDown className="size-4" />
+                    </span>
+                  </summary>
+                  <p className="mt-3 text-sm leading-7 text-[var(--muted-foreground)] pr-12">
+                    {faq.answer}
+                  </p>
+                </details>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {!isLoggedIn ? (
           <section className={`${ctaSectionClass} px-4 py-14 sm:px-6`}>
             <div className="mx-auto max-w-6xl overflow-hidden rounded-[2rem] bg-[var(--primary)] shadow-2xl shadow-emerald-900/15">
               <div className="relative grid gap-8 px-6 py-10 text-white sm:px-10 lg:grid-cols-[1fr_auto] lg:items-center lg:p-12">
                 <div className="relative">
-                  {websiteSettings.bottom_cta_title ? (
-                    <h2 className="max-w-2xl text-2xl font-black tracking-tight sm:text-4xl">{websiteSettings.bottom_cta_title}</h2>
-                  ) : null}
-                  {websiteSettings.bottom_cta_description ? (
-                    <p className="mt-3 max-w-2xl text-sm leading-7 text-white/75">{websiteSettings.bottom_cta_description}</p>
-                  ) : null}
-                  {websiteSettings.bottom_cta_bullets.length > 0 ? (
-                    <div className="mt-6 flex flex-wrap gap-3 text-xs font-semibold text-white/75">
-                      {websiteSettings.bottom_cta_bullets.map((item) => (
-                        <span key={item} className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5">
-                          <CheckCircle className="size-3.5 text-white" />
-                          {item}
-                        </span>
-                      ))}
-                    </div>
-                  ) : null}
+                  <h2 className="max-w-2xl text-2xl font-black tracking-tight sm:text-4xl">Siap Melangkah Lebih Dekat ke Perguruan Tinggi?</h2>
+                  <p className="mt-3 max-w-2xl text-sm leading-7 text-white/75">Jangan tunda persiapan akademik Anda. Gabung sekarang secara gratis bersama ribuan pelajar lainnya dan raih kampus impian Anda.</p>
+                  <div className="mt-6 flex flex-wrap gap-3 text-xs font-semibold text-white/75">
+                    <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5">
+                      <CheckCircle className="size-3.5 text-white" />
+                      Akses Gratis Selamanya
+                    </span>
+                    <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5">
+                      <CheckCircle className="size-3.5 text-white" />
+                      Sertifikat Kelulusan Resmi
+                    </span>
+                    <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5">
+                      <CheckCircle className="size-3.5 text-white" />
+                      Materi Terstandar Nasional
+                    </span>
+                  </div>
                 </div>
                 <div className="relative flex flex-col gap-3 sm:flex-row lg:flex-col">
-                  {websiteSettings.bottom_cta_primary_label ? (
-                    <Link
-                      href={websiteSettings.bottom_cta_primary_url || "/register"}
-                      className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-white px-6 text-sm font-black text-[var(--primary)] shadow-lg transition hover:-translate-y-0.5 active:scale-95"
-                    >
-                      {websiteSettings.bottom_cta_primary_label}
-                      <ArrowRight className="size-4" />
-                    </Link>
-                  ) : null}
-                  {websiteSettings.bottom_cta_secondary_label ? (
-                    <Link
-                      href={websiteSettings.bottom_cta_secondary_url || "/login"}
-                      className="inline-flex h-12 items-center justify-center rounded-full border border-white/25 bg-white/10 px-6 text-sm font-black text-white transition hover:bg-white/20 active:scale-95"
-                    >
-                      {websiteSettings.bottom_cta_secondary_label}
-                    </Link>
-                  ) : null}
+                  <Link
+                    href="/register"
+                    className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-white px-6 text-sm font-black text-[var(--primary)] shadow-lg transition hover:-translate-y-0.5 active:scale-95"
+                  >
+                    Mulai Belajar Sekarang
+                    <ArrowRight className="size-4" />
+                  </Link>
+                  <Link
+                    href="/login"
+                    className="inline-flex h-12 items-center justify-center rounded-full border border-white/25 bg-white/10 px-6 text-sm font-black text-white transition hover:bg-white/20 active:scale-95"
+                  >
+                    Masuk ke Platform
+                  </Link>
                 </div>
               </div>
             </div>
