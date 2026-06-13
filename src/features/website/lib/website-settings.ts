@@ -225,7 +225,7 @@ export function resolveWebsiteSocialIcon(link: Pick<WebsiteSocialLink, "label" |
 
 export function createDefaultWebsiteSettingInput(): WebsiteSettingPayload {
   return {
-    site_name: "SkripsiLMS",
+    site_name: "Platform Belajar",
     site_tagline: "Platform Belajar Pre-University",
     logo_url: null,
     footer_text: "Copyright {year} {site_name} - Platform Belajar Pre-University",

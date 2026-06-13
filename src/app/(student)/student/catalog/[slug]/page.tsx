@@ -135,7 +135,7 @@ export default function StudentCatalogDetailPage() {
 
   return (
     <div className="space-y-6 pb-24 md:pb-6">
-      <section className="relative overflow-hidden rounded-[2rem] border border-[var(--border)] bg-[radial-gradient(circle_at_top_right,rgba(15,122,90,0.06),transparent_45%),radial-gradient(circle_at_bottom_left,rgba(217,175,0,0.04),transparent_35%)] bg-[var(--card)] p-5 shadow-sm sm:p-6 lg:p-8">
+      <section className="relative overflow-hidden rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm sm:p-6 lg:p-8">
         <div className="grid gap-8 lg:grid-cols-[1fr_23rem]">
           <div className="space-y-5">
             <Link

@@ -133,35 +133,35 @@ function getHeroDescription(params: {
 
   if (continueLearningEnrollment) {
     const courseTitle = continueLearningEnrollment.course?.title ?? "kelas utama";
-    return `${courseTitle} masih jadi fokus utama kamu. Jaga ritme belajar sambil pantau ${pendingOrdersCount} order pending dan ${unreadNotificationsCount} update terbaru.`;
+    return `Yuk lanjutkan belajar di kelas "${courseTitle}". Tetap semangat menyelesaikan materi hari ini! Ada ${pendingOrdersCount} order pending dan ${unreadNotificationsCount} pemberitahuan baru yang perlu Anda cek.`;
   }
 
   if (activeEnrollmentsCount > 0) {
-    return `Kamu punya ${activeEnrollmentsCount} kelas aktif. Pilih satu fokus belajar utama supaya progress lebih cepat naik dan ritme belajar tetap konsisten.`;
+    return `Anda memiliki ${activeEnrollmentsCount} kelas aktif yang sedang diikuti. Mari pilih salah satu kelas di bawah untuk melanjutkan petualangan belajar Anda!`;
   }
 
   if (completedEnrollmentsCount > 0) {
-    return `Kamu sudah menuntaskan ${completedEnrollmentsCount} kelas. Saatnya buka katalog lagi dan lanjutkan momentum ke course berikutnya.`;
+    return `Selamat! Anda telah menyelesaikan ${completedEnrollmentsCount} kelas. Ayo buka katalog kelas untuk mempelajari keahlian baru berikutnya!`;
   }
 
-  return "Bangun dashboard belajar yang rapi dari course pertamamu. Mulai dari katalog, lalu lanjutkan progress secara konsisten.";
+  return "Selamat datang! Mari mulai perjalanan belajar Anda dengan memilih kelas pertama dari katalog kami.";
 }
 
 function getFocusNarrative(enrollment: StoreEnrollment | null): string {
   if (!enrollment) {
-    return "Belum ada kelas aktif. Pilih course baru untuk mulai membangun progress belajar.";
+    return "Belum ada kelas aktif. Pilih kelas baru di katalog untuk mulai belajar!";
   }
 
   const progress = clampProgress(enrollment.progress);
   if (progress >= 80) {
-    return "Progress sudah masuk fase akhir. Dorong sedikit lagi agar kelas ini segera selesai.";
+    return "Luar biasa! Belajar Anda sudah hampir selesai. Sedikit lagi Anda akan menuntaskan kelas ini!";
   }
 
   if (progress >= 45) {
-    return "Ritme belajar sudah terbentuk. Pertahankan fokus agar progress cepat menembus 100%.";
+    return "Progres belajar Anda berjalan dengan sangat baik. Pertahankan semangat untuk mencapai target!";
   }
 
-  return "Fondasi kelas ini sudah dimulai. Konsistensi beberapa sesi berikutnya akan terasa paling berdampak.";
+  return "Awal yang bagus! Terus konsisten mengikuti materi agar pemahaman Anda semakin kuat.";
 }
 
 function QuickActionCard({
@@ -178,9 +178,9 @@ function QuickActionCard({
   return (
     <Link
       href={href}
-      className="group flex min-h-32 flex-col justify-between rounded-[1.4rem] border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-[var(--primary)]/25 hover:shadow-md"
+      className="group flex min-h-32 flex-col justify-between rounded-[1.4rem] bg-[var(--card)] p-4 shadow-[0_8px_30px_rgba(15,23,42,0.025)] border border-border/30 transition hover:-translate-y-0.5 hover:shadow-md"
     >
-      <span className="inline-flex size-11 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(15,122,90,0.14),rgba(244,196,0,0.22))] text-[var(--primary)]">
+      <span className="inline-flex size-11 items-center justify-center rounded-2xl bg-[var(--primary)]/10 text-[var(--primary)]">
         <Icon className="size-5" />
       </span>
       <span className="min-w-0">
@@ -268,9 +268,8 @@ export default function StudentPage() {
         </div>
       ) : null}
 
-      <section className="overflow-hidden rounded-[2rem] border border-[var(--border)] bg-[var(--card)] shadow-sm">
+      <section className="overflow-hidden rounded-[2rem] bg-[var(--card)] shadow-[0_8px_30px_rgba(15,23,42,0.03)] border border-border/30">
         <div className="relative grid gap-6 p-5 sm:p-6 xl:grid-cols-[minmax(0,1.15fr)_24rem] xl:p-8">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(15,122,90,0.18),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(244,196,0,0.2),transparent_30%)]" />
 
           <div className="relative space-y-5">
             <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--primary)] backdrop-blur dark:bg-white/5">
@@ -308,50 +307,45 @@ export default function StudentPage() {
 
           <div className="relative">
             {enrollmentsQuery.isLoading ? (
-              <div className="h-full min-h-72 animate-pulse rounded-[1.75rem] border border-[var(--border)] bg-white/70 dark:bg-white/5" />
+              <div className="h-full min-h-48 animate-pulse rounded-[1.75rem] border border-[var(--border)] bg-white/70 dark:bg-white/5" />
             ) : continueLearningEnrollment ? (
-              <article className="overflow-hidden rounded-[1.75rem] border border-[var(--border)] bg-white/80 shadow-lg backdrop-blur dark:bg-[var(--card)]">
-                <div className="relative aspect-[16/10] bg-[var(--surface-soft)]">
-                  {continueLearningEnrollment.course?.thumbnail ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={continueLearningEnrollment.course.thumbnail}
-                      alt={continueLearningEnrollment.course?.title ?? "Course thumbnail"}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full items-center justify-center bg-[linear-gradient(135deg,rgba(15,122,90,0.12),rgba(244,196,0,0.18))] text-[var(--primary)]">
-                      <BookOpen className="size-10" />
-                    </div>
-                  )}
-                  <div className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full bg-[var(--primary)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--primary-foreground)]">
-                    <Target className="size-3.5" />
-                    Fokus saat ini
-                  </div>
-                </div>
-
+              <article className="overflow-hidden rounded-[1.75rem] bg-white/80 shadow-[0_12px_40px_rgba(0,0,0,0.04)] backdrop-blur border border-border/30 dark:bg-[var(--card)]">
                 <div className="space-y-4 p-5">
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap gap-2 text-[11px]">
-                      <span className="rounded-full bg-[var(--secondary)] px-2.5 py-1 font-semibold text-[var(--secondary-foreground)]">
-                        {clampProgress(continueLearningEnrollment.progress)}% progress
-                      </span>
-                      {continueLearningEnrollment.course?.category_name ? (
-                        <span className="rounded-full border border-[var(--border)] px-2.5 py-1 font-medium text-[var(--muted-foreground)]">
-                          {continueLearningEnrollment.course.category_name}
-                        </span>
-                      ) : null}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="inline-flex items-center gap-1.5 rounded-full bg-[var(--primary)]/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-[var(--primary)]">
+                      <Target className="size-3" />
+                      Fokus saat ini
                     </div>
-                    <h2 className="line-clamp-2 text-xl font-semibold leading-snug text-[var(--foreground)]">
+                    {continueLearningEnrollment.course?.category_name ? (
+                      <span className="rounded-full border border-[var(--border)] px-2.5 py-0.5 text-[10px] font-semibold text-[var(--muted-foreground)]">
+                        {continueLearningEnrollment.course.category_name}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <h2 className="line-clamp-2 text-lg font-bold leading-snug text-[var(--foreground)]">
                       {continueLearningEnrollment.course?.title ?? `Course #${continueLearningEnrollment.course_id}`}
                     </h2>
-                    <p className="text-sm leading-6 text-[var(--muted-foreground)]">
+                    <p className="text-xs leading-5 text-[var(--muted-foreground)]">
                       {getFocusNarrative(continueLearningEnrollment)}
                     </p>
                   </div>
 
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-[var(--muted-foreground)] font-medium">Progress kelas</span>
+                      <span className="font-bold text-[var(--foreground)]">
+                        {clampProgress(continueLearningEnrollment.progress)}%
+                      </span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-[var(--surface-soft)]">
+                      <div
+                        className="h-full rounded-full bg-[var(--secondary)]"
+                        style={{ width: `${clampProgress(continueLearningEnrollment.progress)}%` }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] pt-1">
                       <span className="text-[var(--muted-foreground)]">Sisa akses</span>
                       <span className="font-semibold text-[var(--foreground)]">
                         {formatRemainingAccessTime(
@@ -359,25 +353,19 @@ export default function StudentPage() {
                         )}
                       </span>
                     </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-[var(--surface-soft)]">
-                      <div
-                        className="h-full rounded-full bg-[var(--primary)]"
-                        style={{ width: `${clampProgress(continueLearningEnrollment.progress)}%` }}
-                      />
-                    </div>
                   </div>
 
                   <Link
                     href={getContinueLearningHref(continueLearningEnrollment)}
-                    className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[var(--primary)] px-4 text-sm font-semibold text-[var(--primary-foreground)] transition hover:opacity-90 active:scale-[0.98]"
+                    className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-4 text-xs font-bold text-[var(--primary-foreground)] transition hover:opacity-90 active:scale-[0.98]"
                   >
                     Buka kelas
-                    <ArrowRight className="size-4" />
+                    <ArrowRight className="size-3.5" />
                   </Link>
                 </div>
               </article>
             ) : (
-              <article className="flex h-full min-h-72 flex-col justify-between rounded-[1.75rem] border border-dashed border-[var(--border)] bg-white/70 p-5 backdrop-blur dark:bg-white/5">
+              <article className="flex h-full min-h-72 flex-col justify-between rounded-[1.75rem] border border-dashed border-[var(--border)]/60 bg-white/70 p-5 backdrop-blur dark:bg-white/5">
                 <div>
                   <div className="inline-flex items-center gap-2 rounded-full bg-[var(--surface-soft)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--primary)]">
                     <Sparkles className="size-3.5" />
@@ -402,18 +390,18 @@ export default function StudentPage() {
       </section>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
-        <section className="rounded-[1.8rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm sm:p-6">
+        <section className="rounded-[1.8rem] bg-[var(--card)] p-5 shadow-[0_8px_30px_rgba(15,23,42,0.025)] border border-border/30 sm:p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--primary)]">Peta Belajar</p>
-              <h2 className="mt-2 text-xl font-semibold text-[var(--foreground)]">Progress yang lebih mudah dibaca</h2>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--primary)]">Progres Belajar</p>
+              <h2 className="mt-2 text-xl font-semibold text-[var(--foreground)]">Progres Belajar {user?.fullname}</h2>
             </div>
             <Link href="/student/enrollments" className="text-sm font-semibold text-[var(--primary)]">
               Detail kelas
             </Link>
           </div>
 
-          <article className="mt-5 rounded-[1.5rem] border border-[var(--border)] bg-[var(--surface-soft)] p-5">
+          <article className="mt-5 rounded-[1.5rem] bg-[var(--surface-soft)] p-5">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
@@ -423,14 +411,14 @@ export default function StudentPage() {
                   Ringkasan kelas aktif dan yang sudah selesai
                 </h3>
                 <p className="mt-2 max-w-2xl text-sm leading-7 text-[var(--muted-foreground)]">
-                  Lihat komposisi belajarmu secara cepat untuk tahu berapa kelas yang masih berjalan dan berapa yang sudah tuntas.
+                  Pantau kelas yang sedang Anda pelajari dan kelas yang telah berhasil Anda selesaikan di sini.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2 text-xs">
-                <span className="rounded-full border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 font-medium text-[var(--foreground)]">
+                <span className="rounded-full bg-[var(--card)] px-3 py-1.5 font-medium text-[var(--foreground)] border border-border/40">
                   {activeEnrollmentsCount} kelas aktif
                 </span>
-                <span className="rounded-full border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 font-medium text-[var(--foreground)]">
+                <span className="rounded-full bg-[var(--card)] px-3 py-1.5 font-medium text-[var(--foreground)] border border-border/40">
                   {completedEnrollmentsCount} kelas selesai
                 </span>
               </div>
@@ -453,7 +441,7 @@ export default function StudentPage() {
           </article>
 
           {latestCompletedEnrollment ? (
-            <article className="mt-4 flex flex-col gap-3 rounded-[1.5rem] border border-[var(--border)] bg-[var(--surface-soft)] p-4 sm:flex-row sm:items-center sm:justify-between">
+            <article className="mt-4 flex flex-col gap-3 rounded-[1.5rem] bg-[var(--surface-soft)] p-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--primary)]">
                   Pencapaian terbaru
@@ -467,7 +455,7 @@ export default function StudentPage() {
               </div>
               <Link
                 href={`/student/enrollments/${latestCompletedEnrollment.id}/learn?panel=certificate`}
-                className="inline-flex h-10 shrink-0 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 text-sm font-semibold text-[var(--foreground)] transition hover:bg-white"
+                className="inline-flex h-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--card)] px-4 text-sm font-semibold text-[var(--foreground)] transition hover:bg-white border border-border/40 shadow-sm"
               >
                 Lihat hasil
               </Link>
@@ -475,7 +463,7 @@ export default function StudentPage() {
           ) : null}
         </section>
 
-        <section className="rounded-[1.8rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm sm:p-6">
+        <section className="rounded-[1.8rem] bg-[var(--card)] p-5 shadow-[0_8px_30px_rgba(15,23,42,0.025)] border border-border/30 sm:p-6">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--primary)]">Inbox & Transaksi</p>
             <h2 className="mt-2 text-xl font-semibold text-[var(--foreground)]">Aktivitas yang perlu dipantau</h2>
@@ -501,7 +489,7 @@ export default function StudentPage() {
                   <Link
                     key={notification.id}
                     href={getNotificationHref(notification)}
-                    className="flex items-start gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-3 transition hover:border-[var(--primary)]/25 hover:bg-white"
+                    className="flex items-start gap-3 rounded-2xl bg-[var(--surface-soft)] p-3 transition hover:shadow-md hover:bg-[var(--card)]"
                   >
                     <span
                       className={[
@@ -554,7 +542,7 @@ export default function StudentPage() {
                   <Link
                     key={order.id}
                     href={`/student/orders/${order.id}`}
-                    className="flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-3 transition hover:border-[var(--primary)]/25 hover:bg-white"
+                    className="flex items-center gap-3 rounded-2xl bg-[var(--surface-soft)] p-3 transition hover:shadow-md hover:bg-[var(--card)]"
                   >
                     <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--card)] text-[var(--primary)]">
                       <ReceiptText className="size-4" />
@@ -574,7 +562,7 @@ export default function StudentPage() {
                       <span className="block text-sm font-semibold text-[var(--foreground)]">
                         {formatCurrency(order.grand_total)}
                       </span>
-                      <span className="mt-1 inline-flex rounded-full bg-[var(--secondary)] px-2.5 py-1 text-[10px] font-semibold text-[var(--secondary-foreground)]">
+                      <span className="mt-1 inline-flex rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400 px-2.5 py-1 text-[10px] font-semibold">
                         Pending
                       </span>
                     </span>

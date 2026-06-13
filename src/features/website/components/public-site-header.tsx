@@ -45,7 +45,7 @@ export function PublicSiteHeader({
   return (
     <header className="sticky top-0 z-50 w-full border-b border-[var(--border)] bg-[var(--card)]/92 backdrop-blur-xl">
       <PublicThemeLock />
-      <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3 sm:px-6">
+      <div className="mx-auto flex w-full max-w-7xl items-center gap-3 px-4 py-3 sm:px-6">
         <BrandLogo
           href="/"
           title={settings.site_name}
@@ -56,14 +56,14 @@ export function PublicSiteHeader({
           titleClassName="font-semibold tracking-tight"
         />
 
-        <nav className="hidden items-center gap-1 md:flex">
+        <nav className="flex items-center gap-0.5 sm:gap-1">
           <div className="group relative">
             <Link
               href="/courses"
-              className="inline-flex items-center gap-1 rounded-full px-3 py-2 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-hover)]"
+              className="inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-hover)] sm:px-3 sm:py-2 sm:text-sm"
             >
               Courses
-              <ChevronDown className="size-3.5 transition group-hover:rotate-180" />
+              <ChevronDown className="size-3 transition group-hover:rotate-180 sm:size-3.5" />
             </Link>
             <div className="invisible absolute left-0 top-full z-50 w-72 translate-y-2 rounded-3xl border border-[var(--border)] bg-[var(--card)] p-2 opacity-0 shadow-2xl transition group-hover:visible group-hover:translate-y-0 group-hover:opacity-100">
               <Link
@@ -93,7 +93,7 @@ export function PublicSiteHeader({
 
           <Link
             href="/instructors"
-            className="rounded-full px-3 py-2 text-sm font-medium text-[var(--muted-foreground)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--foreground)]"
+            className="rounded-full px-2.5 py-1.5 text-xs font-medium text-[var(--muted-foreground)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--foreground)] sm:px-3 sm:py-2 sm:text-sm"
           >
             Instructor
           </Link>
@@ -117,7 +117,7 @@ export function PublicSiteHeader({
             <>
               <Link
                 href={dashboardHref}
-                className="hidden h-9 items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-soft)] px-4 text-xs font-bold text-[var(--foreground)] transition hover:bg-[var(--surface-hover)] active:scale-95 sm:inline-flex"
+                className="inline-flex h-9 items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-soft)] px-4 text-xs font-bold text-[var(--foreground)] transition hover:bg-[var(--surface-hover)] active:scale-95"
               >
                 <LayoutDashboard className="size-3.5" />
                 Dashboard

@@ -37,5 +37,5 @@ export function formatDiscountBadge(
 ): string {
   const percentage = getDiscountPercentage(price, discountPrice);
 
-  return percentage > 0 ? `Diskon ${percentage}%` : "Diskon";
+  return percentage > 0 ? `-${percentage}%` : "-";
 }

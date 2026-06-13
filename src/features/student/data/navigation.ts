@@ -136,18 +136,6 @@ export const STUDENT_MOBILE_BOTTOM_NAV = [
     href: "/student/enrollments",
     icon: "enrollments",
   },
-  {
-    key: "notifications",
-    label: "Inbox",
-    href: "/student/notifications",
-    icon: "notifications",
-  },
-  {
-    key: "orders",
-    label: "Order",
-    href: "/student/orders",
-    icon: "orders",
-  },
 ] as const satisfies Array<{
   key: string;
   label: string;

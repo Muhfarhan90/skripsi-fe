@@ -8,6 +8,7 @@ export interface StoreCourse {
   instructor_id: number | null;
   instructor_name?: string | null;
   instructor_bio?: string | null;
+  instructor_avatar?: string | null;
   course_offering_id?: number | null;
   price: number | null;
   discount_price: number | null;

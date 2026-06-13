@@ -101,7 +101,7 @@ export default function StudentCertificatesPage() {
               className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm"
             >
               {/* Decorative header strip */}
-              <div className="h-1.5 bg-gradient-to-r from-[var(--primary)] via-[var(--secondary)] to-emerald-400" />
+              <div className="h-1.5 bg-[var(--primary)]" />
 
               <div className="p-4">
                 {/* Top row */}

@@ -148,7 +148,7 @@ export default function StudentEnrollmentDetailPage() {
 
   return (
     <div className="space-y-6">
-      <section className="relative overflow-hidden rounded-[2rem] border border-[var(--border)] bg-[radial-gradient(circle_at_top_right,rgba(15,122,90,0.06),transparent_45%),radial-gradient(circle_at_bottom_left,rgba(217,175,0,0.04),transparent_35%)] bg-[var(--card)] p-5 shadow-sm sm:p-6 lg:p-8">
+      <section className="relative overflow-hidden rounded-[2rem] border border-border/30 bg-[var(--card)] p-5 shadow-sm sm:p-6 lg:p-8">
         <div className="grid gap-8 lg:grid-cols-[1fr_23rem]">
           <div className="space-y-5">
             <Link
@@ -322,7 +322,7 @@ function EnrollmentActionPanel({
   progressValue: number;
 }) {
   return (
-    <div className="overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--card)] shadow-[0_20px_50px_rgba(15,23,42,0.08)]">
+    <div className="overflow-hidden rounded-3xl border border-border/30 bg-[var(--card)] shadow-[0_20px_50px_rgba(15,23,42,0.04)]">
       <div className="space-y-5 p-6">
         <div>
           <p className="text-sm font-bold text-[var(--foreground)]">Lanjutkan belajar</p>
@@ -336,7 +336,7 @@ function EnrollmentActionPanel({
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-[var(--surface-soft)]">
             <div
-              className="h-full rounded-full bg-[var(--primary)]"
+              className="h-full rounded-full bg-[var(--secondary)]"
               style={{ width: `${progressValue}%` }}
             />
           </div>
@@ -496,7 +496,7 @@ function CurriculumAccordion({
         </div>
       </div>
 
-      <div className="divide-y divide-[var(--border)]/45 overflow-hidden rounded-2xl border border-[var(--border)]/70 bg-[var(--card)] shadow-sm">
+      <div className="divide-y divide-[var(--border)]/30 overflow-hidden rounded-2xl border border-[var(--border)]/40 bg-[var(--card)] shadow-sm">
         {sections.map((section, idx) => {
           const isExpanded = derivedExpandedSections[section.id];
           const itemsCount =
@@ -619,9 +619,9 @@ function CurriculumAccordion({
 
 function ContentSection({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm sm:p-6">
+    <section className="rounded-2xl border border-border/30 bg-[var(--card)] p-4 sm:p-5 shadow-[0_8px_30px_rgba(15,23,42,0.015)]">
       <h2 className="text-lg font-extrabold text-[var(--foreground)]">{title}</h2>
-      <div className="mt-4">{children}</div>
+      <div className="mt-3">{children}</div>
     </section>
   );
 }

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { BookOpen, CreditCard, Star } from "lucide-react";
 import { formatDiscountBadge, hasValidDiscount } from "@/features/student/lib/pricing";
+import { resolvePublicFileUrl } from "@/lib/file-url";
 import type { StoreCourse } from "@/types/store";
 
 function formatCurrency(amount: number | null | undefined): string {
@@ -33,12 +34,14 @@ export function CourseCatalogCard({
   const rating = Number(course.reviews_avg_rating ?? 0);
   const reviewCount = course.reviews_count ?? 0;
 
+  const resolvedThumbnail = course.thumbnail ? resolvePublicFileUrl(course.thumbnail) : null;
+
   return (
     <article className="group self-start overflow-hidden rounded-3xl border border-[var(--border)]/60 bg-[var(--card)] shadow-[0_4px_20px_-4px_rgba(15,23,42,0.05)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_34px_-10px_rgba(15,122,90,0.12)]">
-      <div className="relative aspect-[16/9] overflow-hidden bg-gradient-to-br from-[var(--primary)]/10 to-[var(--secondary)]/15">
-        {course.thumbnail ? (
+      <div className="relative aspect-[16/9] overflow-hidden bg-[var(--primary)]/10">
+        {resolvedThumbnail ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={course.thumbnail} alt={course.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+          <img src={resolvedThumbnail} alt={course.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
         ) : (
           <div className="flex h-full items-center justify-center">
             <BookOpen className="size-12 text-[var(--primary)]/30" />
@@ -61,7 +64,7 @@ export function CourseCatalogCard({
         </div>
       </div>
 
-      <div className="p-4">
+      <div className="min-h-[8.5rem] p-4">
         <div className="flex items-start justify-between gap-3">
           <h2 className="line-clamp-2 text-base font-extrabold leading-snug text-[var(--foreground)] transition-colors duration-250 group-hover:text-[var(--primary)]">
             {course.title}
@@ -90,17 +93,17 @@ export function CourseCatalogCard({
       </div>
 
       <div className="border-t border-[var(--border)]/40 p-4 pt-3">
-        <div className="flex items-center justify-between gap-3">
-          <div>
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0 flex-1">
             {hasDiscount ? (
-              <p className="text-[10px] font-medium leading-none text-[var(--muted-foreground)] line-through">{formatCurrency(course.price)}</p>
+              <p className="text-[10px] font-medium leading-none text-[var(--muted-foreground)] line-through truncate">{formatCurrency(course.price)}</p>
             ) : null}
-            <p className="text-base font-extrabold leading-tight text-[var(--primary)]">{formatCurrency(activePrice)}</p>
+            <p className="text-sm font-extrabold leading-tight text-[var(--secondary)] truncate sm:text-base">{formatCurrency(activePrice)}</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex shrink-0 items-center gap-1.5">
             <Link
               href={detailHref}
-              className="inline-flex h-8 items-center rounded-full border border-[var(--border)]/70 bg-[var(--surface-soft)] px-3.5 text-xs font-bold text-[var(--foreground)] transition-all hover:-translate-y-0.5 hover:border-[var(--border)] hover:bg-[var(--surface-hover)] active:scale-95"
+              className="inline-flex h-8 items-center rounded-full border border-[var(--border)]/70 bg-[var(--surface-soft)] px-3 text-xs font-bold text-[var(--foreground)] transition-all hover:-translate-y-0.5 hover:border-[var(--border)] hover:bg-[var(--surface-hover)] active:scale-95"
             >
               Detail
             </Link>
@@ -108,18 +111,18 @@ export function CourseCatalogCard({
               actionHref ? (
                 <Link
                   href={actionHref}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-full bg-[var(--primary)] px-4.5 text-xs font-extrabold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:opacity-95 hover:shadow active:scale-95"
+                  className="inline-flex h-8 items-center gap-1 rounded-full bg-[var(--primary)] px-3 text-xs font-extrabold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:opacity-95 hover:shadow active:scale-95"
                 >
-                  <CreditCard className="size-3.5" />
+                  <CreditCard className="size-3" />
                   {actionLabel}
                 </Link>
               ) : (
                 <button
                   type="button"
                   onClick={onAction}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-full bg-[var(--primary)] px-4.5 text-xs font-extrabold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:opacity-95 hover:shadow active:scale-95"
+                  className="inline-flex h-8 items-center gap-1 rounded-full bg-[var(--primary)] px-3 text-xs font-extrabold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:opacity-95 hover:shadow active:scale-95"
                 >
-                  <CreditCard className="size-3.5" />
+                  <CreditCard className="size-3" />
                   {actionLabel}
                 </button>
               )

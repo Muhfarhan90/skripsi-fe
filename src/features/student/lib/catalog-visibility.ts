@@ -1,5 +1,28 @@
 import type { StoreEnrollment, StoreOrder } from "@/types/store";
 
+function hasActiveEnrollmentStatus(status: string | null | undefined): boolean {
+  return ["pending", "active", "completed"].includes((status ?? "").toLowerCase());
+}
+
+function isPendingTransactionStillActionable(order: StoreOrder): boolean {
+  const latestTransaction = [...(order.transactions ?? [])]
+    .sort((left, right) => right.id - left.id)[0];
+
+  if (!latestTransaction) {
+    return true;
+  }
+
+  if (latestTransaction.status !== "pending") {
+    return false;
+  }
+
+  if (!latestTransaction.expired_at) {
+    return true;
+  }
+
+  return new Date(latestTransaction.expired_at).getTime() > Date.now();
+}
+
 export function buildHiddenCatalogCourseIds(
   enrollments: StoreEnrollment[] | undefined,
   pendingOrders: StoreOrder[] | undefined,
@@ -7,13 +30,13 @@ export function buildHiddenCatalogCourseIds(
   const hiddenCourseIds = new Set<number>();
 
   for (const enrollment of enrollments ?? []) {
-    if (enrollment.status !== "cancelled") {
+    if (typeof enrollment.course_id === "number" && hasActiveEnrollmentStatus(enrollment.status)) {
       hiddenCourseIds.add(enrollment.course_id);
     }
   }
 
   for (const order of pendingOrders ?? []) {
-    if (order.status !== "pending") {
+    if (order.status !== "pending" || !isPendingTransactionStillActionable(order)) {
       continue;
     }
 

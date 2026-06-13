@@ -66,7 +66,7 @@ function InstructorsPageContent() {
       <PublicSiteHeader settings={websiteSettings} courses={courses} />
 
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-        <section className="mb-8 overflow-hidden rounded-[2.25rem] border border-[var(--border)] bg-[linear-gradient(135deg,#f7fbf9_0%,#edf5f2_48%,#fff8dc_100%)] p-6 shadow-sm sm:p-8">
+        <section className="mb-8 overflow-hidden rounded-[2.25rem] border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm sm:p-8">
           <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--primary)]">
             {searchQuery ? `${visibleInstructors.length} instructor ditemukan` : `${instructors.length} instructor aktif`}
           </p>
@@ -130,7 +130,7 @@ function InstructorsPageContent() {
                 key={instructor.slug}
                 className="group overflow-hidden rounded-[2rem] border border-[var(--border)] bg-[var(--card)] shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
               >
-                <div className="bg-[linear-gradient(135deg,rgba(15,122,90,0.12)_0%,rgba(217,175,0,0.18)_100%)] p-6">
+                <div className="bg-[var(--primary)]/10 p-6">
                   <div className="flex items-start justify-between gap-4">
                     <span className="inline-flex size-16 items-center justify-center rounded-3xl bg-[var(--primary)] text-lg font-black text-white shadow-lg">
                       {instructor.initials}

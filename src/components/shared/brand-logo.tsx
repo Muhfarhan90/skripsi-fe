@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils/cn";
 
+import { resolvePublicFileUrl } from "@/lib/file-url";
+
 type BrandMarkSize = "sm" | "md" | "lg";
 
 const BRAND_MARK_SIZE_CLASS: Record<BrandMarkSize, string> = {
@@ -24,18 +26,21 @@ export function BrandMark({
   size = "md",
   className,
 }: BrandMarkProps) {
+  const resolvedLogoUrl = logoUrl ? resolvePublicFileUrl(logoUrl) : null;
+
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center justify-center overflow-hidden bg-[var(--secondary)] font-bold text-[var(--secondary-foreground)] shadow-sm",
+        "inline-flex shrink-0 items-center justify-center overflow-hidden font-bold shadow-sm",
+        !resolvedLogoUrl && "bg-[var(--secondary)] text-[var(--secondary-foreground)]",
         BRAND_MARK_SIZE_CLASS[size],
         className,
       )}
       aria-hidden
     >
-      {logoUrl ? (
+      {resolvedLogoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={logoUrl} alt="" className="h-full w-full object-cover" />
+        <img src={resolvedLogoUrl} alt="" className="h-full w-full object-contain" />
       ) : (
         fallbackText
       )}

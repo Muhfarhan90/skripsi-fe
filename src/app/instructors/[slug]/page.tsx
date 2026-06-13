@@ -4,26 +4,14 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, BookOpen, Layers3, Search, Star } from "lucide-react";
+import { ArrowLeft, Layers3, Search } from "lucide-react";
 import { getPublicWebsiteSettings, getPublishedCourses } from "@/features/student/api/store-api";
-import { hasValidDiscount } from "@/features/student/lib/pricing";
+import { CourseCatalogCard } from "@/features/website/components/course-catalog-card";
 import { PublicSiteHeader } from "@/features/website/components/public-site-header";
 import { SiteFooter } from "@/features/website/components/site-footer";
 import { findPublicInstructorProfile } from "@/features/website/lib/public-instructors";
 import { createDefaultWebsiteSetting } from "@/features/website/lib/website-settings";
-
-function formatCurrency(amount: number | null | undefined): string {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    maximumFractionDigits: 0,
-  }).format(Number(amount ?? 0));
-}
-
-function formatReviewAverage(value: number | null | undefined): string {
-  const numeric = Number(value ?? 0);
-  return numeric > 0 ? numeric.toFixed(1) : "0.0";
-}
+import { resolvePublicFileUrl } from "@/lib/file-url";
 
 export default function InstructorDetailPage() {
   return (
@@ -108,7 +96,7 @@ function InstructorDetailPageContent() {
       <PublicSiteHeader settings={websiteSettings} courses={courses} />
 
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-        <section className="overflow-hidden rounded-[2.25rem] border border-[var(--border)] bg-[linear-gradient(135deg,#f7fbf9_0%,#edf5f2_48%,#fff8dc_100%)] shadow-sm">
+        <section className="overflow-hidden rounded-[2.25rem] border border-[var(--border)] bg-[var(--card)] shadow-sm">
           <div className="grid gap-8 p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_340px]">
             <div>
               <Link
@@ -141,42 +129,19 @@ function InstructorDetailPageContent() {
               ) : null}
             </div>
 
-            <aside className="overflow-hidden rounded-[2rem] border border-white/80 bg-white/82 shadow-lg">
-              <div className="relative aspect-[16/10] bg-[linear-gradient(135deg,rgba(15,122,90,0.14)_0%,rgba(217,175,0,0.2)_100%)]">
-                {instructor.featuredCourse.thumbnail ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={instructor.featuredCourse.thumbnail}
-                    alt={instructor.featuredCourse.title}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-full items-center justify-center">
-                    <BookOpen className="size-14 text-[var(--primary)]/35" />
-                  </div>
-                )}
-                <span className="absolute left-4 top-4 rounded-full bg-black/55 px-3 py-1 text-[10px] font-black text-white backdrop-blur">
-                  Course unggulan
-                </span>
-              </div>
-
-              <div className="space-y-4 p-5">
-                <div>
-                  <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[var(--primary)]">Pilihan utama</p>
-                  <h2 className="mt-2 text-lg font-black text-[var(--foreground)]">{instructor.featuredCourse.title}</h2>
-                  <p className="mt-2 line-clamp-3 text-sm leading-6 text-[var(--muted-foreground)]">
-                    {instructor.featuredCourse.description || "Course ini menjadi salah satu pilihan utama dari instructor ini."}
-                  </p>
+            <aside className="overflow-hidden rounded-[2rem] border border-white/80 bg-white/82 shadow-lg aspect-square">
+              {instructor.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={resolvePublicFileUrl(instructor.avatarUrl) || undefined}
+                  alt={instructor.name}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-[var(--primary)]/10 text-[var(--primary)]">
+                  <span className="text-5xl font-black">{instructor.initials}</span>
                 </div>
-
-                <Link
-                  href={`/courses/${instructor.featuredCourse.slug}`}
-                  className="inline-flex items-center gap-2 text-sm font-black text-[var(--primary)] transition hover:gap-3"
-                >
-                  Buka detail course
-                  <ArrowRight className="size-4" />
-                </Link>
-              </div>
+              )}
             </aside>
           </div>
         </section>
@@ -221,73 +186,13 @@ function InstructorDetailPageContent() {
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {visibleCourses.map((course) => {
-                const hasDiscount = hasValidDiscount(course.price, course.discount_price);
-                const activePrice = hasDiscount ? Number(course.discount_price ?? 0) : Number(course.price ?? 0);
-                const reviewCount = Number(course.reviews_count ?? 0);
-
-                return (
-                  <article
-                    key={course.id}
-                    className="group overflow-hidden rounded-[2rem] border border-[var(--border)] bg-[var(--card)] shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
-                  >
-                    <div className="relative aspect-[16/10] bg-[linear-gradient(135deg,rgba(15,122,90,0.12)_0%,rgba(217,175,0,0.18)_100%)]">
-                      {course.thumbnail ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={course.thumbnail} alt={course.title} className="h-full w-full object-cover" />
-                      ) : (
-                        <div className="flex h-full items-center justify-center">
-                          <BookOpen className="size-12 text-[var(--primary)]/30" />
-                        </div>
-                      )}
-                      {course.category_name ? (
-                        <span className="absolute left-3 top-3 rounded-full bg-black/55 px-3 py-1 text-[10px] font-bold text-white backdrop-blur">
-                          {course.category_name}
-                        </span>
-                      ) : null}
-                    </div>
-
-                    <div className="space-y-4 p-5">
-                      <div>
-                        <h3 className="line-clamp-2 text-lg font-black leading-snug text-[var(--foreground)] transition group-hover:text-[var(--primary)]">
-                          {course.title}
-                        </h3>
-                        <p className="mt-2 line-clamp-3 text-sm leading-6 text-[var(--muted-foreground)]">
-                          {course.description || "Deskripsi course belum tersedia."}
-                        </p>
-                      </div>
-
-                      <div className="flex flex-wrap gap-3 text-xs font-semibold text-[var(--muted-foreground)]">
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2">
-                          <Star className="size-3.5 text-amber-500" />
-                          {reviewCount > 0
-                            ? `${formatReviewAverage(course.reviews_avg_rating)} - ${reviewCount} review`
-                            : "Belum ada review"}
-                        </span>
-                      </div>
-
-                      <div className="flex items-end justify-between gap-3">
-                        <div>
-                          {hasDiscount ? (
-                            <p className="text-[11px] text-[var(--muted-foreground)] line-through">
-                              {formatCurrency(course.price)}
-                            </p>
-                          ) : null}
-                          <p className="text-lg font-black text-[var(--secondary)]">{formatCurrency(activePrice)}</p>
-                        </div>
-
-                        <Link
-                          href={`/courses/${course.slug}`}
-                          className="inline-flex h-10 items-center gap-2 rounded-full bg-[var(--primary)] px-4 text-xs font-black text-white transition hover:opacity-90"
-                        >
-                          Detail course
-                          <ArrowRight className="size-3.5" />
-                        </Link>
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
+              {visibleCourses.map((course) => (
+                <CourseCatalogCard
+                  key={course.id}
+                  course={course}
+                  detailHref={`/courses/${course.slug}`}
+                />
+              ))}
             </div>
           )}
         </section>

@@ -52,7 +52,7 @@ function ClassCard({ enrollment }: { enrollment: StoreEnrollment }) {
             className="h-full w-full object-cover"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[var(--primary)]/10 to-[var(--primary)]/20">
+          <div className="flex h-full w-full items-center justify-center bg-[var(--primary)]/10">
             <BookOpen className="size-10 text-[var(--primary)]/40" />
           </div>
         )}
@@ -130,10 +130,10 @@ export default function StudentEnrollmentsPage() {
       : "Belum ada kelas yang selesai.";
 
   return (
-    <section className="space-y-4">
-      <header className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-4 shadow-sm">
-        <h1 className="text-xl font-bold text-[var(--foreground)]">Kelas Saya</h1>
-        <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
+    <section className="space-y-5">
+      <header className="px-1 py-1">
+        <h1 className="text-2xl font-black tracking-tight text-[var(--foreground)]">Kelas Saya</h1>
+        <p className="mt-1 text-sm text-[var(--muted-foreground)]">
           Daftar kelas yang sedang dipelajari dan kelas yang sudah selesai.
         </p>
       </header>
@@ -153,15 +153,15 @@ export default function StudentEnrollmentsPage() {
       ) : null}
 
       {enrollmentsQuery.data ? (
-        <div className="grid grid-cols-2 gap-2 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-1.5 shadow-sm">
+        <div className="flex gap-2 border-b border-[var(--border)] pb-px px-1">
           <button
             type="button"
             onClick={() => setActiveTab("in_progress")}
             className={[
-              "inline-flex h-10 items-center justify-center gap-2 rounded-xl text-sm font-semibold transition",
+              "relative inline-flex h-11 items-center gap-2 px-3 text-sm font-semibold transition after:absolute after:bottom-0 after:h-0.5 after:left-1 after:right-1",
               activeTab === "in_progress"
-                ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-sm"
-                : "text-[var(--muted-foreground)] hover:bg-[var(--surface-hover)] hover:text-[var(--foreground)]",
+                ? "text-[var(--primary)] after:bg-[var(--primary)]"
+                : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] after:bg-transparent",
             ].join(" ")}
           >
             <GraduationCap className="size-4" />
@@ -170,7 +170,7 @@ export default function StudentEnrollmentsPage() {
               className={[
                 "inline-flex size-5 items-center justify-center rounded-full text-[10px] font-bold",
                 activeTab === "in_progress"
-                  ? "bg-white/20 text-white"
+                  ? "bg-[var(--primary)]/10 text-[var(--primary)]"
                   : "bg-[var(--surface-soft)] text-[var(--muted-foreground)]",
               ].join(" ")}
             >
@@ -181,10 +181,10 @@ export default function StudentEnrollmentsPage() {
             type="button"
             onClick={() => setActiveTab("completed")}
             className={[
-              "inline-flex h-10 items-center justify-center gap-2 rounded-xl text-sm font-semibold transition",
+              "relative inline-flex h-11 items-center gap-2 px-3 text-sm font-semibold transition after:absolute after:bottom-0 after:h-0.5 after:left-1 after:right-1",
               activeTab === "completed"
-                ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-sm"
-                : "text-[var(--muted-foreground)] hover:bg-[var(--surface-hover)] hover:text-[var(--foreground)]",
+                ? "text-[var(--primary)] after:bg-[var(--primary)]"
+                : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] after:bg-transparent",
             ].join(" ")}
           >
             <Trophy className="size-4" />
@@ -193,7 +193,7 @@ export default function StudentEnrollmentsPage() {
               className={[
                 "inline-flex size-5 items-center justify-center rounded-full text-[10px] font-bold",
                 activeTab === "completed"
-                  ? "bg-white/20 text-white"
+                  ? "bg-[var(--primary)]/10 text-[var(--primary)]"
                   : "bg-[var(--surface-soft)] text-[var(--muted-foreground)]",
               ].join(" ")}
             >

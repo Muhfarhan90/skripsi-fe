@@ -6,6 +6,7 @@ export interface PublicInstructorProfile {
   name: string;
   description: string;
   initials: string;
+  avatarUrl: string | null;
   courseCount: number;
   categories: string[];
   totalReviews: number;
@@ -175,6 +176,7 @@ export function buildPublicInstructorProfiles(courses: StoreCourse[]): PublicIns
         name,
         description: buildInstructorDescription(name, sortedCourses, categories),
         initials: getPublicInstructorInitials(name),
+        avatarUrl: featuredCourse.instructor_avatar || null,
         courseCount: sortedCourses.length,
         categories,
         totalReviews: sortedCourses.reduce((total, course) => total + Number(course.reviews_count ?? 0), 0),

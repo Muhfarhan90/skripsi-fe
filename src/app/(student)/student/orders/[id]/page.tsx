@@ -48,91 +48,105 @@ export default function StudentOrderDetailPage() {
     latestTransaction?.payment_method === "midtrans" || Boolean(latestTransaction?.payment_url);
 
   return (
-    <section className="space-y-5">
-      <header className="rounded-lg border border-border bg-card p-5 shadow-sm">
-        <p className="text-xs text-muted-foreground">{order.order_code}</p>
-        <h1 className="mt-1 text-2xl font-semibold text-foreground">Detail Order</h1>
+    <section className="space-y-6">
+      <header className="pb-3 border-b border-border/60">
+        <p className="text-xs font-semibold uppercase tracking-wider text-primary">{order.order_code}</p>
+        <h1 className="mt-1 text-3xl font-bold text-foreground">Detail Order</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Status order: <span className="font-medium text-foreground">{order.status}</span>
+          Status order: <span className="font-semibold text-foreground capitalize">{order.status}</span>
         </p>
       </header>
 
-      <article className="rounded-lg border border-border bg-card p-5 shadow-sm">
-        <h2 className="text-sm font-semibold text-foreground">Item Pembelian</h2>
-        <div className="mt-3 space-y-2">
-          {order.items.map((item) => (
-            <div
-              key={item.course_offering_id ?? item.course_id ?? item.price}
-              className="flex items-center justify-between gap-4 text-sm"
-            >
-              <span className="text-muted-foreground">{item.course?.title ?? `Course #${item.course_id}`}</span>
-              <div className="text-right">
-                {hasItemDiscount(item) ? (
-                  <p className="text-xs text-muted-foreground line-through">
-                    {formatCurrency(item.course_offering?.price)}
-                  </p>
-                ) : null}
-                <p className="font-medium text-foreground">
-                  {formatCurrency(item.price)}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-4 border-t border-border pt-3 text-sm">
-          <p className="flex items-center justify-between text-muted-foreground">
-            <span>Subtotal</span>
-            <span>{formatCurrency(order.subtotal)}</span>
-          </p>
-          <p className="mt-1 flex items-center justify-between text-muted-foreground">
-            <span>Diskon</span>
-            <span>{formatCurrency(order.discount)}</span>
-          </p>
-          <p className="mt-1 flex items-center justify-between font-semibold text-foreground">
-            <span>Total</span>
-            <span>{formatCurrency(order.grand_total)}</span>
-          </p>
-        </div>
-      </article>
-
-      {latestTransaction ? (
-        <article className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-foreground">
-            {isGatewayPayment ? "Pembayaran Online" : "Pembayaran Manual"}
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {isGatewayPayment
-              ? "Status pembayaran akan diperbarui setelah transaksi selesai."
-              : "Data pembayaran dari proses checkout ditampilkan di bawah dan menunggu verifikasi admin."}
-          </p>
-          <div className="space-y-2 text-sm text-muted-foreground">
-            <p>Invoice: {latestTransaction.invoice_code}</p>
-            <p>Status transaksi: {latestTransaction.status}</p>
-            <p>
-              Metode:{" "}
-              {[latestTransaction.payment_method, latestTransaction.payment_channel]
-                .filter(Boolean)
-                .join(" / ") || "-"}
-            </p>
-            <p>Referensi: {latestTransaction.payment_reference ?? "-"}</p>
-            {latestTransaction.payment_url && latestTransaction.status === "pending" ? (
-              <p>
-                Link pembayaran:{" "}
-                <a
-                  href={latestTransaction.payment_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="font-semibold text-primary hover:underline"
+      <div className={latestTransaction ? "grid gap-6 md:grid-cols-2" : "space-y-6"}>
+        <article className="rounded-[1.2rem] bg-card p-6 shadow-[0_8px_30px_rgba(15,23,42,0.025)] border border-border/30 flex flex-col justify-between">
+          <div>
+            <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--muted-foreground)]">Item Pembelian</h2>
+            <div className="mt-4 space-y-3">
+              {order.items.map((item) => (
+                <div
+                  key={item.course_offering_id ?? item.course_id ?? item.price}
+                  className="flex items-center justify-between gap-4 text-sm"
                 >
-                  Bayar sekarang
-                </a>
-              </p>
-            ) : null}
+                  <span className="font-medium text-foreground">{item.course?.title ?? `Course #${item.course_id}`}</span>
+                  <div className="text-right">
+                    {hasItemDiscount(item) ? (
+                      <p className="text-xs text-muted-foreground line-through">
+                        {formatCurrency(item.course_offering?.price)}
+                      </p>
+                    ) : null}
+                    <p className="font-semibold text-foreground">
+                      {formatCurrency(item.price)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
 
+          <div className="mt-6 border-t border-border/60 pt-4 text-sm space-y-2">
+            <p className="flex items-center justify-between text-muted-foreground">
+              <span>Subtotal</span>
+              <span className="font-medium">{formatCurrency(order.subtotal)}</span>
+            </p>
+            <p className="flex items-center justify-between text-muted-foreground">
+              <span>Diskon</span>
+              <span className="font-medium">{formatCurrency(order.discount)}</span>
+            </p>
+            <div className="border-t border-dashed border-border/60 pt-2 flex items-center justify-between font-bold text-foreground text-base">
+              <span>Total</span>
+              <span className="text-primary">{formatCurrency(order.grand_total)}</span>
+            </div>
           </div>
         </article>
-      ) : null}
+
+        {latestTransaction ? (
+          <article className="space-y-4 rounded-[1.2rem] bg-card p-6 shadow-[0_8px_30px_rgba(15,23,42,0.025)] border border-border/30">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
+              {isGatewayPayment ? "Pembayaran Online" : "Pembayaran Manual"}
+            </h2>
+            <p className="text-sm text-muted-foreground leading-6">
+              {isGatewayPayment
+                ? "Status pembayaran akan diperbarui secara otomatis setelah pembayaran sukses diterima."
+                : "Silakan tunggu verifikasi admin untuk pembayaran manual."}
+            </p>
+            <div className="border-t border-border/60 pt-4 space-y-3 text-sm text-muted-foreground">
+              <p className="flex justify-between">
+                <span>Invoice:</span>
+                <span className="font-semibold text-[var(--foreground)]">{latestTransaction.invoice_code}</span>
+              </p>
+              <p className="flex justify-between">
+                <span>Status transaksi:</span>
+                <span className="font-semibold text-[var(--foreground)] capitalize">{latestTransaction.status}</span>
+              </p>
+              <p className="flex justify-between">
+                <span>Metode:</span>
+                <span className="font-semibold text-[var(--foreground)]">
+                  {[latestTransaction.payment_method, latestTransaction.payment_channel]
+                    .filter(Boolean)
+                    .join(" / ") || "-"}
+                </span>
+              </p>
+              <p className="flex justify-between">
+                <span>Referensi:</span>
+                <span className="font-semibold text-[var(--foreground)]">{latestTransaction.payment_reference ?? "-"}</span>
+              </p>
+              {latestTransaction.payment_url && latestTransaction.status === "pending" ? (
+                <div className="border-t border-dashed border-border/60 pt-4 flex flex-col gap-2">
+                  <span className="text-xs">Link Pembayaran Aktif:</span>
+                  <a
+                    href={latestTransaction.payment_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex h-10 items-center justify-center rounded-xl bg-primary text-sm font-semibold text-white transition hover:opacity-90"
+                  >
+                    Bayar Sekarang
+                  </a>
+                </div>
+              ) : null}
+            </div>
+          </article>
+        ) : null}
+      </div>
 
       <div className="flex flex-wrap gap-3">
         <Link href="/student/orders" className="inline-flex text-sm text-primary hover:underline">

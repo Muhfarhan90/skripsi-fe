@@ -65,8 +65,8 @@ export default function StudentOrdersPage() {
   return (
     <section className="space-y-4">
       {/* Header */}
-      <header className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-4 shadow-sm">
-        <h1 className="text-xl font-bold text-[var(--foreground)]">Order Saya</h1>
+      <header className="pb-3 border-b border-border/60">
+        <h1 className="text-2xl font-bold text-[var(--foreground)]">Order Saya</h1>
         <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
           Pantau status pembayaran dan akses course kamu.
         </p>
@@ -112,7 +112,7 @@ export default function StudentOrdersPage() {
         {ordersQuery.data?.map((order) => (
           <article
             key={order.id}
-            className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm"
+            className="overflow-hidden rounded-2xl bg-[var(--card)] shadow-[0_8px_30px_rgba(15,23,42,0.025)] border border-border/30"
           >
             <div className="px-4 py-3.5">
               {/* Top row: order code + status */}
@@ -140,7 +140,7 @@ export default function StudentOrdersPage() {
                 <p className="text-sm font-bold text-[var(--foreground)]">{formatCurrency(order.grand_total)}</p>
                 <Link
                   href={`/student/orders/${order.id}`}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--surface-soft)] border border-[var(--border)] px-3 py-1.5 text-xs font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-hover)] active:scale-95"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--surface-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--foreground)] border border-border/30 transition hover:bg-[var(--surface-hover)] active:scale-95"
                 >
                   Lihat Detail
                   <ArrowRight className="size-3.5" />

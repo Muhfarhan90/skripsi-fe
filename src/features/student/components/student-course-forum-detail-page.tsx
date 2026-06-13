@@ -290,36 +290,25 @@ export function StudentCourseForumDetailPage({
   };
 
   return (
-    <section className="space-y-5">
-      <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
-        <CardHeader className="gap-3 pb-2">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-base font-semibold text-[var(--foreground)]">
-                <MessageSquare className="size-5" />
-                <span>Detail Diskusi</span>
-              </CardTitle>
-              <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-                Course: <span className="font-medium text-[var(--foreground)]">{courseTitle}</span>
-              </p>
-            </div>
+    <section className="space-y-6">
+      <div className="flex flex-col gap-3 border-b border-border/60 pb-5 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h2 className="flex items-center gap-2.5 text-lg font-bold text-[var(--foreground)]">
+            <MessageSquare className="size-5 text-[var(--primary)]" />
+            <span>Detail Diskusi</span>
+          </h2>
+          <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+            Course: <span className="font-semibold text-[var(--foreground)]">{courseTitle}</span>
+          </p>
+        </div>
 
-            <Button render={<Link href={resolvedListHref} />} type="button" variant="outline">
-              <ArrowLeft className="size-4" />
-              <span>Kembali ke daftar diskusi</span>
-            </Button>
-          </div>
-        </CardHeader>
-      </Card>
+        <Button render={<Link href={resolvedListHref} />} type="button" variant="outline">
+          <ArrowLeft className="size-4" />
+          <span>Kembali ke daftar diskusi</span>
+        </Button>
+      </div>
 
-      <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-base font-semibold text-[var(--foreground)]">
-            <MessageSquare className="size-5" />
-            <span>Diskusi dan Balasan</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <div className="space-y-4">
           {selectedPostQuery.isLoading ? (
             <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
               <Loader2 className="size-4 animate-spin" />
@@ -591,8 +580,7 @@ export function StudentCourseForumDetailPage({
               </form>
             </div>
           )}
-        </CardContent>
-      </Card>
+      </div>
 
       <ConfirmAlertDialog
         open={postToDeleteId !== null}

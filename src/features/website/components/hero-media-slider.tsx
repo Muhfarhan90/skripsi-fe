@@ -55,8 +55,8 @@ export function HeroMediaSlider({ slides, siteName }: HeroMediaSliderProps) {
 
   return (
     <div className="rounded-[2rem] border border-white/70 bg-white/65 p-3 shadow-2xl shadow-slate-900/10 backdrop-blur sm:p-4">
-      <div className="relative overflow-hidden rounded-[1.65rem] border border-white/50 bg-gradient-to-br from-[var(--primary)]/15 to-[var(--secondary)]/18">
-        <div className="pointer-events-none absolute inset-0 z-10 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.45),transparent_24%),linear-gradient(180deg,rgba(15,23,42,0.02)_0%,rgba(15,23,42,0.22)_100%)]" />
+      <div className="relative overflow-hidden rounded-[1.65rem] border border-white/50 bg-[var(--primary)]/10">
+
 
         {hasSlides ? (
           <div
@@ -79,7 +79,7 @@ export function HeroMediaSlider({ slides, siteName }: HeroMediaSliderProps) {
                 )}
 
                 <div className="absolute inset-x-0 bottom-0 z-20 p-4 sm:p-5">
-                  <div className="rounded-[1.5rem] border border-white/10 bg-slate-950/55 p-4 text-white backdrop-blur-md">
+                  <div className="rounded-[1.5rem] border border-white/10 bg-[var(--primary)]/85 p-4 text-white backdrop-blur-md">
                     {slide.eyebrow ? (
                       <p className="text-[10px] font-black uppercase tracking-[0.16em] text-white/65">
                         {slide.eyebrow}

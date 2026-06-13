@@ -34,10 +34,10 @@ export default function StudentCatalogPage() {
   const isError = courseQuery.isError || enrollmentsQuery.isError || pendingOrdersQuery.isError;
 
   return (
-    <section className="space-y-4">
-      <header className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-4 shadow-sm">
-        <h1 className="text-xl font-bold text-[var(--foreground)]">Katalog Course</h1>
-        <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
+    <section className="space-y-5">
+      <header className="px-1 py-1">
+        <h1 className="text-2xl font-black tracking-tight text-[var(--foreground)]">Katalog Course</h1>
+        <p className="mt-1 text-sm text-[var(--muted-foreground)]">
           Course yang sudah di-enroll atau menunggu pembayaran tidak ditampilkan.
         </p>
       </header>

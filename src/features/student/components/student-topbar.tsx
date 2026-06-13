@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { getPublicWebsiteSettings } from "@/features/student/api/store-api";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
@@ -111,6 +113,14 @@ function ProfileMenuContent({
           <span>Sertifikat Saya</span>
         </Link>
 
+        <Link
+          href="/student/orders"
+          className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition hover:bg-[var(--surface-hover)]"
+        >
+          <ReceiptText className="size-4 text-[var(--muted-foreground)]" />
+          <span>Riwayat Order</span>
+        </Link>
+
         <button
           type="button"
           onClick={onToggleTheme}
@@ -168,6 +178,12 @@ export function StudentTopbar({
   onToggleTheme,
 }: StudentTopbarProps) {
   const logoutMutation = useLogoutAction();
+  const websiteSettingsQuery = useQuery({
+    queryKey: ["public", "website-settings"],
+    queryFn: getPublicWebsiteSettings,
+    staleTime: 5 * 60_000,
+  });
+  const websiteSettings = websiteSettingsQuery.data;
   const router = useRouter();
   const searchParams = useSearchParams();
   const pageTitle = getStudentPageTitle(pathname);
@@ -227,7 +243,7 @@ export function StudentTopbar({
               <ArrowLeft className="size-4" />
             </button>
           ) : (
-            <BrandMark size="sm" />
+            <BrandMark logoUrl={websiteSettings?.logo_url} size="sm" />
           )}
 
           {/* Title area */}
@@ -271,8 +287,13 @@ export function StudentTopbar({
         <div className="hidden min-h-[74px] items-center justify-between gap-4 lg:flex">
           {/* Left section: Logo & Nav links */}
           <div className="flex items-center gap-8">
-            <Link href="/student" className="flex items-center gap-3 shrink-0">
-              <BrandLogo title="Student Panel" subtitle="Skripsi LMS" size="md" />
+            <Link href="/" className="flex items-center gap-3 shrink-0">
+              <BrandLogo
+                title={websiteSettings?.site_name || "Student Panel"}
+                subtitle={websiteSettings?.site_tagline || "Skripsi LMS"}
+                logoUrl={websiteSettings?.logo_url}
+                size="md"
+              />
             </Link>
 
             <nav className="flex items-center gap-1.5">
@@ -280,7 +301,6 @@ export function StudentTopbar({
                 { label: "Dashboard", href: "/student", icon: LayoutDashboard },
                 { label: "Katalog", href: "/student/catalog", icon: BookOpen },
                 { label: "Kelas Saya", href: "/student/enrollments", icon: GraduationCap },
-                { label: "Orders", href: "/student/orders", icon: ReceiptText },
               ].map((item) => {
                 const Icon = item.icon;
                 const isActive = isStudentItemActive(pathname, item.href);

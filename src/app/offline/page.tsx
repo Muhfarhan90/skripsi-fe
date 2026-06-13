@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export default function OfflinePage() {
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#dbeafe_0%,_#f8fafc_45%,_#e2e8f0_100%)] px-6 py-16 text-slate-950">
+    <main className="min-h-screen bg-[var(--background)] px-6 py-16 text-slate-950">
       <div className="mx-auto flex min-h-[calc(100vh-8rem)] max-w-3xl items-center justify-center">
         <section className="w-full rounded-[2rem] border border-white/70 bg-white/85 p-8 shadow-[0_30px_90px_rgba(15,23,42,0.12)] backdrop-blur md:p-12">
           <div className="mb-8 inline-flex items-center gap-3 rounded-full border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-medium text-sky-900">

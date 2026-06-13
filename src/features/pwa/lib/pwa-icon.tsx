@@ -20,8 +20,7 @@ function PwaIcon({ size, maskable = false }: PwaIconResponseOptions) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background:
-          "radial-gradient(circle at top, #38bdf8 0%, #0f4c81 45%, #0f172a 100%)",
+        background: "#0f4c81",
         color: "#f8fafc",
         fontFamily: "Poppins, Arial, sans-serif",
       }}
@@ -36,8 +35,7 @@ function PwaIcon({ size, maskable = false }: PwaIconResponseOptions) {
           flexDirection: "column",
           justifyContent: "space-between",
           padding: Math.round(size * 0.11),
-          background:
-            "linear-gradient(180deg, rgba(248,250,252,0.18) 0%, rgba(15,23,42,0.12) 100%)",
+          background: "rgba(255,255,255,0.08)",
           border: "1px solid rgba(255,255,255,0.22)",
           boxShadow: "0 24px 60px rgba(15,23,42,0.28)",
         }}

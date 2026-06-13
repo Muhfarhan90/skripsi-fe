@@ -171,7 +171,6 @@ function LessonMaterialFrame({ title, src, type, watermarkText }: LessonMaterial
     >
       <iframe title={title} src={src} className="h-full w-full bg-black/5" allow="autoplay" />
       <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden" aria-hidden="true">
-        <div className="absolute inset-0 bg-gradient-to-br from-white/[0.03] via-transparent to-black/[0.06]" />
         <div className="absolute inset-0 flex items-center justify-center px-6">
           <div className="-rotate-[24deg] rounded-md border border-white/8 bg-slate-950/[0.12] px-4 py-2 text-center text-xs font-medium lowercase tracking-[0.18em] text-white/[0.2] shadow-sm backdrop-blur-[1px] sm:px-5 sm:py-2.5 sm:text-sm">
             {watermarkText}
@@ -1072,9 +1071,9 @@ export default function StudentEnrollmentLearnPage() {
 
   return (
     <section className="space-y-5">
-      <header className="rounded-lg border border-border bg-card p-4 shadow-sm sm:p-5">
-        <h1 className="text-xl font-semibold text-foreground sm:text-2xl">{curriculumQuery.data.title}</h1>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground sm:text-sm">
+      <header className="px-1 py-1">
+        <h1 className="text-2xl font-black tracking-tight text-foreground">{curriculumQuery.data.title}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Pilih section, lalu pilih lesson, quiz, atau assignment. Urutan ditampilkan lesson dulu, lalu quiz, lalu assignment.
         </p>
       </header>
@@ -1092,8 +1091,8 @@ export default function StudentEnrollmentLearnPage() {
         </div>
       ) : null}
 
-      <div className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--card)] shadow-sm">
-        <div className="border-b border-[var(--border)] px-3 py-3 sm:px-4">
+      <div className="space-y-4">
+        <div className="border-b border-[var(--border)]/70 pb-px px-1">
           <div className="overflow-x-auto">
             <div className="flex min-w-max gap-1" role="tablist" aria-label="Course learning tabs">
               <button
@@ -1102,10 +1101,10 @@ export default function StudentEnrollmentLearnPage() {
                 aria-selected={activeLearnTab === "course_content"}
                 onClick={() => switchLearnTab("course_content")}
                 className={[
-                  "relative inline-flex h-11 items-center px-4 text-sm font-semibold transition",
+                  "relative inline-flex h-11 items-center gap-2 px-3 text-sm font-semibold transition after:absolute after:bottom-0 after:h-0.5 after:left-1 after:right-1",
                   activeLearnTab === "course_content"
-                    ? "text-[var(--foreground)] after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:bg-[var(--secondary)]"
-                    : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]",
+                    ? "text-[var(--primary)] after:bg-[var(--primary)]"
+                    : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] after:bg-transparent",
                 ].join(" ")}
               >
                 Materi
@@ -1116,10 +1115,10 @@ export default function StudentEnrollmentLearnPage() {
                 aria-selected={activeLearnTab === "forum"}
                 onClick={() => switchLearnTab("forum")}
                 className={[
-                  "relative inline-flex h-11 items-center px-4 text-sm font-semibold transition",
+                  "relative inline-flex h-11 items-center gap-2 px-3 text-sm font-semibold transition after:absolute after:bottom-0 after:h-0.5 after:left-1 after:right-1",
                   activeLearnTab === "forum"
-                    ? "text-[var(--foreground)] after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:bg-[var(--secondary)]"
-                    : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]",
+                    ? "text-[var(--primary)] after:bg-[var(--primary)]"
+                    : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] after:bg-transparent",
                 ].join(" ")}
               >
                 Forum Diskusi
@@ -1128,7 +1127,7 @@ export default function StudentEnrollmentLearnPage() {
           </div>
         </div>
 
-        <div className="p-3 sm:p-4">
+        <div className="pt-2">
           {activeLearnTab === "course_content" ? (
             <div
               className={[

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { BrandLogo } from "@/components/shared/brand-logo";
 import { cn } from "@/lib/utils";
+import { resolvePublicFileUrl } from "@/lib/file-url";
 import { formatWebsiteFooterText, resolveWebsiteSocialIcon } from "@/features/website/lib/website-settings";
 import type { WebsiteHomeContent } from "@/types/website";
 
@@ -36,15 +37,13 @@ export function SiteFooter({ settings, className }: SiteFooterProps) {
   return (
     <footer
       className={cn(
-        "relative w-full overflow-hidden border-t border-[var(--border)] bg-[#071915] px-4 py-10 text-white sm:px-6",
+        "relative w-full overflow-hidden border-t border-[var(--border)] bg-[var(--primary)] py-10 text-white",
         className,
       )}
     >
-      <div className="pointer-events-none absolute -left-24 top-0 size-80 rounded-full bg-[var(--primary)]/25 blur-3xl" />
-      <div className="pointer-events-none absolute -right-28 bottom-0 size-96 rounded-full bg-[var(--secondary)]/15 blur-3xl" />
 
-      <div className="relative mx-auto max-w-7xl">
-        <div className="grid gap-8 rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/10 backdrop-blur sm:p-8 lg:grid-cols-[1.15fr_0.75fr_0.9fr_0.75fr]">
+      <div className="relative mx-auto w-full max-w-7xl px-4 sm:px-6">
+        <div className="grid gap-8 lg:grid-cols-[1.15fr_0.75fr_0.9fr_0.75fr]">
           <div>
             <BrandLogo
               title={settings.site_name}
@@ -56,8 +55,8 @@ export function SiteFooter({ settings, className }: SiteFooterProps) {
             />
 
             {footerDescription ? (
-              <div className="mt-6 max-w-md rounded-3xl border border-white/10 bg-white/[0.05] p-5">
-                <p className="text-sm leading-7 text-white/70">{footerDescription}</p>
+              <div className="mt-4 max-w-md">
+                <p className="text-sm leading-7 text-white/60">{footerDescription}</p>
               </div>
             ) : null}
 
@@ -101,17 +100,17 @@ export function SiteFooter({ settings, className }: SiteFooterProps) {
                 {contactEmail ? (
                   <div className="space-y-1">
                     <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/40">Email</p>
-                    <a href={`mailto:${contactEmail}`} className="min-w-0 break-all text-sm text-white/75 transition hover:text-white">
+                    <p className="min-w-0 break-all text-sm text-white/75">
                       {contactEmail}
-                    </a>
+                    </p>
                   </div>
                 ) : null}
                 {contactPhone ? (
                   <div className="space-y-1">
                     <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/40">Telepon</p>
-                    <a href={`tel:${contactPhone}`} className="text-sm text-white/75 transition hover:text-white">
+                    <p className="text-sm text-white/75">
                       {contactPhone}
-                    </a>
+                    </p>
                   </div>
                 ) : null}
                 {contactAddress ? (
@@ -129,8 +128,7 @@ export function SiteFooter({ settings, className }: SiteFooterProps) {
               <p className="text-xs font-black uppercase tracking-[0.18em] text-white/45">Sosial Media</p>
               <div className="mt-5 grid gap-3">
                 {settings.social_links.map((link) => {
-                  const iconMeta = resolveWebsiteSocialIcon(link);
-                  const Icon = iconMeta.icon;
+                  const isUploadedIcon = link.icon?.startsWith("/storage/") || link.icon?.startsWith("http");
 
                   return (
                     <a
@@ -138,11 +136,23 @@ export function SiteFooter({ settings, className }: SiteFooterProps) {
                       href={link.url}
                       target="_blank"
                       rel="noreferrer"
-                      className="group flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white/75 transition hover:-translate-y-0.5 hover:bg-white/[0.09] hover:text-white"
+                      className="group flex items-center justify-between gap-3 rounded-2xl bg-white/[0.04] px-4 py-3 text-sm font-bold text-white/75 transition hover:-translate-y-0.5 hover:bg-white/[0.09] hover:text-white"
                     >
                       <span className="flex min-w-0 items-center gap-3">
-                        <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-2xl bg-white px-2 py-2 shadow-sm">
-                          <Icon className="size-5 text-[var(--primary)]" />
+                        <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-2xl bg-white px-2 py-2 shadow-sm overflow-hidden">
+                          {isUploadedIcon ? (
+                            <img
+                              src={resolvePublicFileUrl(link.icon) ?? ""}
+                              alt={link.label}
+                              className="size-5 object-contain"
+                            />
+                          ) : (
+                            (() => {
+                              const iconMeta = resolveWebsiteSocialIcon(link);
+                              const Icon = iconMeta.icon;
+                              return <Icon className="size-5 text-[var(--primary)]" />;
+                            })()
+                          )}
                         </span>
                         <span className="truncate">{link.label}</span>
                       </span>

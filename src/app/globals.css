@@ -3,7 +3,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-    --background: #f4f7f8;
+    --background: #f8fafc;
     --foreground: #0f172a;
 
     --card: #ffffff;
@@ -18,14 +18,14 @@
     --accent: #f4c400;
     --accent-foreground: #111827;
 
-    --muted: #edf2f4;
+    --muted: #f1f5f9;
     --muted-foreground: #475569;
-    --border: #cfd8df;
-    --input: #dce4ea;
+    --border: #e2e8f0;
+    --input: #e2e8f0;
     --ring: #0f7a5a;
     --destructive: #dc2626;
-    --surface-hover: #e3ebf0;
-    --surface-soft: #f0f4f6;
+    --surface-hover: #f1f5f9;
+    --surface-soft: #f1f5f9;
     --sidebar-hover: rgba(255, 255, 255, 0.18);
     --sidebar-muted-foreground: rgba(255, 255, 255, 0.82);
     --danger-soft-bg: #fff1f1;

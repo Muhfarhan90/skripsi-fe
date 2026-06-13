@@ -63,7 +63,7 @@ export function SiteHeader({ settings, activePath = "home" }: SiteHeaderProps) {
             <>
               <Link
                 href={dashboardHref}
-                className="hidden h-8 items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--surface-soft)] px-3 text-xs font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-hover)] sm:inline-flex"
+                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--surface-soft)] px-3 text-xs font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-hover)]"
               >
                 <LayoutDashboard className="size-3.5" />
                 Dashboard

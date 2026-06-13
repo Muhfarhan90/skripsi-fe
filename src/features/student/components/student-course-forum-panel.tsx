@@ -186,38 +186,32 @@ export function StudentCourseForumPanel({
   }
 
   return (
-    <div className="space-y-5">
-      <Card className="border border-border bg-card shadow-sm">
-        <CardHeader className="gap-3 pb-2">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-            <div className="max-w-3xl">
-              <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
-                <MessageSquare className="size-5" />
-                <span>Forum Diskusi</span>
-              </CardTitle>
-              <p className="mt-1 text-sm leading-7 text-muted-foreground">
-                Halaman ini menampilkan daftar topik untuk kelas{" "}
-                <span className="font-medium text-foreground">{courseTitle}</span>.
-              </p>
-            </div>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 border-b border-border/60 pb-5 lg:flex-row lg:items-start lg:justify-between">
+        <div className="max-w-3xl">
+          <h2 className="flex items-center gap-2.5 text-lg font-bold text-foreground">
+            <MessageSquare className="size-5 text-[var(--primary)]" />
+            <span>Forum Diskusi</span>
+          </h2>
+          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+            Halaman ini menampilkan daftar topik untuk kelas{" "}
+            <span className="font-semibold text-foreground">{courseTitle}</span>.
+          </p>
+        </div>
 
-            <Button
-              type="button"
-              onClick={() => setCreateModalOpen(true)}
-              className="bg-[var(--secondary)] text-[var(--secondary-foreground)] hover:opacity-90"
-            >
-              <PlusCircle className="size-4" />
-              <span>Tambah Diskusi</span>
-            </Button>
-          </div>
-        </CardHeader>
-      </Card>
+        <Button
+          type="button"
+          onClick={() => setCreateModalOpen(true)}
+          className="bg-[var(--secondary)] text-[var(--secondary-foreground)] hover:opacity-90 self-start"
+        >
+          <PlusCircle className="size-4" />
+          <span>Tambah Diskusi</span>
+        </Button>
+      </div>
 
-      <Card className="border border-border bg-card shadow-sm">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base font-semibold text-foreground">Daftar Diskusi</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <div className="space-y-4">
+        <h3 className="text-base font-bold text-foreground">Daftar Diskusi</h3>
+        <div className="space-y-4">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -336,8 +330,8 @@ export function StudentCourseForumPanel({
               </button>
             </div>
           ) : null}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <AppModal
         open={createModalOpen}

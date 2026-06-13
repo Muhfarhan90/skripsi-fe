@@ -20,6 +20,7 @@ import { HeroMediaSlider, type HeroMediaSlide } from "@/features/website/compone
 import { CourseCatalogCard } from "@/features/website/components/course-catalog-card";
 import { SiteFooter } from "@/features/website/components/site-footer";
 import { PublicSiteHeader } from "@/features/website/components/public-site-header";
+import { resolvePublicFileUrl } from "@/lib/file-url";
 import {
   createDefaultWebsiteSetting,
   getWebsiteFeatureIconMeta,
@@ -44,7 +45,7 @@ function buildHeroSlides(
 
   registerSlide({
     id: "hero-primary",
-    imageUrl: websiteSettings.hero_image_url,
+    imageUrl: resolvePublicFileUrl(websiteSettings.hero_image_url),
     eyebrow: websiteSettings.hero_badge || "Highlight",
     title: heroTitle,
     description: websiteSettings.hero_description || websiteSettings.site_tagline,
@@ -55,7 +56,7 @@ function buildHeroSlides(
   previewCourses.forEach((course) => {
     registerSlide({
       id: `course-${course.id}`,
-      imageUrl: course.thumbnail,
+      imageUrl: resolvePublicFileUrl(course.thumbnail),
       eyebrow: course.category_name || "Preview Course",
       title: course.title,
       description: course.instructor_name || course.description || "Course pilihan untuk mulai belajar.",
@@ -65,6 +66,68 @@ function buildHeroSlides(
   });
 
   return Array.from(slides.values()).slice(0, 6);
+}
+
+function LandingPageSkeleton() {
+  return (
+    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] animate-pulse">
+      {/* Header Skeleton */}
+      <header className="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--card)]/90 py-4">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6">
+          <div className="h-8 w-32 rounded bg-slate-200 dark:bg-slate-800" />
+          <div className="hidden gap-6 sm:flex">
+            <div className="h-4 w-16 rounded bg-slate-200 dark:bg-slate-800" />
+            <div className="h-4 w-16 rounded bg-slate-200 dark:bg-slate-800" />
+            <div className="h-4 w-16 rounded bg-slate-200 dark:bg-slate-800" />
+          </div>
+          <div className="h-9 w-24 rounded-full bg-slate-200 dark:bg-slate-800" />
+        </div>
+      </header>
+
+      {/* Hero Section Skeleton */}
+      <main className="px-4 py-14 sm:px-6 lg:py-20 animate-pulse">
+        <div className="mx-auto grid max-w-7xl items-center gap-10 xl:grid-cols-2">
+          <div className="space-y-6">
+            <div className="h-6 w-36 rounded-full bg-slate-200 dark:bg-slate-800" />
+            <div className="space-y-3">
+              <div className="h-12 w-full rounded bg-slate-200 dark:bg-slate-800 sm:h-16" />
+              <div className="h-12 w-3/4 rounded bg-slate-200 dark:bg-slate-800 sm:h-16" />
+            </div>
+            <div className="space-y-2">
+              <div className="h-4 w-full rounded bg-slate-200 dark:bg-slate-800" />
+              <div className="h-4 w-5/6 rounded bg-slate-200 dark:bg-slate-800" />
+            </div>
+            <div className="flex gap-4">
+              <div className="h-12 w-36 rounded-full bg-slate-200 dark:bg-slate-800" />
+              <div className="h-12 w-36 rounded-full bg-slate-200 dark:bg-slate-800" />
+            </div>
+          </div>
+          <div className="h-64 w-full rounded-3xl bg-slate-200 dark:bg-slate-800 sm:h-96" />
+        </div>
+
+        {/* Featured Courses Section Skeleton */}
+        <section className="mx-auto max-w-7xl mt-20">
+          <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div className="space-y-3">
+              <div className="h-4 w-24 rounded bg-slate-200 dark:bg-slate-800" />
+              <div className="h-8 w-64 rounded bg-slate-200 dark:bg-slate-800" />
+            </div>
+            <div className="h-10 w-28 rounded-full bg-slate-200 dark:bg-slate-800" />
+          </div>
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="space-y-4 rounded-3xl border border-[var(--border)] bg-[var(--card)] p-4">
+                <div className="aspect-video w-full rounded-2xl bg-slate-200 dark:bg-slate-800" />
+                <div className="h-5 w-5/6 rounded bg-slate-200 dark:bg-slate-800" />
+                <div className="h-4 w-1/2 rounded bg-slate-200 dark:bg-slate-800" />
+                <div className="h-8 w-full rounded bg-slate-200 dark:bg-slate-800" />
+              </div>
+            ))}
+          </div>
+        </section>
+      </main>
+    </div>
+  );
 }
 
 export default function RootPage() {
@@ -85,6 +148,10 @@ export default function RootPage() {
     staleTime: 5 * 60_000,
   });
 
+  if (websiteSettingsQuery.isLoading || courseQuery.isLoading) {
+    return <LandingPageSkeleton />;
+  }
+
   const courses = courseQuery.data ?? [];
   const previewCourses = courses.slice(0, 4);
   const websiteSettings = websiteSettingsQuery.data ?? createDefaultWebsiteSetting();
@@ -97,11 +164,11 @@ export default function RootPage() {
   const hasFaq = faqItems.length > 0;
   const hasCta = Boolean(websiteSettings.bottom_cta_title || websiteSettings.bottom_cta_description);
   const heroSlides = buildHeroSlides(websiteSettings, previewCourses, heroTitle, catalogHref);
-  const featuredSectionClass = "relative overflow-hidden border-y border-[var(--border)]/70 bg-[linear-gradient(180deg,rgba(255,255,255,0)_0%,rgba(15,122,90,0.045)_22%,rgba(217,175,0,0.09)_100%)]";
-  const featuresSectionClass = "relative overflow-hidden bg-[linear-gradient(135deg,#f9fcfb_0%,#edf7f2_58%,#ffffff_100%)]";
-  const learningSectionClass = "relative overflow-hidden border-y border-[var(--border)]/60 bg-[linear-gradient(135deg,#fffdf4_0%,#fef5d6_28%,#f5fbf8_100%)]";
-  const faqSectionClass = "relative overflow-hidden bg-[linear-gradient(180deg,#f6fafb_0%,#eef5f6_100%)]";
-  const ctaSectionClass = "relative overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0)_0%,rgba(15,122,90,0.07)_100%)]";
+  const featuredSectionClass = "relative overflow-hidden bg-white dark:bg-[var(--card)]";
+  const featuresSectionClass = "relative overflow-hidden bg-[var(--surface-soft)]";
+  const learningSectionClass = "relative overflow-hidden border-y border-[var(--border)]/60 bg-white dark:bg-[var(--card)]";
+  const faqSectionClass = "relative overflow-hidden bg-[var(--surface-soft)]";
+  const ctaSectionClass = "relative overflow-hidden bg-white dark:bg-[var(--card)]";
 
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
@@ -113,9 +180,11 @@ export default function RootPage() {
       />
 
       <main>
-        <section className="relative overflow-hidden border-b border-[var(--border)] bg-[radial-gradient(circle_at_top_left,rgba(15,122,90,0.16),transparent_34%),linear-gradient(135deg,#f7fbf9_0%,#edf5f2_45%,#fff7d6_100%)] px-4 py-14 sm:px-6 lg:py-20">
-          <div className="pointer-events-none absolute right-[-8rem] top-10 size-80 rounded-full bg-[var(--secondary)]/20 blur-3xl" />
-          <div className="pointer-events-none absolute bottom-[-10rem] left-[-6rem] size-96 rounded-full bg-[var(--primary)]/15 blur-3xl" />
+        <section className="relative overflow-hidden border-b border-[var(--border)] bg-gradient-to-b from-[var(--primary)]/10 via-[var(--primary)]/3 to-[var(--background)] dark:from-[var(--primary)]/20 dark:via-[var(--primary)]/3 dark:to-[var(--background)] px-4 py-14 sm:px-6 lg:py-20">
+          <div className="absolute inset-0 -z-10 overflow-hidden">
+            <div className="absolute -top-40 -left-40 size-[32rem] rounded-full bg-[var(--primary)]/15 blur-3xl dark:bg-[var(--primary)]/20" />
+            <div className="absolute -right-40 top-10 size-[36rem] rounded-full bg-[var(--primary)]/10 blur-3xl dark:bg-[var(--primary)]/15" />
+          </div>
 
           <div className="relative mx-auto grid max-w-7xl items-center gap-10 xl:grid-cols-[minmax(0,1fr)_minmax(380px,0.82fr)] xl:gap-14">
             <div className="relative z-10 min-w-0">
@@ -207,9 +276,7 @@ export default function RootPage() {
 
         {previewCourses.length > 0 ? (
           <section className={`${featuredSectionClass} px-4 py-14 sm:px-6`}>
-            <div className="pointer-events-none absolute left-[-6rem] top-10 size-64 rounded-full bg-[var(--primary)]/10 blur-3xl" />
-            <div className="pointer-events-none absolute right-[-7rem] bottom-0 size-72 rounded-full bg-[var(--secondary)]/12 blur-3xl" />
-            <div className="relative mx-auto max-w-7xl rounded-[2.25rem] border border-white/70 bg-white/72 p-6 shadow-[0_24px_60px_rgba(15,23,42,0.06)] backdrop-blur sm:p-8">
+            <div className="relative mx-auto max-w-7xl">
               <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   {websiteSettings.featured_courses_badge ? (
@@ -257,9 +324,7 @@ export default function RootPage() {
 
         {hasFeatures ? (
           <section id="features" className={`${featuresSectionClass} px-4 py-14 sm:px-6`}>
-            <div className="pointer-events-none absolute right-[-8rem] top-8 size-72 rounded-full bg-[var(--primary)]/10 blur-3xl" />
-            <div className="pointer-events-none absolute left-[-8rem] bottom-0 size-80 rounded-full bg-[#9fd3bd]/20 blur-3xl" />
-            <div className="relative mx-auto max-w-7xl rounded-[2.25rem] border border-[var(--border)]/70 bg-white/70 p-6 shadow-[0_20px_50px_rgba(15,23,42,0.05)] backdrop-blur sm:p-8">
+            <div className="relative mx-auto max-w-7xl">
               <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
                 <div className="lg:sticky lg:top-24">
                   {websiteSettings.features_badge ? (
@@ -283,7 +348,7 @@ export default function RootPage() {
                     return (
                       <article
                         key={`${feat.title}-${index}`}
-                        className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+                        className="rounded-3xl bg-[var(--card)] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-border/30 transition hover:-translate-y-1 hover:shadow-md"
                       >
                         <span className={`mb-5 inline-flex size-12 items-center justify-center rounded-2xl ${iconMeta.colorClass}`}>
                           <Icon className="size-5" />
@@ -301,9 +366,7 @@ export default function RootPage() {
 
         {hasLearningPaths ? (
           <section id="learning-paths" className={`${learningSectionClass} px-4 py-14 sm:px-6`}>
-            <div className="pointer-events-none absolute left-[-5rem] top-12 size-64 rounded-full bg-[var(--secondary)]/14 blur-3xl" />
-            <div className="pointer-events-none absolute right-[-7rem] bottom-4 size-80 rounded-full bg-[var(--primary)]/9 blur-3xl" />
-            <div className="relative mx-auto max-w-7xl rounded-[2.25rem] border border-white/70 bg-white/76 p-6 shadow-[0_24px_60px_rgba(15,23,42,0.06)] backdrop-blur sm:p-8">
+            <div className="relative mx-auto max-w-7xl">
               <div className="mb-8 max-w-3xl">
                 {websiteSettings.learning_path_badge ? (
                   <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--primary)]">
@@ -326,7 +389,7 @@ export default function RootPage() {
                   return (
                     <article
                       key={`${item.title}-${index}`}
-                      className="relative overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+                      className="relative overflow-hidden rounded-3xl bg-[var(--card)] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-border/30 transition hover:-translate-y-1 hover:shadow-md"
                     >
                       <span className="absolute right-5 top-5 text-5xl font-black text-[var(--primary)]/10">
                         {String(index + 1).padStart(2, "0")}
@@ -348,9 +411,7 @@ export default function RootPage() {
 
         {hasFaq ? (
           <section id="faq" className={`${faqSectionClass} px-4 py-14 sm:px-6`}>
-            <div className="pointer-events-none absolute right-[-6rem] top-10 size-72 rounded-full bg-[var(--secondary)]/10 blur-3xl" />
-            <div className="pointer-events-none absolute left-[-7rem] bottom-0 size-80 rounded-full bg-[var(--primary)]/8 blur-3xl" />
-            <div className="relative mx-auto grid max-w-7xl gap-8 rounded-[2.25rem] border border-[var(--border)]/60 bg-white/72 p-6 shadow-[0_20px_50px_rgba(15,23,42,0.05)] backdrop-blur sm:p-8 lg:grid-cols-[0.85fr_1.15fr]">
+            <div className="relative mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.8fr_1.2fr]">
               <div>
                 {websiteSettings.faq_badge ? (
                   <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--primary)]">
@@ -365,27 +426,27 @@ export default function RootPage() {
                 ) : null}
               </div>
 
-              <div className="space-y-3">
+              <div className="divide-y divide-[var(--border)]">
                 {faqItems.map((faq, index) => (
                   <details
                     key={faq.id || faq.question}
-                    className="group rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm transition open:shadow-lg"
+                    className="group py-5 transition first:pt-0 last:pb-0"
                     open={index === 0}
                   >
                     <summary className="flex cursor-pointer list-none items-start justify-between gap-4">
                       <span>
                         {faq.category?.name || faq.category_name ? (
-                          <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.14em] text-[var(--primary)]">
+                          <span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--primary)]">
                             {faq.category?.name ?? faq.category_name}
                           </span>
                         ) : null}
-                        <span className="block text-base font-black leading-6">{faq.question}</span>
+                        <span className="block text-base font-bold leading-6 text-[var(--foreground)] group-hover:text-[var(--primary)] transition-colors">{faq.question}</span>
                       </span>
                       <span className="mt-1 inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--surface-soft)] text-[var(--primary)] transition group-open:rotate-180">
                         <ChevronDown className="size-4" />
                       </span>
                     </summary>
-                    <p className="mt-4 border-t border-[var(--border)] pt-4 text-sm leading-7 text-[var(--muted-foreground)]">
+                    <p className="mt-3 text-sm leading-7 text-[var(--muted-foreground)] pr-12">
                       {faq.answer}
                     </p>
                   </details>
@@ -397,10 +458,8 @@ export default function RootPage() {
 
         {hasCta && !isLoggedIn ? (
           <section className={`${ctaSectionClass} px-4 py-14 sm:px-6`}>
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-[linear-gradient(180deg,rgba(255,255,255,0.65)_0%,rgba(255,255,255,0)_100%)]" />
             <div className="mx-auto max-w-6xl overflow-hidden rounded-[2rem] bg-[var(--primary)] shadow-2xl shadow-emerald-900/15">
               <div className="relative grid gap-8 px-6 py-10 text-white sm:px-10 lg:grid-cols-[1fr_auto] lg:items-center lg:p-12">
-                <div className="pointer-events-none absolute right-0 top-0 size-72 rounded-full bg-white/10 blur-3xl" />
                 <div className="relative">
                   {websiteSettings.bottom_cta_title ? (
                     <h2 className="max-w-2xl text-2xl font-black tracking-tight sm:text-4xl">{websiteSettings.bottom_cta_title}</h2>

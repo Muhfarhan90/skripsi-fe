@@ -142,7 +142,7 @@ export default function CourseDetailPage() {
       <PublicSiteHeader settings={websiteSettings} courses={[course]} />
 
       <main className="pb-24 md:pb-16">
-        <section className="relative overflow-hidden border-b border-[var(--border)]/70 bg-[radial-gradient(circle_at_top_right,rgba(15,122,90,0.06),transparent_45%),radial-gradient(circle_at_bottom_left,rgba(217,175,0,0.04),transparent_35%)] bg-[var(--card)] py-6 lg:py-10">
+        <section className="relative overflow-hidden border-b border-[var(--border)]/70 bg-[var(--card)] py-6 lg:py-10">
           <div className="mx-auto grid max-w-6xl gap-8 px-4 sm:px-6 lg:grid-cols-[1fr_23rem]">
             <div className="space-y-6">
               <Link
