@@ -54,8 +54,8 @@ export interface StoreTransaction {
   payment_channel: string | null;
   payment_url: string | null;
   payment_reference: string | null;
-  payment_proof: string | null;
-  status: string;
+  amount: number;
+  status: "pending" | "success" | "failed";
   paid_at: string | null;
   expired_at: string | null;
 }

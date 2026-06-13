@@ -102,8 +102,7 @@ export function createStudentOrder(payload: {
   voucher_code?: string;
   note?: string;
   payment_reference?: string;
-  payment_proof?: string;
-  payment_method: "manual" | "gateway";
+  payment_method: "gateway";
 }) {
   return studentRequest<StoreOrder>("/api/student/orders", {
     method: "POST",
@@ -111,15 +110,7 @@ export function createStudentOrder(payload: {
   });
 }
 
-export function uploadStudentPaymentProof(file: File) {
-  const formData = new FormData();
-  formData.set("file", file);
 
-  return studentRequest<{ path: string }>("/api/student/orders/payment-proof-upload", {
-    method: "POST",
-    body: formData,
-  });
-}
 
 export function getStudentOrders(options?: {
   status?: "pending" | "completed" | "cancelled";
@@ -144,15 +135,7 @@ export function getStudentOrderById(orderId: number) {
   return studentRequest<StoreOrder>(`/api/student/orders/${orderId}`, { method: "GET" });
 }
 
-export function submitStudentPayment(orderId: number, payload: {
-  payment_reference?: string;
-  payment_proof?: string;
-}) {
-  return studentRequest<StoreOrder>(`/api/student/orders/${orderId}/payment-submission`, {
-    method: "PATCH",
-    body: JSON.stringify(payload),
-  });
-}
+
 
 export function getStudentEnrollments() {
   return studentRequest<StoreEnrollment[]>("/api/student/enrollments", { method: "GET" });

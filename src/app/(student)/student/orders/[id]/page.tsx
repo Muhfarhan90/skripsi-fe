@@ -44,7 +44,6 @@ export default function StudentOrderDetailPage() {
 
   const order = orderQuery.data;
   const latestTransaction = order.transactions.at(0);
-  const paymentProofUrl = resolvePublicFileUrl(latestTransaction?.payment_proof);
   const isGatewayPayment =
     latestTransaction?.payment_method === "midtrans" || Boolean(latestTransaction?.payment_url);
 
@@ -130,25 +129,7 @@ export default function StudentOrderDetailPage() {
                 </a>
               </p>
             ) : null}
-            {!isGatewayPayment ? (
-              <p className="break-all">
-                Bukti pembayaran:{" "}
-                {paymentProofUrl ? (
-                  <a
-                    href={paymentProofUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-primary hover:underline"
-                  >
-                    Lihat bukti pembayaran
-                  </a>
-                ) : latestTransaction.payment_proof ? (
-                  latestTransaction.payment_proof
-                ) : (
-                  "-"
-                )}
-              </p>
-            ) : null}
+
           </div>
         </article>
       ) : null}

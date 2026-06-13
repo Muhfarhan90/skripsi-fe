@@ -196,23 +196,12 @@ function AmountRow({
 }
 
 function TransactionPanel({ transaction }: { transaction: AdminOrderTransaction }) {
-  const paymentProofUrl = resolvePublicFileUrl(transaction.payment_proof);
-
   return (
     <div className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] p-4">
       <DetailItem label="Status Transaksi" value={<StatusBadge value={formatStatus(transaction.status)} />} />
       <DetailItem label="Nominal" value={formatCurrency(transaction.amount)} />
       <DetailItem label="Dibayar Pada" value={formatDateTime(transaction.paid_at)} />
       <DetailItem label="Kedaluwarsa" value={formatDateTime(transaction.expired_at)} />
-      {paymentProofUrl ? (
-        <Button
-          render={<a href={paymentProofUrl} target="_blank" rel="noreferrer" />}
-          type="button"
-          variant="outline"
-        >
-          Lihat Bukti Pembayaran
-        </Button>
-      ) : null}
     </div>
   );
 }

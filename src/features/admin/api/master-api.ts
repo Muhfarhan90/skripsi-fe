@@ -378,12 +378,10 @@ export interface AdminOrderTransaction {
   payment_channel?: string | null;
   payment_url?: string | null;
   payment_reference: string | null;
-  payment_proof: string | null;
   amount?: number | string;
   status: "pending" | "success" | "failed";
   paid_at: string | null;
   expired_at: string | null;
-  verified_by?: number | null;
   created_at?: string | null;
   updated_at?: string | null;
   order?: {
@@ -1748,15 +1746,7 @@ export async function listAdminTransactions(
   return listAdminCollection<AdminOrderTransaction>("/api/admin/transactions", withListPagination(query));
 }
 
-export function updateAdminTransaction(
-  id: number,
-  payload: Partial<Pick<AdminOrderTransaction, "status" | "payment_reference" | "payment_proof">>,
-) {
-  return apiRequest<AdminOrderTransaction>(`/api/admin/transactions/${id}`, {
-    method: "PUT",
-    body: JSON.stringify(normalizePayload(payload)),
-  });
-}
+
 
 export function createAdminVoucher(payload: VoucherPayload) {
   return apiRequest<AdminVoucher>("/api/admin/vouchers", {
