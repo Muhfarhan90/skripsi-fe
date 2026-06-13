@@ -75,7 +75,7 @@ export function LoginClient() {
   return (
     <AuthShell
       title="Masuk ke Akun"
-      subtitle="Gunakan akun SkripsiLMS untuk melanjutkan belajar, mengakses course, dan memantau progress."
+      subtitle="Gunakan akun Anda untuk melanjutkan belajar, mengakses course, dan memantau progress."
       footerText="Belum punya akun?"
       footerLinkText="Daftar Sekarang"
       footerHref="/register"

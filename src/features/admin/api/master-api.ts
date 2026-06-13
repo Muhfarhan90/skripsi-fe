@@ -523,9 +523,33 @@ export interface AdminDashboardActivity {
   occurred_at: string | null;
 }
 
+export interface InstructorDashboardCourse {
+  id: number;
+  title: string;
+  slug: string;
+  category_name: string | null;
+  active_offering_id: number | null;
+  active_offerings_count: number;
+  total_enrollments_count: number;
+  active_students_count: number;
+  completed_students_count: number;
+  total_reviews_count: number;
+  average_rating: number | null;
+}
+
+export interface InstructorDashboardOverview {
+  total_reviews: number;
+  average_rating: number | null;
+  forum_posts_this_month: number;
+  forum_replies_this_month: number;
+  courses: InstructorDashboardCourse[];
+}
+
 export interface AdminDashboard {
+  context: "admin" | "instructor";
   metrics: AdminDashboardMetric[];
   recent_activities: AdminDashboardActivity[];
+  instructor_overview?: InstructorDashboardOverview | null;
 }
 
 export interface AdminSalesReportFilters {
@@ -1336,6 +1360,17 @@ export function uploadAdminCertificateAsset(type: "background_image" | "signatur
   formData.set("file", file);
 
   return apiRequest<{ path: string }>("/api/admin/certificate-settings/assets", {
+    method: "POST",
+    body: formData,
+  });
+}
+
+export function uploadAdminWebsiteAsset(type: string, file: File) {
+  const formData = new FormData();
+  formData.set("type", type);
+  formData.set("file", file);
+
+  return apiRequest<{ path: string }>("/api/admin/website-settings/assets", {
     method: "POST",
     body: formData,
   });

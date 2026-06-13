@@ -55,10 +55,6 @@ export function AuthShell({
       <PublicSiteHeader settings={websiteSettings} courses={courseQuery.data ?? []} />
 
       <main className="relative flex min-h-[calc(100vh-5rem)] items-center justify-center overflow-hidden px-4 py-8 sm:px-6 sm:py-12">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(15,122,90,0.14),transparent_34%),linear-gradient(135deg,#f7fbf9_0%,#edf5f2_48%,#fff7d6_100%)]" />
-        <div className="pointer-events-none absolute right-[-10rem] top-20 size-80 rounded-full bg-[var(--secondary)]/20 blur-3xl" />
-        <div className="pointer-events-none absolute bottom-[-12rem] left-[-8rem] size-96 rounded-full bg-[var(--primary)]/14 blur-3xl" />
-
         <section className={cn("relative mx-auto w-full max-w-md", className)}>
           <Card className="w-full overflow-hidden rounded-[2rem] border border-[var(--border)] bg-[var(--card)]/95 shadow-2xl shadow-slate-900/10 backdrop-blur">
             <CardHeader className="space-y-3 px-5 pt-6 sm:px-8 sm:pt-8">

@@ -55,7 +55,7 @@ function SidebarMenu({ pathname, roleName, collapsed, isMobile, onNavigate }: Si
     <div className="flex h-full flex-col">
       <header className={cn("flex h-[74px] items-center border-b border-[var(--border)]", collapsed ? "justify-center px-2" : "justify-between px-4")}>
         <Link
-          href="/admin"
+          href="/"
           onClick={onNavigate}
           className={cn("flex items-center gap-3", collapsed && !isMobile ? "justify-center" : "justify-start")}
           title={collapsed && !isMobile ? "Dashboard Admin" : undefined}

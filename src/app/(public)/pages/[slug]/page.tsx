@@ -89,7 +89,7 @@ export default function PublicCmsPage() {
         ) : page ? (
           <div className={`mx-auto max-w-7xl ${isHelpCenter ? "grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]" : ""}`}>
             <article className="overflow-hidden rounded-[2rem] border border-[var(--border)] bg-[var(--card)] shadow-sm">
-              <div className="bg-[radial-gradient(circle_at_top_left,rgba(15,122,90,0.16),transparent_34%),linear-gradient(135deg,#f7fbf9_0%,#edf5f2_55%,#fff7d6_100%)] px-6 py-10 sm:px-10">
+              <div className="bg-[var(--surface-soft)] px-6 py-10 sm:px-10 border-b border-[var(--border)]">
                 <span className="inline-flex items-center gap-2 rounded-full border border-[var(--primary)]/20 bg-white/80 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-[var(--primary)]">
                   <FileText className="size-4" />
                   Informasi

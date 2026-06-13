@@ -74,7 +74,7 @@ export function VerifyEmailClient() {
   return (
     <AuthShell
       title="Verifikasi Email"
-      subtitle="Kami sedang memproses verifikasi email akun SkripsiLMS."
+      subtitle="Kami sedang memproses verifikasi email akun Anda."
       footerText="Butuh email baru?"
       footerLinkText="Kirim Ulang Verifikasi"
       footerHref="/resend-verification"

@@ -105,7 +105,7 @@ function getStatusBucketAppearance(status: string): {
     case "success":
       return {
         icon: BadgeCheck,
-        cardClassName: "border-emerald-200/80 bg-gradient-to-r from-emerald-50 via-white to-emerald-100/70",
+        cardClassName: "border-emerald-200/80 bg-emerald-50/50",
         iconWrapperClassName: "border-emerald-200/80 bg-white/85",
         iconClassName: "text-emerald-600",
         amountClassName: "text-emerald-900",
@@ -114,7 +114,7 @@ function getStatusBucketAppearance(status: string): {
     case "failed":
       return {
         icon: XCircle,
-        cardClassName: "border-rose-200/80 bg-gradient-to-r from-rose-50 via-white to-red-100/70",
+        cardClassName: "border-rose-200/80 bg-rose-50/50",
         iconWrapperClassName: "border-rose-200/80 bg-white/85",
         iconClassName: "text-rose-600",
         amountClassName: "text-rose-900",
@@ -124,7 +124,7 @@ function getStatusBucketAppearance(status: string): {
     default:
       return {
         icon: Clock3,
-        cardClassName: "border-amber-200/80 bg-gradient-to-r from-amber-50 via-white to-orange-100/70",
+        cardClassName: "border-amber-200/80 bg-amber-50/50",
         iconWrapperClassName: "border-amber-200/80 bg-white/85",
         iconClassName: "text-amber-600",
         amountClassName: "text-amber-900",
@@ -298,7 +298,7 @@ export function AdminSalesReportsPage() {
                   value={formatCurrency(summary.total_sales)}
                   note={`Revenue transaksi success pada ${activeRangeLabel}`}
                   icon={CircleDollarSign}
-                  cardClassName="border-emerald-200/80 bg-gradient-to-br from-emerald-50 via-white to-teal-100/80"
+                  cardClassName="border-emerald-200/80 bg-emerald-50/50"
                   iconWrapperClassName="border-emerald-200/80 bg-white/85"
                   iconClassName="text-emerald-600"
                 />
@@ -307,7 +307,7 @@ export function AdminSalesReportsPage() {
                   value={String(summary.successful_transactions)}
                   note="Dihitung dari transaksi canonical per order."
                   icon={BadgeCheck}
-                  cardClassName="border-sky-200/80 bg-gradient-to-br from-sky-50 via-white to-cyan-100/80"
+                  cardClassName="border-sky-200/80 bg-sky-50/50"
                   iconWrapperClassName="border-sky-200/80 bg-white/85"
                   iconClassName="text-sky-600"
                 />
@@ -316,7 +316,7 @@ export function AdminSalesReportsPage() {
                   value={String(summary.completed_orders)}
                   note="Order completed dengan pembayaran success."
                   icon={ShoppingCart}
-                  cardClassName="border-amber-200/80 bg-gradient-to-br from-amber-50 via-white to-orange-100/80"
+                  cardClassName="border-amber-200/80 bg-amber-50/50"
                   iconWrapperClassName="border-amber-200/80 bg-white/85"
                   iconClassName="text-amber-600"
                 />
@@ -325,7 +325,7 @@ export function AdminSalesReportsPage() {
                   value={String(summary.unique_buyers)}
                   note="Jumlah akun pembeli unik pada transaksi success."
                   icon={Users}
-                  cardClassName="border-rose-200/80 bg-gradient-to-br from-rose-50 via-white to-orange-50"
+                  cardClassName="border-rose-200/80 bg-rose-50/50"
                   iconWrapperClassName="border-rose-200/80 bg-white/85"
                   iconClassName="text-rose-600"
                 />
@@ -334,7 +334,7 @@ export function AdminSalesReportsPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[380px_minmax(0,1fr)]">
-        <Card className="border border-slate-200 bg-gradient-to-b from-slate-50 via-white to-white shadow-sm">
+        <Card className="border border-slate-200 bg-[var(--card)] shadow-sm">
           <CardHeader className="border-b border-slate-200/80">
             <CardTitle className="flex items-center gap-2 text-base font-semibold text-[var(--foreground)]">
               <span className="inline-flex size-9 items-center justify-center rounded-2xl border border-slate-200/80 bg-white/85 shadow-sm">

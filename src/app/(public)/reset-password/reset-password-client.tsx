@@ -57,7 +57,7 @@ export function ResetPasswordClient() {
   return (
     <AuthShell
       title="Reset Password"
-      subtitle="Masukkan password baru untuk akun SkripsiLMS."
+      subtitle="Masukkan password baru untuk akun Anda."
       footerText="Kembali ke halaman"
       footerLinkText="Masuk"
       footerHref="/login"

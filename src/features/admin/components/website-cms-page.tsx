@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FileText, Globe2, HelpCircle, Layers3, Link2, Loader2, Plus, RefreshCcw, Save, Trash2 } from "lucide-react";
+import { FileText, Globe2, GripVertical, HelpCircle, Layers3, Link2, Loader2, Plus, RefreshCcw, Save, Trash2 } from "lucide-react";
+import Sortable from "sortablejs";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,7 +34,9 @@ import {
   updateAdminWebsiteSection,
   updateAdminWebsiteSettings,
   updateAdminWebsiteSocialLink,
+  uploadAdminWebsiteAsset,
 } from "@/features/admin/api/master-api";
+import { resolvePublicFileUrl } from "@/lib/file-url";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { TinyMceEditor } from "@/features/admin/components/tiny-mce-editor";
 import {
@@ -557,8 +560,40 @@ export function WebsiteCmsPage() {
   const sections = sectionsDraft ?? (sectionsQuery.data ? sectionsQuery.data.map((section) => ({ ...section, items: section.items.map((item) => ({ ...item })) })) : []);
   const pages = pagesDraft ?? (pagesQuery.data ? pagesQuery.data.map((page) => ({ ...page })) : []);
   const faqCategories = faqCategoriesDraft ?? (faqCategoriesQuery.data ? faqCategoriesQuery.data.map((category) => ({ ...category })) : []);
-  const faqs = faqsDraft ?? (faqsQuery.data ? faqsQuery.data.map((faq) => ({ ...faq })) : []);
+  const faqs = faqsDraft ?? (faqsQuery.data ? faqsQuery.data.map((faq) => ({ ...faq })).sort((a, b) => a.sort_order - b.sort_order) : []);
   const socialLinks = socialDraft ?? (socialQuery.data ? socialQuery.data.map((link) => ({ ...link })) : []);
+
+  const faqListRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (activeTab !== "faq" || !faqListRef.current) return;
+
+    const sortable = Sortable.create(faqListRef.current, {
+      handle: ".faq-drag-handle",
+      animation: 150,
+      forceFallback: true,
+      fallbackOnBody: false,
+      onEnd: (evt) => {
+        const { oldIndex, newIndex } = evt;
+        if (oldIndex === undefined || newIndex === undefined || oldIndex === newIndex) return;
+
+        setFaqsDraft((prevFaqs) => {
+          const currentList = [...(prevFaqs ?? faqs)];
+          const [movedItem] = currentList.splice(oldIndex, 1);
+          currentList.splice(newIndex, 0, movedItem);
+
+          return currentList.map((item, index) => ({
+            ...item,
+            sort_order: index + 1,
+          }));
+        });
+      },
+    });
+
+    return () => {
+      sortable.destroy();
+    };
+  }, [activeTab, faqs]);
 
   const saveSettingsMutation = useMutation({
     mutationFn: (payload: WebsiteSettingPayload) => updateAdminWebsiteSettings(payload),
@@ -720,6 +755,51 @@ export function WebsiteCmsPage() {
     setRows(rows.map((row) => (row.id === rowId ? updater(row) : row)));
   };
 
+  const uploadMutation = useMutation({
+    mutationFn: ({ type, file }: { type: string; file: File }) =>
+      uploadAdminWebsiteAsset(type, file),
+    onError: (error) => toast.error(getErrorMessage(error, "Gagal upload asset")),
+  });
+
+  const handleUploadLogo = (file: File | null) => {
+    if (!file) return;
+    uploadMutation.mutate(
+      { type: "logo", file },
+      {
+        onSuccess: (data) => {
+          updateSettingField("logo_url", data.path);
+          toast.success("Logo website berhasil diupload");
+        },
+      }
+    );
+  };
+
+  const handleUploadSectionImage = (sectionIndex: number, file: File | null) => {
+    if (!file) return;
+    uploadMutation.mutate(
+      { type: `section-${sections[sectionIndex].section_key}`, file },
+      {
+        onSuccess: (data) => {
+          updateSection(sectionIndex, (current) => ({ ...current, image_url: data.path }));
+          toast.success("Gambar section berhasil diupload");
+        },
+      }
+    );
+  };
+
+  const handleUploadSocialIcon = (linkId: number, file: File | null) => {
+    if (!file) return;
+    uploadMutation.mutate(
+      { type: `social-${linkId}`, file },
+      {
+        onSuccess: (data) => {
+          updateListRow(socialLinks, setSocialDraft, linkId, (row) => ({ ...row, icon: data.path }));
+          toast.success("Icon sosial media berhasil diupload");
+        },
+      }
+    );
+  };
+
   return (
     <section className="space-y-5">
       <AdminPageHeader
@@ -778,7 +858,7 @@ export function WebsiteCmsPage() {
             <Field label="Nama Website" id="site-name">
               <Input
                 id="site-name"
-                placeholder="Contoh: SkripsiLMS"
+                placeholder="Contoh: Platform Belajar"
                 value={settingsForm.site_name}
                 onChange={(event) => updateSettingField("site_name", event.target.value)}
               />
@@ -791,13 +871,42 @@ export function WebsiteCmsPage() {
                 onChange={(event) => updateSettingField("site_tagline", event.target.value)}
               />
             </Field>
-            <Field label="Logo URL" id="logo-url">
-              <Input
-                id="logo-url"
-                placeholder="https://..."
-                value={settingsForm.logo_url ?? ""}
-                onChange={(event) => updateSettingField("logo_url", event.target.value)}
-              />
+            <Field label="Logo Website" id="logo-file">
+              <div className="flex flex-col gap-3">
+                {settingsForm.logo_url ? (
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={resolvePublicFileUrl(settingsForm.logo_url) ?? ""}
+                      alt="Logo Preview"
+                      className="h-10 max-w-[120px] rounded-lg border border-[var(--border)] object-contain bg-zinc-50 p-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-8 px-3 text-xs text-[var(--danger-soft-foreground)]"
+                      onClick={() => updateSettingField("logo_url", "")}
+                    >
+                      Hapus Logo
+                    </Button>
+                  </div>
+                ) : null}
+                <div className="flex items-center gap-3">
+                  <Input
+                    id="logo-file"
+                    type="file"
+                    accept="image/*"
+                    className="max-w-xs cursor-pointer border-[var(--border)] bg-[var(--card)]"
+                    onChange={(event) => handleUploadLogo(event.target.files?.[0] ?? null)}
+                    disabled={uploadMutation.isPending}
+                  />
+                  {uploadMutation.isPending && uploadMutation.variables?.type === "logo" ? (
+                    <span className="flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
+                      <Loader2 className="size-3 animate-spin" />
+                      Mengupload...
+                    </span>
+                  ) : null}
+                </div>
+              </div>
             </Field>
             <Field label="Footer Text" id="footer-text">
               <Input
@@ -909,13 +1018,42 @@ export function WebsiteCmsPage() {
                       onChange={(event) => updateSection(sectionIndex, (current) => ({ ...current, body: event.target.value }))}
                     />
                   </Field>
-                  <Field label="Image URL" id={`section-image-url-${section.id}`}>
-                    <Input
-                      id={`section-image-url-${section.id}`}
-                      placeholder={getSectionFieldPlaceholder(section, "image_url")}
-                      value={section.image_url ?? ""}
-                      onChange={(event) => updateSection(sectionIndex, (current) => ({ ...current, image_url: event.target.value }))}
-                    />
+                  <Field label="Gambar Section" id={`section-image-file-${section.id}`}>
+                    <div className="flex flex-col gap-3">
+                      {section.image_url ? (
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={resolvePublicFileUrl(section.image_url) ?? ""}
+                            alt="Section Preview"
+                            className="h-20 max-w-[200px] rounded-lg border border-[var(--border)] object-cover bg-zinc-50"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="h-8 px-3 text-xs text-[var(--danger-soft-foreground)]"
+                            onClick={() => updateSection(sectionIndex, (current) => ({ ...current, image_url: "" }))}
+                          >
+                            Hapus Gambar
+                          </Button>
+                        </div>
+                      ) : null}
+                      <div className="flex items-center gap-3">
+                        <Input
+                          id={`section-image-file-${section.id}`}
+                          type="file"
+                          accept="image/*"
+                          className="max-w-xs cursor-pointer border-[var(--border)] bg-[var(--card)]"
+                          onChange={(event) => handleUploadSectionImage(sectionIndex, event.target.files?.[0] ?? null)}
+                          disabled={uploadMutation.isPending}
+                        />
+                        {uploadMutation.isPending && uploadMutation.variables?.type === `section-${section.section_key}` ? (
+                          <span className="flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
+                            <Loader2 className="size-3 animate-spin" />
+                            Mengupload...
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
                   </Field>
                   <div className="grid gap-4 lg:grid-cols-4">
                     <Field label="CTA Label" id={`section-cta-label-${section.id}`}>
@@ -1191,93 +1329,87 @@ export function WebsiteCmsPage() {
             contentClassName="space-y-4 p-4"
           >
             {faqs.length > 0 ? (
-              faqs.map((faq) => (
-                <div key={faq.id} className="rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-4">
-                  <div className="space-y-4">
-                    <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_120px_auto]">
-                      <Field label="Question" id={`faq-question-${faq.id}`}>
-                        <Input
-                          id={`faq-question-${faq.id}`}
-                          placeholder="Contoh: Apakah course bisa diakses lewat HP?"
-                          value={faq.question}
-                          onChange={(event) => updateListRow(faqs, setFaqsDraft, faq.id, (row) => ({ ...row, question: event.target.value }))}
-                        />
-                      </Field>
-                      <Field label="Category" id={`faq-category-${faq.id}`}>
-                        <Select
-                          value={faq.faq_category_id ? String(faq.faq_category_id) : "none"}
-                          onValueChange={(value) => {
-                            const nextCategoryId = value === "none" ? null : Number(value);
-                            const nextCategory = faqCategories.find((category) => category.id === nextCategoryId) ?? null;
+              <div ref={faqListRef} className="relative space-y-4">
+                {faqs.map((faq) => (
+                  <div key={faq.id} className="rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-4">
+                    <div className="space-y-4">
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+                        <div className="faq-drag-handle flex h-10 w-10 shrink-0 cursor-grab items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--card)] text-[var(--muted-foreground)] hover:bg-[var(--surface-hover)] hover:text-[var(--foreground)] transition lg:mb-0.5">
+                          <GripVertical className="size-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <Field label="Question" id={`faq-question-${faq.id}`}>
+                            <Input
+                              id={`faq-question-${faq.id}`}
+                              placeholder="Contoh: Apakah course bisa diakses lewat HP?"
+                              value={faq.question}
+                              onChange={(event) => updateListRow(faqs, setFaqsDraft, faq.id, (row) => ({ ...row, question: event.target.value }))}
+                            />
+                          </Field>
+                        </div>
+                        <div className="w-full lg:w-[220px] shrink-0">
+                          <Field label="Category" id={`faq-category-${faq.id}`}>
+                            <Select
+                              value={faq.faq_category_id ? String(faq.faq_category_id) : "none"}
+                              onValueChange={(value) => {
+                                const nextCategoryId = value === "none" ? null : Number(value);
+                                const nextCategory = faqCategories.find((category) => category.id === nextCategoryId) ?? null;
 
-                            updateListRow(faqs, setFaqsDraft, faq.id, (row) => ({
-                              ...row,
-                              faq_category_id: nextCategoryId,
-                              category_name: nextCategory?.name ?? null,
-                              category: nextCategory,
-                            }));
-                          }}
-                        >
-                          <SelectTrigger id={`faq-category-${faq.id}`} className="h-9 w-full border-[var(--border)] bg-[var(--card)]">
-                            <SelectValue placeholder="Pilih kategori FAQ">
-                              {getFaqCategoryDisplayName(faq, faqCategories) || undefined}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">Tanpa kategori</SelectItem>
-                            {faqCategories.map((category) => (
-                              <SelectItem key={category.id} value={String(category.id)}>
-                                {category.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </Field>
-                      <Field label="Sort Order" id={`faq-sort-order-${faq.id}`}>
-                        <Input
-                          id={`faq-sort-order-${faq.id}`}
-                          type="number"
-                          min={1}
-                          placeholder="1"
-                          value={String(faq.sort_order ?? 1)}
-                          onChange={(event) =>
-                            updateListRow(faqs, setFaqsDraft, faq.id, (row) => ({
-                              ...row,
-                              sort_order: Math.max(1, Number(event.target.value) || 1),
-                            }))
-                          }
-                        />
-                      </Field>
-                      <div className="flex h-10 items-center gap-3 lg:mt-7 lg:justify-self-end">
-                        <Switch
-                          checked={faq.is_active}
-                          onCheckedChange={(checked) => updateListRow(faqs, setFaqsDraft, faq.id, (row) => ({ ...row, is_active: checked }))}
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="h-9 w-9 px-0 text-[var(--danger-soft-foreground)]"
-                          onClick={() => {
-                            setFaqsDraft(faqs.filter((candidate) => candidate.id !== faq.id));
-                            if (faq.id > 0) deleteFaqMutation.mutate(faq.id);
-                          }}
-                        >
-                          <Trash2 className="size-4" />
-                        </Button>
+                                updateListRow(faqs, setFaqsDraft, faq.id, (row) => ({
+                                  ...row,
+                                  faq_category_id: nextCategoryId,
+                                  category_name: nextCategory?.name ?? null,
+                                  category: nextCategory,
+                                }));
+                              }}
+                            >
+                              <SelectTrigger id={`faq-category-${faq.id}`} className="h-9 w-full border-[var(--border)] bg-[var(--card)]">
+                                <SelectValue placeholder="Pilih kategori FAQ">
+                                  {getFaqCategoryDisplayName(faq, faqCategories) || undefined}
+                                </SelectValue>
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Tanpa kategori</SelectItem>
+                                {faqCategories.map((category) => (
+                                  <SelectItem key={category.id} value={String(category.id)}>
+                                    {category.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </Field>
+                        </div>
+                        <div className="flex h-10 items-center gap-3 shrink-0 lg:justify-self-end lg:mb-0.5">
+                          <Switch
+                            checked={faq.is_active}
+                            onCheckedChange={(checked) => updateListRow(faqs, setFaqsDraft, faq.id, (row) => ({ ...row, is_active: checked }))}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="h-9 w-9 px-0 text-[var(--danger-soft-foreground)]"
+                            onClick={() => {
+                              setFaqsDraft(faqs.filter((candidate) => candidate.id !== faq.id));
+                              if (faq.id > 0) deleteFaqMutation.mutate(faq.id);
+                            }}
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </div>
                       </div>
+                      <Field label="Answer" id={`faq-answer-${faq.id}`}>
+                        <Textarea
+                          id={`faq-answer-${faq.id}`}
+                          placeholder="Tulis jawaban singkat, jelas, dan langsung ke inti pertanyaan."
+                          value={faq.answer}
+                          rows={3}
+                          onChange={(event) => updateListRow(faqs, setFaqsDraft, faq.id, (row) => ({ ...row, answer: event.target.value }))}
+                        />
+                      </Field>
                     </div>
-                    <Field label="Answer" id={`faq-answer-${faq.id}`}>
-                      <Textarea
-                        id={`faq-answer-${faq.id}`}
-                        placeholder="Tulis jawaban singkat, jelas, dan langsung ke inti pertanyaan."
-                        value={faq.answer}
-                        rows={3}
-                        onChange={(event) => updateListRow(faqs, setFaqsDraft, faq.id, (row) => ({ ...row, answer: event.target.value }))}
-                      />
-                    </Field>
                   </div>
-                </div>
-              ))
+                ))}
+              </div>
             ) : (
               <ListEmptyState message="Belum ada item FAQ. Tambahkan pertanyaan pertama setelah kategori siap dipakai." />
             )}
@@ -1296,17 +1428,23 @@ export function WebsiteCmsPage() {
           {socialLinks.map((link) => {
             const previewIconMeta = resolveWebsiteSocialIcon(link);
             const PreviewIcon = previewIconMeta.icon;
-            const socialIconValue = WEBSITE_SOCIAL_ICON_OPTIONS.some((option) => option.value === link.icon?.trim().toLowerCase())
-              ? (link.icon?.trim().toLowerCase() as WebsiteSocialIcon)
-              : "auto";
+            const isUploadedIcon = link.icon?.startsWith("/storage/") || link.icon?.startsWith("http");
 
             return (
               <Card key={link.id} className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
                 <CardContent className="space-y-4 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <span className="inline-flex size-10 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] text-[var(--primary)]">
-                        <PreviewIcon className="size-4" />
+                      <span className="inline-flex size-10 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] text-[var(--primary)] overflow-hidden">
+                        {isUploadedIcon ? (
+                          <img
+                            src={resolvePublicFileUrl(link.icon) ?? ""}
+                            alt="Icon Preview"
+                            className="size-5 object-contain"
+                          />
+                        ) : (
+                          <PreviewIcon className="size-4" />
+                        )}
                       </span>
                       <div>
                         <p className="text-sm font-semibold text-[var(--foreground)]">{link.label || "Social link baru"}</p>
@@ -1328,36 +1466,43 @@ export function WebsiteCmsPage() {
                       </Button>
                     </div>
                   </div>
-                  <div className="grid gap-3 lg:grid-cols-[220px_1fr]">
-                    <Field label="Icon" id={`social-icon-${link.id}`}>
-                      <Select
-                        value={socialIconValue}
-                        onValueChange={(value) =>
-                          updateListRow(socialLinks, setSocialDraft, link.id, (row) => ({
-                            ...row,
-                            icon: value === "auto" ? null : value,
-                          }))
-                        }
-                      >
-                        <SelectTrigger id={`social-icon-${link.id}`} className="h-9 w-full border-[var(--border)] bg-[var(--card)]">
-                          <SelectValue placeholder="Pilih icon" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {WEBSITE_SOCIAL_ICON_OPTIONS.map((option) => {
-                            const iconMeta = getWebsiteSocialIconMeta(option.value);
-                            const Icon = iconMeta.icon;
-
-                            return (
-                              <SelectItem key={option.value} value={option.value}>
-                                <span className="flex items-center gap-2">
-                                  <Icon className="size-4" />
-                                  {option.label}
-                                </span>
-                              </SelectItem>
-                            );
-                          })}
-                        </SelectContent>
-                      </Select>
+                  <div className="grid gap-3 lg:grid-cols-[240px_1fr]">
+                    <Field label="Upload Icon" id={`social-icon-file-${link.id}`}>
+                      <div className="flex flex-col gap-2">
+                        {link.icon && (link.icon.startsWith("/storage/") || link.icon.startsWith("http")) ? (
+                          <div className="flex items-center gap-2">
+                            <img
+                              src={resolvePublicFileUrl(link.icon) ?? ""}
+                              alt="Social Icon"
+                              className="h-8 w-8 rounded-lg border border-[var(--border)] object-contain bg-zinc-50 p-1"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="h-8 px-3 text-xs text-[var(--danger-soft-foreground)]"
+                              onClick={() => updateListRow(socialLinks, setSocialDraft, link.id, (row) => ({ ...row, icon: "" }))}
+                            >
+                              Hapus Icon
+                            </Button>
+                          </div>
+                        ) : null}
+                        <div className="flex items-center gap-2">
+                          <Input
+                            id={`social-icon-file-${link.id}`}
+                            type="file"
+                            accept="image/*"
+                            className="h-9 cursor-pointer border-[var(--border)] bg-[var(--card)] text-xs"
+                            onChange={(event) => handleUploadSocialIcon(link.id, event.target.files?.[0] ?? null)}
+                            disabled={uploadMutation.isPending}
+                          />
+                          {uploadMutation.isPending && uploadMutation.variables?.type === `social-${link.id}` ? (
+                            <span className="flex items-center gap-1 text-xs text-[var(--muted-foreground)] whitespace-nowrap">
+                              <Loader2 className="size-3 animate-spin" />
+                              Mengupload...
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
                     </Field>
                     <Field label="Label" id={`social-label-${link.id}`}>
                       <Input
@@ -1377,7 +1522,7 @@ export function WebsiteCmsPage() {
                     />
                   </Field>
                   <p className="text-xs leading-6 text-[var(--muted-foreground)]">
-                    Biarkan icon di mode otomatis jika ingin mengikuti label atau domain URL secara otomatis.
+                    Kosongkan atau hapus upload icon untuk mendeteksi icon secara otomatis berdasarkan Label atau URL (misal: Instagram, Facebook, YouTube).
                   </p>
                 </CardContent>
               </Card>
