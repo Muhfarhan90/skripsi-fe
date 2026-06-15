@@ -126,10 +126,7 @@ export default function StudentOrderDetailPage() {
                     .join(" / ") || "-"}
                 </span>
               </p>
-              <p className="flex justify-between">
-                <span>Referensi:</span>
-                <span className="font-semibold text-[var(--foreground)]">{latestTransaction.payment_reference ?? "-"}</span>
-              </p>
+
               {latestTransaction.payment_url && latestTransaction.status === "pending" ? (
                 <div className="border-t border-dashed border-border/60 pt-4 flex flex-col gap-2">
                   <span className="text-xs">Link Pembayaran Aktif:</span>
