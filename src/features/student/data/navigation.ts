@@ -164,6 +164,10 @@ export function isStudentImmersiveRoute(pathname: string): boolean {
 }
 
 export function getStudentMobileBackHref(pathname: string): string | null {
+  if (pathname === "/student/profile") {
+    return "/student";
+  }
+
   if (/^\/student\/catalog\/[^/]+$/.test(pathname)) {
     return "/student/catalog";
   }

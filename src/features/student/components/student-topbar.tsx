@@ -257,29 +257,31 @@ export function StudentTopbar({
             {isImmersiveRoute ? null : <NotificationBell />}
 
             {/* Avatar / profile */}
-            <Popover>
-              <PopoverTrigger
-                className="inline-flex size-9 items-center justify-center rounded-xl transition active:scale-95"
-                aria-label="Buka menu profil student"
-              >
-                <span className="inline-flex size-9 items-center justify-center rounded-xl bg-[var(--primary)] text-xs font-bold text-white shadow-sm">
-                  {fullName.trim().charAt(0).toUpperCase() || "S"}
-                </span>
-              </PopoverTrigger>
+            {pathname !== "/student/profile" ? (
+              <Popover>
+                <PopoverTrigger
+                  className="inline-flex size-9 items-center justify-center rounded-xl transition active:scale-95"
+                  aria-label="Buka menu profil student"
+                >
+                  <span className="inline-flex size-9 items-center justify-center rounded-xl bg-[var(--primary)] text-xs font-bold text-white shadow-sm">
+                    {fullName.trim().charAt(0).toUpperCase() || "S"}
+                  </span>
+                </PopoverTrigger>
 
-              <PopoverContent
-                align="end"
-                className="w-64 border border-[var(--border)] bg-[var(--card)] p-2 text-[var(--foreground)] shadow-lg"
-              >
-                <ProfileMenuContent
-                  fullName={fullName}
-                  formattedDate={formattedDate}
-                  theme={theme}
-                  onToggleTheme={onToggleTheme}
-                  logoutMutation={logoutMutation}
-                />
-              </PopoverContent>
-            </Popover>
+                <PopoverContent
+                  align="end"
+                  className="w-64 border border-[var(--border)] bg-[var(--card)] p-2 text-[var(--foreground)] shadow-lg"
+                >
+                  <ProfileMenuContent
+                    fullName={fullName}
+                    formattedDate={formattedDate}
+                    theme={theme}
+                    onToggleTheme={onToggleTheme}
+                    logoutMutation={logoutMutation}
+                  />
+                </PopoverContent>
+              </Popover>
+            ) : null}
           </div>
         </div>
 
