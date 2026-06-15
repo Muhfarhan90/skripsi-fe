@@ -18,7 +18,8 @@ import {
   Star,
 } from "lucide-react";
 import { toast } from "sonner";
-import { getPublicWebsiteSettings, getPublishedCourseBySlug } from "@/features/student/api/store-api";
+import { getPublicWebsiteSettings, getPublishedCourseBySlug, getStudentCourseReviews } from "@/features/student/api/store-api";
+import { formatUtcDateTimeToJakarta } from "@/features/student/lib/date-time";
 import {
   buildStudentCheckoutLoginRedirect,
   buildStudentCheckoutPath,
@@ -27,6 +28,7 @@ import { hasValidDiscount } from "@/features/student/lib/pricing";
 import { SiteFooter } from "@/features/website/components/site-footer";
 import { PublicSiteHeader } from "@/features/website/components/public-site-header";
 import { getCourseInstructorHref } from "@/features/website/lib/public-instructors";
+import { resolvePublicFileUrl } from "@/lib/file-url";
 import { createDefaultWebsiteSetting } from "@/features/website/lib/website-settings";
 import { isStudentRole } from "@/features/auth/lib/roles";
 import { useAuthStore } from "@/features/auth/store/auth-store";
@@ -72,6 +74,14 @@ export default function CourseDetailPage() {
     queryFn: () => getPublishedCourseBySlug(slug),
     enabled: slug.length > 0,
   });
+
+  const courseId = courseQuery.data?.id ?? null;
+  const reviewsQuery = useQuery({
+    queryKey: ["store", "course", courseId, "reviews"],
+    queryFn: () => getStudentCourseReviews(courseId as number),
+    enabled: Number.isFinite(courseId) && (courseId as number) > 0,
+  });
+  const reviews = reviewsQuery.data ?? [];
 
   const websiteSettings = websiteSettingsQuery.data ?? createDefaultWebsiteSetting();
 
@@ -147,7 +157,7 @@ export default function CourseDetailPage() {
             <div className="space-y-6">
               <Link
                 href={catalogHref}
-                className="inline-flex items-center gap-2 rounded-full border border-[var(--border)]/60 bg-white/70 px-4 py-2 text-xs font-bold text-[var(--primary)] shadow-sm transition hover:-translate-y-0.5 hover:bg-white active:scale-95"
+                className="inline-flex items-center gap-2 rounded-full border border-[var(--border)]/60 bg-[var(--surface-soft)] px-4 py-2 text-xs font-bold text-[var(--primary)] shadow-sm transition hover:-translate-y-0.5 hover:bg-[var(--surface-hover)] active:scale-95"
               >
                 <ArrowLeft className="size-3.5" />
                 Kembali ke katalog
@@ -159,7 +169,7 @@ export default function CourseDetailPage() {
                     {course.status}
                   </span>
                   {course.category_name ? (
-                    <span className="rounded-full border border-[var(--border)] bg-white/70 px-3.5 py-1 text-[10px] font-black uppercase tracking-wider text-[var(--foreground)]">
+                    <span className="rounded-full border border-[var(--border)] bg-[var(--surface-soft)] px-3.5 py-1 text-[10px] font-black uppercase tracking-wider text-[var(--foreground)]">
                       {course.category_name}
                     </span>
                   ) : null}
@@ -175,11 +185,11 @@ export default function CourseDetailPage() {
                 </div>
 
                 <div className="flex flex-wrap gap-2.5 text-xs font-bold text-[var(--muted-foreground)]">
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)]/75 bg-white/60 px-3.5 py-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)]/75 bg-[var(--surface-soft)] px-3.5 py-2">
                     <Star className="size-4 fill-amber-400 text-amber-400" />
                     <span className="text-[var(--foreground)]">{formatReviewAverage(course.reviews_avg_rating)} rating</span>
                   </span>
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)]/75 bg-white/60 px-3.5 py-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)]/75 bg-[var(--surface-soft)] px-3.5 py-2">
                     <MessageSquareText className="size-4 text-[var(--primary)]" />
                     <span>{reviewCount} review</span>
                   </span>
@@ -206,7 +216,7 @@ export default function CourseDetailPage() {
             <div className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--card)] lg:hidden">
               {course.thumbnail ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={course.thumbnail} alt={course.title} className="aspect-[16/8] max-h-64 w-full object-cover" />
+                <img src={resolvePublicFileUrl(course.thumbnail) ?? ""} alt={course.title} className="aspect-[16/8] max-h-64 w-full object-cover" />
               ) : (
                 <div className="flex aspect-[16/8] max-h-64 items-center justify-center bg-[var(--surface-soft)] text-[var(--muted-foreground)]">
                   <BookOpen className="size-12" />
@@ -250,36 +260,48 @@ export default function CourseDetailPage() {
               )}
             </ContentSection>
 
-            <div className="space-y-6 lg:hidden">
-              {course.instructor_name ? (
-                <InstructorDetailCard
-                  instructorName={course.instructor_name}
-                  instructorBio={course.instructor_bio}
-                  instructorHref={instructorHref}
-                />
-              ) : null}
-              <ReviewSummaryCard
-                reviewAverage={course.reviews_avg_rating}
-                reviewCount={reviewCount}
+            {course.instructor_name ? (
+              <InstructorDetailCard
+                instructorName={course.instructor_name}
+                instructorBio={course.instructor_bio}
+                instructorHref={instructorHref}
+                instructorAvatar={course.instructor_avatar}
               />
+            ) : null}
+
+            {/* Review kelas (Hanya muncul di Mobile/Tablet < lg) */}
+            <div className="lg:hidden">
+              <ContentSection title="Review kelas">
+                <div className="grid gap-6 md:grid-cols-[16rem_1fr]">
+                  <ReviewSummaryBlock
+                    reviewsAvgRating={course.reviews_avg_rating}
+                    reviewCount={reviewCount}
+                  />
+                  <ReviewListBlock
+                    isLoading={reviewsQuery.isLoading}
+                    isError={reviewsQuery.isError}
+                    reviews={reviews}
+                  />
+                </div>
+              </ContentSection>
             </div>
           </div>
 
-          <aside className="hidden lg:block">
-            <div className="sticky top-24 space-y-6">
-              {course.instructor_name ? (
-                <InstructorDetailCard
-                  instructorName={course.instructor_name}
-                  instructorBio={course.instructor_bio}
-                  instructorHref={instructorHref}
+          {/* Review kelas (Hanya muncul di Desktop >= lg) */}
+          <aside className="hidden lg:block space-y-6">
+            <ContentSection title="Review kelas">
+              <div className="space-y-6">
+                <ReviewSummaryBlock
+                  reviewsAvgRating={course.reviews_avg_rating}
+                  reviewCount={reviewCount}
                 />
-              ) : null}
-
-              <ReviewSummaryCard
-                reviewAverage={course.reviews_avg_rating}
-                reviewCount={reviewCount}
-              />
-            </div>
+                <ReviewListBlock
+                  isLoading={reviewsQuery.isLoading}
+                  isError={reviewsQuery.isError}
+                  reviews={reviews}
+                />
+              </div>
+            </ContentSection>
           </aside>
         </section>
       </main>
@@ -329,7 +351,7 @@ function PurchasePanel({
       <div className="relative aspect-[16/9] overflow-hidden">
         {thumbnail ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={thumbnail} alt={title} className="h-full w-full object-cover transition-transform duration-500 hover:scale-105" />
+          <img src={resolvePublicFileUrl(thumbnail) ?? ""} alt={title} className="h-full w-full object-cover transition-transform duration-500 hover:scale-105" />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-[var(--surface-soft)] text-[var(--muted-foreground)]">
             <BookOpen className="size-12" />
@@ -449,7 +471,7 @@ function CurriculumAccordion({ sections = [] }: { sections?: CurriculumSection[]
                     {itemsCount} materi
                   </span>
                   <span
-                    className={`inline-flex size-7 items-center justify-center rounded-full border border-[var(--border)]/65 bg-white text-[var(--foreground)] shadow-sm transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`}
+                    className={`inline-flex size-7 items-center justify-center rounded-full border border-[var(--border)]/65 bg-[var(--card)] text-[var(--foreground)] shadow-sm transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`}
                   >
                     <ChevronDown className="size-4" />
                   </span>
@@ -457,7 +479,7 @@ function CurriculumAccordion({ sections = [] }: { sections?: CurriculumSection[]
               </button>
 
               {isExpanded ? (
-                <div className="divide-y divide-[var(--border)]/30 bg-white/50">
+                <div className="divide-y divide-[var(--border)]/30 bg-[var(--card)]">
                   {section.lessons?.map((lesson) => (
                     <div key={lesson.id} className="flex flex-col gap-3 px-4 py-3.5 text-sm sm:flex-row sm:items-center sm:justify-between sm:px-5">
                       <div className="flex min-w-0 items-start gap-3">
@@ -564,70 +586,183 @@ function InstructorDetailCard({
   instructorName,
   instructorBio,
   instructorHref,
+  instructorAvatar,
 }: {
   instructorName: string;
   instructorBio: string | null | undefined;
   instructorHref: string | null;
+  instructorAvatar?: string | null;
 }) {
+  const resolvedAvatar = instructorAvatar ? resolvePublicFileUrl(instructorAvatar) : null;
   return (
     <ContentSection title="Instruktur">
-      <div className="space-y-3">
-        {instructorHref ? (
-          <Link
-            href={instructorHref}
-            className="inline-flex text-base font-extrabold text-[var(--foreground)] transition hover:text-[var(--primary)]"
-          >
-            {instructorName}
-          </Link>
-        ) : (
-          <p className="text-base font-extrabold text-[var(--foreground)]">{instructorName}</p>
-        )}
-        <p className="text-sm leading-7 text-[var(--muted-foreground)]">
-          {instructorBio?.trim() || "Bio instruktur belum tersedia."}
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5">
+        <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[var(--border)] bg-[var(--surface-soft)]">
+          {resolvedAvatar ? (
+            <img
+              src={resolvedAvatar}
+              alt={instructorName}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <span className="text-xl font-bold text-[var(--muted-foreground)]">
+              {instructorName.charAt(0).toUpperCase()}
+            </span>
+          )}
+        </div>
+        <div className="min-w-0 flex-1 space-y-2">
+          {instructorHref ? (
+            <Link
+              href={instructorHref}
+              className="inline-flex text-base font-extrabold text-[var(--foreground)] transition hover:text-[var(--primary)]"
+            >
+              {instructorName}
+            </Link>
+          ) : (
+            <p className="text-base font-extrabold text-[var(--foreground)]">{instructorName}</p>
+          )}
+          <p className="text-sm leading-7 text-[var(--muted-foreground)]">
+            {instructorBio?.trim() || "Bio instruktur belum tersedia."}
+          </p>
+        </div>
       </div>
     </ContentSection>
   );
 }
 
-function ReviewSummaryCard({
-  reviewAverage,
-  reviewCount,
-}: {
-  reviewAverage: number | null | undefined;
+interface ReviewSummaryBlockProps {
+  reviewsAvgRating: number | null | undefined;
   reviewCount: number;
-}) {
-  const averageLabel = formatReviewAverage(reviewAverage);
-  const hasReviews = reviewCount > 0;
+}
 
+function ReviewSummaryBlock({
+  reviewsAvgRating,
+  reviewCount,
+}: ReviewSummaryBlockProps) {
   return (
-    <ContentSection title="Review kelas">
-      {hasReviews ? (
-        <div className="space-y-3">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl font-black text-[var(--foreground)]">{averageLabel}</span>
-            <div className="flex items-center gap-1">
-              {[1, 2, 3, 4, 5].map((item) => (
-                <Star
-                  key={item}
-                  className={`size-4 ${item <= Math.round(Number(reviewAverage ?? 0)) ? "fill-amber-400 text-amber-400" : "text-[var(--border)]"}`}
-                />
-              ))}
-            </div>
-          </div>
-          <p className="text-sm font-semibold text-[var(--foreground)]">{reviewCount} review dari peserta</p>
-          <p className="text-sm leading-6 text-[var(--muted-foreground)]">
-            Penilaian ini berasal dari peserta yang sudah mengikuti course.
-          </p>
+    <div className="space-y-4 rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-5 h-fit">
+      <div className="flex items-center gap-3">
+        <span className="text-3xl font-black text-[var(--foreground)]">
+          {formatReviewAverage(reviewsAvgRating)}
+        </span>
+        <div className="flex items-center gap-0.5">
+          {[1, 2, 3, 4, 5].map((item) => (
+            <Star
+              key={item}
+              className={`size-4 ${item <= Math.round(Number(reviewsAvgRating ?? 0)) ? "fill-amber-400 text-amber-400" : "text-[var(--border)]"}`}
+            />
+          ))}
         </div>
-      ) : (
-        <div className="space-y-2">
-          <p className="text-sm font-semibold text-[var(--foreground)]">Belum ada review</p>
-          <p className="text-sm leading-6 text-[var(--muted-foreground)]">
-            Review akan tampil setelah peserta memberikan penilaian untuk course ini.
-          </p>
-        </div>
-      )}
-    </ContentSection>
+      </div>
+      <div>
+        <p className="text-sm font-bold text-[var(--foreground)]">{reviewCount} review dari peserta</p>
+        <p className="mt-1 text-xs leading-5 text-[var(--muted-foreground)]">
+          Penilaian ini berasal dari peserta yang sudah mengikuti course.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+interface ReviewListBlockProps {
+  isLoading: boolean;
+  isError: boolean;
+  reviews: any[];
+}
+
+function ReviewListBlock({
+  isLoading,
+  isError,
+  reviews,
+}: ReviewListBlockProps) {
+  return (
+    <div className="space-y-4">
+      {isLoading ? (
+        <p className="text-sm text-[var(--muted-foreground)]">Memuat review kelas...</p>
+      ) : null}
+
+      {isError ? (
+        <p className="text-sm text-red-600">Review kelas belum bisa dimuat.</p>
+      ) : null}
+
+      {!isLoading && !isError && reviews.length === 0 ? (
+        <p className="text-sm text-[var(--muted-foreground)]">Belum ada review untuk course ini.</p>
+      ) : null}
+
+      <div className="space-y-4">
+        {reviews.map((review) => {
+          const reviewerName = review.user?.fullname || "Student";
+          const avatarUrl = resolveReviewAvatar(review.user?.avatar);
+
+          return (
+            <article key={review.id} className="rounded-2xl border border-[var(--border)] p-4 bg-[var(--card)] shadow-sm">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--primary)]/10 text-xs font-semibold text-[var(--primary)]">
+                    {avatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={avatarUrl}
+                        alt={reviewerName}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      getReviewAvatarLabel(reviewerName)
+                    )}
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-bold text-[var(--foreground)]">{reviewerName}</p>
+                    <div className="mt-1">{renderStars(review.rating)}</div>
+                  </div>
+                </div>
+
+                <p className="text-xs text-[var(--muted-foreground)]">
+                  {formatUtcDateTimeToJakarta(review.created_at)}
+                </p>
+              </div>
+
+              <p className="mt-3 text-xs leading-5 text-[var(--muted-foreground)]">
+                {review.review || "Student memberikan rating tanpa komentar tambahan."}
+              </p>
+            </article>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function getReviewAvatarLabel(name: string | null | undefined): string {
+  return name?.trim().charAt(0).toUpperCase() || "S";
+}
+
+function resolveReviewAvatar(avatar: string | null | undefined): string | null {
+  if (!avatar) {
+    return null;
+  }
+
+  if (avatar.startsWith("http://") || avatar.startsWith("https://") || avatar.startsWith("/")) {
+    return avatar;
+  }
+
+  return `/storage/${avatar.replace(/^\/+/, "")}`;
+}
+
+function renderStars(value: number) {
+  return (
+    <div className="flex items-center gap-1">
+      {[1, 2, 3, 4, 5].map((index) => (
+        <Star
+          key={index}
+          className={[
+            "size-4",
+            index <= Math.round(value)
+              ? "fill-[var(--secondary)] text-[var(--secondary)]"
+              : "text-zinc-300",
+          ].join(" ")}
+        />
+      ))}
+    </div>
   );
 }

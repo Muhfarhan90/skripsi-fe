@@ -47,11 +47,9 @@ export function SiteFooter({ settings, className }: SiteFooterProps) {
           <div>
             <BrandLogo
               title={settings.site_name}
-              subtitle={settings.site_tagline}
               logoUrl={settings.logo_url}
               size="lg"
               titleClassName="text-lg font-black tracking-tight text-white"
-              subtitleClassName="text-sm text-white/60"
             />
 
             {footerDescription ? (

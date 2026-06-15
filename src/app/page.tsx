@@ -24,7 +24,7 @@ import { CourseCatalogCard } from "@/features/website/components/course-catalog-
 import { SiteFooter } from "@/features/website/components/site-footer";
 import { PublicSiteHeader } from "@/features/website/components/public-site-header";
 import { resolvePublicFileUrl } from "@/lib/file-url";
-import { createDefaultWebsiteSetting } from "@/features/website/lib/website-settings";
+import { createDefaultWebsiteSetting, getWebsiteFeatureIconMeta } from "@/features/website/lib/website-settings";
 
 const STATIC_FEATURES = [
   {
@@ -114,11 +114,13 @@ function buildHeroSlides(
   registerSlide({
     id: "hero-primary",
     imageUrl: resolvePublicFileUrl(websiteSettings.hero_image_url),
-    eyebrow: "Platform Persiapan Kuliah Pre-University",
-    title: "Kuasai Materi Dasar & Jangkau Kampus Impianmu",
-    description: "Mempersiapkan transisi akademik Anda dari sekolah menengah ke perguruan tinggi. Akses materi belajar terstruktur, uji pemahaman lewat kuis, dan raih sertifikat kesiapan kuliah.",
+    eyebrow: websiteSettings.hero_badge || "Platform Persiapan Kuliah Pre-University",
+    title: websiteSettings.hero_title
+      ? `${websiteSettings.hero_title} ${websiteSettings.hero_highlight}`.trim()
+      : "Persiapan Akademik Pre-University Terbaik",
+    description: websiteSettings.hero_description || "Platform belajar pre-university terlengkap untuk membekali Anda dengan kompetensi dasar perkuliahan. Jembatani kesenjangan materi sekolah menengah dengan standar perguruan tinggi, ikuti modul interaktif, dan raih sertifikat kesiapan kuliah.",
     href: catalogHref,
-    hrefLabel: "Buka katalog",
+    hrefLabel: websiteSettings.hero_primary_cta_label || "Buka katalog",
   });
 
   previewCourses.forEach((course) => {
@@ -251,15 +253,27 @@ export default function RootPage() {
             <div className="relative z-10 min-w-0">
               <span className="inline-flex items-center gap-2 rounded-full border border-[var(--primary)]/20 bg-white/70 px-4 py-2 text-xs font-bold text-[var(--primary)] shadow-sm">
                 <TrendingUp className="size-4" />
-                Platform Persiapan Kuliah Pre-University
+                {websiteSettings.hero_badge || "Platform Persiapan Kuliah Pre-University"}
               </span>
 
               <div className="mt-6">
                 <h1 className="max-w-2xl text-3xl font-black leading-[1.05] tracking-tight text-[var(--foreground)] sm:text-5xl xl:text-6xl">
-                  Kuasai Materi Dasar & <span className="block text-[var(--primary)]">Jangkau Kampus Impianmu</span>
+                  {websiteSettings.hero_title ? (
+                    <>
+                      {websiteSettings.hero_title}{" "}
+                      {websiteSettings.hero_highlight && (
+                        <span className="block text-[var(--primary)]">{websiteSettings.hero_highlight}</span>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      Persiapan Akademik Pre-University Terbaik &{" "}
+                      <span className="block text-[var(--primary)]">Sukses Transisi ke Kampus Impian</span>
+                    </>
+                  )}
                 </h1>
                 <p className="mt-5 max-w-2xl text-base leading-8 text-[var(--muted-foreground)] sm:text-lg">
-                  Mempersiapkan transisi akademik Anda dari sekolah menengah ke perguruan tinggi. Akses materi belajar terstruktur, uji pemahaman lewat kuis, dan raih sertifikat kesiapan kuliah.
+                  {websiteSettings.hero_description || "Platform belajar pre-university terlengkap untuk membekali Anda dengan kompetensi dasar perkuliahan. Jembatani kesenjangan materi sekolah menengah dengan standar perguruan tinggi, ikuti modul interaktif, dan raih sertifikat kesiapan kuliah."}
                 </p>
               </div>
 
@@ -271,7 +285,7 @@ export default function RootPage() {
                       className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-6 text-sm font-extrabold text-white shadow-lg shadow-emerald-900/10 transition hover:-translate-y-0.5 hover:shadow-xl active:scale-95"
                     >
                       <BookOpen className="size-4" />
-                      Jelajahi Course
+                      {websiteSettings.hero_primary_cta_label || "Jelajahi Course"}
                     </Link>
                     <Link
                       href={dashboardHref}
@@ -284,18 +298,18 @@ export default function RootPage() {
                 ) : (
                   <>
                     <Link
-                      href="/register"
+                      href={websiteSettings.hero_primary_cta_url || "/register"}
                       className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-6 text-sm font-extrabold text-white shadow-lg shadow-emerald-900/10 transition hover:-translate-y-0.5 hover:shadow-xl active:scale-95"
                     >
-                      Mulai Belajar Sekarang
+                      {websiteSettings.hero_primary_cta_label || "Mulai Belajar Sekarang"}
                       <ArrowRight className="size-4" />
                     </Link>
                     <Link
-                      href="/login"
+                      href={websiteSettings.hero_secondary_cta_url || "/login"}
                       className="inline-flex h-12 items-center justify-center gap-2 rounded-full border border-[var(--border)] bg-white/80 px-6 text-sm font-extrabold text-[var(--foreground)] shadow-sm transition hover:-translate-y-0.5 hover:bg-white active:scale-95"
                     >
                       <PlayCircle className="size-4" />
-                      Masuk Ke Platform
+                      {websiteSettings.hero_secondary_cta_label || "Masuk Ke Platform"}
                     </Link>
                   </>
                 )}
@@ -369,22 +383,36 @@ export default function RootPage() {
             <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
               <div className="lg:sticky lg:top-24">
                 <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--primary)]">
-                  Keunggulan Platform
+                  {websiteSettings.features_badge || "Keunggulan Platform"}
                 </p>
-                <h2 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">Metode Pembelajaran Terintegrasi</h2>
-                <p className="mt-4 text-sm leading-7 text-[var(--muted-foreground)]">Kami menyediakan ekosistem belajar yang lengkap untuk memastikan kesiapan akademik Anda memasuki gerbang perguruan tinggi.</p>
+                <h2 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">
+                  {websiteSettings.features_title || "Metode Pembelajaran Terintegrasi"}
+                </h2>
+                <p className="mt-4 text-sm leading-7 text-[var(--muted-foreground)]">
+                  {websiteSettings.features_description || "Kami menyediakan ekosistem belajar yang lengkap untuk memastikan kesiapan akademik Anda memasuki gerbang perguruan tinggi."}
+                </p>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                {STATIC_FEATURES.map((feat, index) => {
-                  const Icon = feat.icon;
+                {(websiteSettings.feature_items?.length > 0
+                  ? websiteSettings.feature_items
+                  : STATIC_FEATURES
+                ).map((feat, index) => {
+                  const Icon = 'icon' in feat && typeof feat.icon === 'string'
+                    ? (getWebsiteFeatureIconMeta(feat.icon as any)?.icon || BookOpen)
+                    : (feat.icon as any || BookOpen);
+                  const colorClass = 'colorClass' in feat
+                    ? (feat as any).colorClass
+                    : ('icon' in feat && typeof feat.icon === 'string'
+                        ? getWebsiteFeatureIconMeta(feat.icon as any)?.colorClass
+                        : "bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-400");
 
                   return (
                     <article
                       key={`${feat.title}-${index}`}
                       className="rounded-3xl bg-[var(--card)] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-border/30 transition hover:-translate-y-1 hover:shadow-md"
                     >
-                      <span className={`mb-5 inline-flex size-12 items-center justify-center rounded-2xl ${feat.colorClass}`}>
+                      <span className={`mb-5 inline-flex size-12 items-center justify-center rounded-2xl ${colorClass}`}>
                         <Icon className="size-5" />
                       </span>
                       <h3 className="text-base font-black">{feat.title}</h3>
@@ -401,17 +429,26 @@ export default function RootPage() {
           <div className="relative mx-auto max-w-7xl">
             <div className="mb-12 text-center max-w-3xl mx-auto">
               <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--primary)]">
-                Alur Pembelajaran
+                {websiteSettings.learning_path_badge || "Alur Pembelajaran"}
               </p>
-              <h2 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">Bagaimana Cara Mulai Belajar?</h2>
-              <p className="mt-3 text-sm leading-7 text-[var(--muted-foreground)]">Ikuti langkah terarah berikut untuk memaksimalkan persiapan akademik Anda menuju bangku kuliah.</p>
+              <h2 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">
+                {websiteSettings.learning_path_title || "Bagaimana Cara Mulai Belajar?"}
+              </h2>
+              <p className="mt-3 text-sm leading-7 text-[var(--muted-foreground)]">
+                {websiteSettings.learning_path_description || "Ikuti langkah terarah berikut untuk memaksimalkan persiapan akademik Anda menuju bangku kuliah."}
+              </p>
             </div>
 
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 relative">
               <div className="hidden lg:block absolute top-1/2 left-4 right-4 h-0.5 bg-gradient-to-r from-[var(--primary)]/20 via-[var(--primary)]/40 to-[var(--primary)]/20 -translate-y-1/2 z-0" />
               
-              {STATIC_STEPS.map((item, index) => {
-                const Icon = item.icon;
+              {(websiteSettings.learning_path_items?.length > 0
+                ? websiteSettings.learning_path_items
+                : STATIC_STEPS
+              ).map((item, index) => {
+                const Icon = 'icon' in item && typeof item.icon === 'string'
+                  ? (getWebsiteFeatureIconMeta(item.icon as any)?.icon || BookOpen)
+                  : (item.icon as any || BookOpen);
 
                 return (
                   <article
@@ -439,14 +476,21 @@ export default function RootPage() {
           <div className="relative mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.8fr_1.2fr]">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--primary)]">
-                Tanya Jawab
+                {websiteSettings.faq_badge || "Tanya Jawab"}
               </p>
-              <h2 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">Pertanyaan Umum</h2>
-              <p className="mt-4 text-sm leading-7 text-[var(--muted-foreground)]">Temukan jawaban atas beberapa pertanyaan umum yang sering diajukan mengenai platform persiapan kuliah pre-university.</p>
+              <h2 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">
+                {websiteSettings.faq_title || "Pertanyaan Umum"}
+              </h2>
+              <p className="mt-4 text-sm leading-7 text-[var(--muted-foreground)]">
+                {websiteSettings.faq_description || "Temukan jawaban atas beberapa pertanyaan umum yang sering diajukan mengenai platform persiapan kuliah pre-university."}
+              </p>
             </div>
 
             <div className="divide-y divide-[var(--border)]">
-              {STATIC_FAQS.map((faq, index) => (
+              {(websiteSettings.faqs && websiteSettings.faqs.length > 0
+                ? websiteSettings.faqs
+                : STATIC_FAQS
+              ).map((faq, index) => (
                 <details
                   key={faq.question}
                   className="group py-5 transition first:pt-0 last:pb-0"
@@ -470,40 +514,41 @@ export default function RootPage() {
         </section>
 
         {!isLoggedIn ? (
-          <section className={`${ctaSectionClass} px-4 py-14 sm:px-6`}>
+          <section className="relative overflow-hidden bg-white dark:bg-[var(--card)] px-4 py-14 sm:px-6">
             <div className="mx-auto max-w-6xl overflow-hidden rounded-[2rem] bg-[var(--primary)] shadow-2xl shadow-emerald-900/15">
               <div className="relative grid gap-8 px-6 py-10 text-white sm:px-10 lg:grid-cols-[1fr_auto] lg:items-center lg:p-12">
                 <div className="relative">
-                  <h2 className="max-w-2xl text-2xl font-black tracking-tight sm:text-4xl">Siap Melangkah Lebih Dekat ke Perguruan Tinggi?</h2>
-                  <p className="mt-3 max-w-2xl text-sm leading-7 text-white/75">Jangan tunda persiapan akademik Anda. Gabung sekarang secara gratis bersama ribuan pelajar lainnya dan raih kampus impian Anda.</p>
+                  <h2 className="max-w-2xl text-2xl font-black tracking-tight sm:text-4xl">
+                    {websiteSettings.bottom_cta_title || "Siap Melangkah Lebih Dekat ke Perguruan Tinggi?"}
+                  </h2>
+                  <p className="mt-3 max-w-2xl text-sm leading-7 text-white/75">
+                    {websiteSettings.bottom_cta_description || "Jangan tunda persiapan akademik Anda. Gabung sekarang secara gratis bersama ribuan pelajar lainnya dan raih kampus impian Anda."}
+                  </p>
                   <div className="mt-6 flex flex-wrap gap-3 text-xs font-semibold text-white/75">
-                    <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5">
-                      <CheckCircle className="size-3.5 text-white" />
-                      Akses Gratis Selamanya
-                    </span>
-                    <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5">
-                      <CheckCircle className="size-3.5 text-white" />
-                      Sertifikat Kelulusan Resmi
-                    </span>
-                    <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5">
-                      <CheckCircle className="size-3.5 text-white" />
-                      Materi Terstandar Nasional
-                    </span>
+                    {(websiteSettings.bottom_cta_bullets?.length > 0
+                      ? websiteSettings.bottom_cta_bullets
+                      : ["Akses Gratis Selamanya", "Sertifikat Kelulusan Resmi", "Materi Terstandar Pre-University"]
+                    ).map((bullet, index) => (
+                      <span key={index} className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5">
+                        <CheckCircle className="size-3.5 text-white" />
+                        {bullet}
+                      </span>
+                    ))}
                   </div>
                 </div>
                 <div className="relative flex flex-col gap-3 sm:flex-row lg:flex-col">
                   <Link
-                    href="/register"
+                    href={websiteSettings.bottom_cta_primary_url || "/register"}
                     className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-white px-6 text-sm font-black text-[var(--primary)] shadow-lg transition hover:-translate-y-0.5 active:scale-95"
                   >
-                    Mulai Belajar Sekarang
+                    {websiteSettings.bottom_cta_primary_label || "Mulai Belajar Sekarang"}
                     <ArrowRight className="size-4" />
                   </Link>
                   <Link
-                    href="/login"
+                    href={websiteSettings.bottom_cta_secondary_url || "/login"}
                     className="inline-flex h-12 items-center justify-center rounded-full border border-white/25 bg-white/10 px-6 text-sm font-black text-white transition hover:bg-white/20 active:scale-95"
                   >
-                    Masuk ke Platform
+                    {websiteSettings.bottom_cta_secondary_label || "Masuk ke Platform"}
                   </Link>
                 </div>
               </div>

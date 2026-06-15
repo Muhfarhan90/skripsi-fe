@@ -58,6 +58,7 @@ import { AdminModal } from "@/features/admin/components/admin-modal";
 import { AdminOfferingForumPanel } from "@/features/admin/components/admin-offering-forum-panel";
 import { AdminPagination } from "@/features/admin/components/admin-pagination";
 import { ApiError } from "@/lib/api/client";
+import { useAuthStore } from "@/features/auth/store/auth-store";
 import { resolvePublicFileUrl } from "@/lib/file-url";
 import { SkillMultiSelect } from "@/features/admin/components/skill-multi-select";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -595,6 +596,7 @@ function isCourseFormDirty(currentForm: CourseFormState, baseForm: CourseFormSta
 
 export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps) {
   // SECTION 1: Basic state and flags.
+  const user = useAuthStore((state) => state.user);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -695,8 +697,14 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
     if (isEditing && curriculumQuery.data) {
       return mapCurriculumToFormState(curriculumQuery.data);
     }
+    if (user && user.role_name === "instructor") {
+      return {
+        ...DEFAULT_FORM,
+        instructor_id: String(user.id),
+      };
+    }
     return DEFAULT_FORM;
-  }, [curriculumQuery.data, isEditing]);
+  }, [curriculumQuery.data, isEditing, user]);
 
   const form = draftForm ?? baseForm;
   const autosaveFingerprint = useMemo(() => JSON.stringify(form), [form]);
@@ -1980,7 +1988,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
                     <Select
                       value={form.instructor_id}
                       onValueChange={(value) => updateField("instructor_id", value ?? "")}
-                      disabled={isReferenceLoading || isReferenceError}
+                      disabled={isReferenceLoading || isReferenceError || user?.role_name === "instructor"}
                     >
                       <SelectTrigger className="h-9 w-full border-[var(--border)] bg-[var(--card)]">
                         <SelectValue>

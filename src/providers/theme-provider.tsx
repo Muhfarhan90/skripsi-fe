@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import { usePathname } from "next/navigation";
+
 type Theme = "light" | "dark";
 
 interface ThemeContextValue {
@@ -31,6 +33,7 @@ function resolveTheme(rawTheme: string | null | undefined, enableSystem: boolean
 }
 
 function applyThemeToDocument(attribute: string, theme: Theme) {
+  if (typeof window === "undefined") return;
   const root = document.documentElement;
 
   if (attribute === "class") {
@@ -49,7 +52,10 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
   const enableSystem = props.enableSystem ?? false;
   const defaultTheme = props.defaultTheme ?? "light";
 
-  const [theme, setThemeState] = React.useState<Theme>(
+  const pathname = usePathname();
+  const isDashboard = pathname ? (pathname.startsWith("/admin") || pathname.startsWith("/student")) : false;
+
+  const [themeState, setThemeState] = React.useState<Theme>(
     defaultTheme === "system" && enableSystem ? "light" : resolveTheme(defaultTheme, enableSystem),
   );
 
@@ -64,13 +70,17 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
 
     const nextTheme = resolveTheme(storedTheme ?? defaultTheme, enableSystem);
     setThemeState(nextTheme);
-    applyThemeToDocument(attribute, nextTheme);
-  }, [attribute, defaultTheme, enableSystem, storageKey]);
+  }, [defaultTheme, enableSystem, storageKey]);
+
+  const theme = isDashboard ? themeState : "light";
+
+  React.useEffect(() => {
+    applyThemeToDocument(attribute, theme);
+  }, [theme, attribute]);
 
   const setTheme = React.useCallback(
     (nextTheme: Theme) => {
       setThemeState(nextTheme);
-      applyThemeToDocument(attribute, nextTheme);
 
       try {
         localStorage.setItem(storageKey, nextTheme);
@@ -78,7 +88,7 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
         // Ignore write failure (private mode, quota, etc).
       }
     },
-    [attribute, storageKey],
+    [storageKey],
   );
 
   const value = React.useMemo<ThemeContextValue>(() => ({ theme, setTheme }), [theme, setTheme]);

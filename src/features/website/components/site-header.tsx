@@ -27,7 +27,6 @@ export function SiteHeader({ settings, activePath = "home" }: SiteHeaderProps) {
         <BrandLogo
           href="/"
           title={settings.site_name}
-          subtitle={settings.site_tagline || "Platform Belajar"}
           logoUrl={settings.logo_url}
           hideTextOnMobile
           size="sm"

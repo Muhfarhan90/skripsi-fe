@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   ChevronDown,
   LogOut,
@@ -11,6 +12,7 @@ import {
   PanelLeftClose,
   Search,
   Sun,
+  User,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -192,6 +194,13 @@ export function AdminTopbar({
             </div>
 
             <div className="space-y-1 pt-2">
+              <Link
+                href="/admin/profile"
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition hover:bg-[var(--surface-hover)]"
+              >
+                <User className="size-4" />
+                <span>Kelola Profil</span>
+              </Link>
               <button
                 type="button"
                 onClick={onToggleTheme}

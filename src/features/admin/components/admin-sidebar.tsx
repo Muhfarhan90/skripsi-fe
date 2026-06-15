@@ -9,6 +9,9 @@ import {
   isAdminItemActive,
   resolveAdminIcon,
 } from "@/features/admin/data/navigation";
+import { useQuery } from "@tanstack/react-query";
+import { getPublicWebsiteSettings } from "@/features/student/api/store-api";
+import { BrandMark } from "@/components/shared/brand-logo";
 
 interface AdminSidebarProps {
   pathname: string;
@@ -27,6 +30,13 @@ interface SidebarMenuProps {
 }
 
 function SidebarMenu({ pathname, roleName, collapsed, isMobile, onNavigate }: SidebarMenuProps) {
+  const settingsQuery = useQuery({
+    queryKey: ["public-website-settings"],
+    queryFn: getPublicWebsiteSettings,
+    staleTime: 60_000,
+  });
+  const settings = settingsQuery.data;
+
   const navigation = useMemo(() => getAdminNavigation(roleName), [roleName]);
   const [manuallyExpandedItems, setManuallyExpandedItems] = useState<Record<string, boolean>>({});
   const autoExpandedKeys = useMemo(() => {
@@ -60,13 +70,16 @@ function SidebarMenu({ pathname, roleName, collapsed, isMobile, onNavigate }: Si
           className={cn("flex items-center gap-3", collapsed && !isMobile ? "justify-center" : "justify-start")}
           title={collapsed && !isMobile ? "Dashboard Admin" : undefined}
         >
-          <span className="inline-flex size-9 items-center justify-center rounded-lg bg-[var(--secondary)] text-sm font-bold text-[var(--secondary-foreground)] shadow-sm">
-            LMS
-          </span>
+          <BrandMark
+            logoUrl={settings?.logo_url}
+            fallbackText="LMS"
+            size="sm"
+            className="rounded-lg"
+          />
           {collapsed && !isMobile ? null : (
             <span className="space-y-0.5">
               <span className="block text-sm font-semibold text-[var(--primary-foreground)]">Admin Panel</span>
-              <span className="block text-xs text-[var(--primary-foreground)]">Skripsi LMS</span>
+              <span className="block text-xs text-[var(--primary-foreground)] truncate max-w-[140px]">{settings?.site_name ?? "Skripsi LMS"}</span>
             </span>
           )}
         </Link>

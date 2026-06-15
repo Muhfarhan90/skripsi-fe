@@ -27,6 +27,7 @@ import {
   formatUtcDateTimeToJakarta,
 } from "@/features/student/lib/date-time";
 import { getCourseInstructorHref } from "@/features/website/lib/public-instructors";
+import { resolvePublicFileUrl } from "@/lib/file-url";
 import type { StoreCourse } from "@/types/store";
 
 function toPercent(value: number | null | undefined): string {
@@ -153,7 +154,7 @@ export default function StudentEnrollmentDetailPage() {
           <div className="space-y-5">
             <Link
               href="/student/enrollments"
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--border)]/60 bg-white/70 px-4 py-2 text-xs font-bold text-[var(--primary)] shadow-sm transition hover:-translate-y-0.5 hover:bg-white active:scale-95"
+              className="inline-flex items-center gap-2 rounded-full border border-[var(--border)]/60 bg-[var(--surface-soft)] px-4 py-2 text-xs font-bold text-[var(--primary)] shadow-sm transition hover:-translate-y-0.5 hover:bg-[var(--surface-hover)] active:scale-95"
             >
               <ArrowLeft className="size-3.5" />
               Kembali ke kelas saya
@@ -165,7 +166,7 @@ export default function StudentEnrollmentDetailPage() {
                   {enrollment.status}
                 </span>
                 {course?.category_name ? (
-                  <span className="rounded-full border border-[var(--border)] bg-white/70 px-3.5 py-1 text-[10px] font-black uppercase tracking-wider text-[var(--foreground)]">
+                  <span className="rounded-full border border-[var(--border)] bg-[var(--surface-soft)] px-3.5 py-1 text-[10px] font-black uppercase tracking-wider text-[var(--foreground)]">
                     {course.category_name}
                   </span>
                 ) : null}
@@ -181,15 +182,15 @@ export default function StudentEnrollmentDetailPage() {
               </div>
 
               <div className="flex flex-wrap gap-2.5 text-xs font-bold text-[var(--muted-foreground)]">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)]/75 bg-white/60 px-3.5 py-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)]/75 bg-[var(--surface-soft)] px-3.5 py-2">
                   <CheckCircle2 className="size-4 text-[var(--primary)]" />
                   <span className="text-[var(--foreground)]">{toPercent(progressValue)} progress</span>
                 </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)]/75 bg-white/60 px-3.5 py-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)]/75 bg-[var(--surface-soft)] px-3.5 py-2">
                   <MessageSquareText className="size-4 text-[var(--primary)]" />
                   <span>{summary?.completed_lessons ?? 0} lesson selesai</span>
                 </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)]/75 bg-white/60 px-3.5 py-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)]/75 bg-[var(--surface-soft)] px-3.5 py-2">
                   <Award className="size-4 text-[var(--primary)]" />
                   <span>{certificateStatus}</span>
                 </span>
@@ -251,6 +252,15 @@ export default function StudentEnrollmentDetailPage() {
             )}
           </ContentSection>
 
+          {course?.instructor_name ? (
+            <InstructorDetailCard
+              instructorName={course.instructor_name}
+              instructorBio={course.instructor_bio}
+              instructorHref={instructorHref}
+              instructorAvatar={course.instructor_avatar}
+            />
+          ) : null}
+
           <div className="space-y-6 lg:hidden">
             <EnrollmentActionPanel
               accessEndAt={accessEndAt}
@@ -261,13 +271,6 @@ export default function StudentEnrollmentDetailPage() {
               progressValue={progressValue}
             />
             <DiscussionForumCard enrollmentId={enrollment.id} />
-            {course?.instructor_name ? (
-              <InstructorDetailCard
-                instructorName={course.instructor_name}
-                instructorBio={course.instructor_bio}
-                instructorHref={instructorHref}
-              />
-            ) : null}
             <EnrollmentSummaryCard
               accessEndAt={accessEndAt}
               assignmentRequirement={assignmentRequirement}
@@ -282,14 +285,6 @@ export default function StudentEnrollmentDetailPage() {
         <aside className="hidden lg:block">
           <div className="sticky top-24 space-y-6">
             <DiscussionForumCard enrollmentId={enrollment.id} />
-
-            {course?.instructor_name ? (
-              <InstructorDetailCard
-                instructorName={course.instructor_name}
-                instructorBio={course.instructor_bio}
-                instructorHref={instructorHref}
-              />
-            ) : null}
 
             <EnrollmentSummaryCard
               accessEndAt={accessEndAt}
@@ -524,7 +519,7 @@ function CurriculumAccordion({
                     {itemsCount} materi
                   </span>
                   <span
-                    className={`inline-flex size-7 items-center justify-center rounded-full border border-[var(--border)]/65 bg-white text-[var(--foreground)] shadow-sm transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`}
+                    className={`inline-flex size-7 items-center justify-center rounded-full border border-[var(--border)]/65 bg-[var(--card)] text-[var(--foreground)] shadow-sm transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`}
                   >
                     <ChevronDown className="size-4" />
                   </span>
@@ -532,7 +527,7 @@ function CurriculumAccordion({
               </button>
 
               {isExpanded ? (
-                <div className="divide-y divide-[var(--border)]/30 bg-white/50">
+                <div className="divide-y divide-[var(--border)]/30 bg-[var(--card)]">
                   {section.lessons?.map((lesson) => (
                     <div key={lesson.id} className="flex flex-col gap-3 px-4 py-3.5 text-sm sm:flex-row sm:items-center sm:justify-between sm:px-5">
                       <div className="flex min-w-0 items-start gap-3">
@@ -648,27 +643,45 @@ function InstructorDetailCard({
   instructorName,
   instructorBio,
   instructorHref,
+  instructorAvatar,
 }: {
   instructorName: string;
   instructorBio: string | null | undefined;
   instructorHref: string | null;
+  instructorAvatar?: string | null;
 }) {
+  const resolvedAvatar = instructorAvatar ? resolvePublicFileUrl(instructorAvatar) : null;
   return (
     <ContentSection title="Instruktur">
-      <div className="space-y-3">
-        {instructorHref ? (
-          <Link
-            href={instructorHref}
-            className="inline-flex text-base font-extrabold text-[var(--foreground)] transition hover:text-[var(--primary)]"
-          >
-            {instructorName}
-          </Link>
-        ) : (
-          <p className="text-base font-extrabold text-[var(--foreground)]">{instructorName}</p>
-        )}
-        <p className="text-sm leading-7 text-[var(--muted-foreground)]">
-          {instructorBio?.trim() || "Bio instruktur belum tersedia."}
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5">
+        <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[var(--border)] bg-[var(--surface-soft)]">
+          {resolvedAvatar ? (
+            <img
+              src={resolvedAvatar}
+              alt={instructorName}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <span className="text-xl font-bold text-[var(--muted-foreground)]">
+              {instructorName.charAt(0).toUpperCase()}
+            </span>
+          )}
+        </div>
+        <div className="min-w-0 flex-1 space-y-2">
+          {instructorHref ? (
+            <Link
+              href={instructorHref}
+              className="inline-flex text-base font-extrabold text-[var(--foreground)] transition hover:text-[var(--primary)]"
+            >
+              {instructorName}
+            </Link>
+          ) : (
+            <p className="text-base font-extrabold text-[var(--foreground)]">{instructorName}</p>
+          )}
+          <p className="text-sm leading-7 text-[var(--muted-foreground)]">
+            {instructorBio?.trim() || "Bio instruktur belum tersedia."}
+          </p>
+        </div>
       </div>
     </ContentSection>
   );

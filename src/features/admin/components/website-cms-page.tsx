@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FileText, Globe2, GripVertical, HelpCircle, Layers3, Link2, Loader2, Plus, RefreshCcw, Save, Trash2 } from "lucide-react";
+import { ChevronDown, FileText, Globe2, GripVertical, HelpCircle, Layers3, Link2, Loader2, Plus, RefreshCcw, Save, Trash2 } from "lucide-react";
 import Sortable from "sortablejs";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -509,6 +509,15 @@ export function WebsiteCmsPage() {
   const [faqCategoriesDraft, setFaqCategoriesDraft] = useState<EditableFaqCategory[] | null>(null);
   const [faqsDraft, setFaqsDraft] = useState<EditableFaq[] | null>(null);
   const [socialDraft, setSocialDraft] = useState<EditableSocialLink[] | null>(null);
+  const [openLandingSection, setOpenLandingSection] = useState<string>("hero");
+
+  const [openPageId, setOpenPageId] = useState<number | null>(null);
+  const [openFaqId, setOpenFaqId] = useState<number | null>(null);
+  const [openSocialId, setOpenSocialId] = useState<number | null>(null);
+
+  const [hasInitializedPage, setHasInitializedPage] = useState(false);
+  const [hasInitializedFaq, setHasInitializedFaq] = useState(false);
+  const [hasInitializedSocial, setHasInitializedSocial] = useState(false);
 
   const settingsQuery = useQuery({
     queryKey: ["admin", "website-settings"],
@@ -539,6 +548,27 @@ export function WebsiteCmsPage() {
     queryKey: ["admin", "website-social-links"],
     queryFn: listAdminWebsiteSocialLinks,
   });
+
+  useEffect(() => {
+    if (pagesQuery.data && pagesQuery.data.length > 0 && !hasInitializedPage) {
+      setOpenPageId(pagesQuery.data[0].id);
+      setHasInitializedPage(true);
+    }
+  }, [pagesQuery.data, hasInitializedPage]);
+
+  useEffect(() => {
+    if (faqsQuery.data && faqsQuery.data.length > 0 && !hasInitializedFaq) {
+      setOpenFaqId(faqsQuery.data[0].id);
+      setHasInitializedFaq(true);
+    }
+  }, [faqsQuery.data, hasInitializedFaq]);
+
+  useEffect(() => {
+    if (socialQuery.data && socialQuery.data.length > 0 && !hasInitializedSocial) {
+      setOpenSocialId(socialQuery.data[0].id);
+      setHasInitializedSocial(true);
+    }
+  }, [socialQuery.data, hasInitializedSocial]);
 
   const settingsForm = useMemo<WebsiteSettingPayload>(
     () =>
@@ -968,47 +998,72 @@ export function WebsiteCmsPage() {
           </div>
 
           {sections.map((section, sectionIndex) => {
+            const isSectionOpen = openLandingSection === section.section_key;
+
             return (
               <Card key={section.id} className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
                 <CardHeader className="border-b border-[var(--border)] pb-4">
                   <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <div>
-                      <CardTitle className="text-base font-semibold">{getLandingSectionLabel(section)}</CardTitle>
-                      <p className="mt-1 text-sm text-[var(--muted-foreground)]">{getLandingSectionDescription(section)}</p>
+                    <button
+                      type="button"
+                      className="group min-w-0 flex-1 text-left"
+                      onClick={() => setOpenLandingSection(isSectionOpen ? "" : section.section_key)}
+                    >
+                      <div className="flex items-center gap-2">
+                        <ChevronDown
+                          className={`size-4 shrink-0 text-[var(--muted-foreground)] transition-transform ${isSectionOpen ? "rotate-0" : "-rotate-90"}`}
+                        />
+                        <span className="truncate text-base font-semibold text-[var(--foreground)]">{getLandingSectionLabel(section)}</span>
+                      </div>
+                      <span className="mt-1 block line-clamp-2 text-sm text-[var(--muted-foreground)]">{getLandingSectionDescription(section)}</span>
+                    </button>
+                    <div className="flex items-center gap-3 md:shrink-0">
+                      <span className="rounded-full border border-[var(--border)] bg-[var(--surface-soft)] px-2.5 py-1 text-xs font-medium text-[var(--muted-foreground)]">
+                        {section.items.length} item
+                      </span>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-8 px-3 text-xs"
+                        onClick={() => setOpenLandingSection(isSectionOpen ? "" : section.section_key)}
+                      >
+                        {isSectionOpen ? "Tutup" : "Edit"}
+                      </Button>
+                      <Switch
+                        checked={section.is_active}
+                        onCheckedChange={(checked) => updateSection(sectionIndex, (current) => ({ ...current, is_active: checked }))}
+                      />
                     </div>
-                    <Switch
-                      checked={section.is_active}
-                      onCheckedChange={(checked) => updateSection(sectionIndex, (current) => ({ ...current, is_active: checked }))}
-                    />
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-4 p-5">
-                  <div className="grid gap-4 lg:grid-cols-3">
-                    <Field label="Eyebrow" id={`section-eyebrow-${section.id}`}>
-                      <Input
-                        id={`section-eyebrow-${section.id}`}
-                        placeholder={getSectionFieldPlaceholder(section, "eyebrow")}
-                        value={section.eyebrow ?? ""}
-                        onChange={(event) => updateSection(sectionIndex, (current) => ({ ...current, eyebrow: event.target.value }))}
-                      />
-                    </Field>
-                    <Field label="Title" id={`section-title-${section.id}`}>
-                      <Input
-                        id={`section-title-${section.id}`}
-                        placeholder={getSectionFieldPlaceholder(section, "title")}
-                        value={section.title ?? ""}
-                        onChange={(event) => updateSection(sectionIndex, (current) => ({ ...current, title: event.target.value }))}
-                      />
-                    </Field>
-                    <Field label="Subtitle" id={`section-subtitle-${section.id}`}>
-                      <Input
-                        id={`section-subtitle-${section.id}`}
-                        placeholder={getSectionFieldPlaceholder(section, "subtitle")}
-                        value={section.subtitle ?? ""}
-                        onChange={(event) => updateSection(sectionIndex, (current) => ({ ...current, subtitle: event.target.value }))}
-                      />
-                    </Field>
-                  </div>
+                {isSectionOpen ? (
+                  <CardContent className="space-y-4 p-5">
+                    <div className="grid gap-4 lg:grid-cols-3">
+                      <Field label="Eyebrow" id={`section-eyebrow-${section.id}`}>
+                        <Input
+                          id={`section-eyebrow-${section.id}`}
+                          placeholder={getSectionFieldPlaceholder(section, "eyebrow")}
+                          value={section.eyebrow ?? ""}
+                          onChange={(event) => updateSection(sectionIndex, (current) => ({ ...current, eyebrow: event.target.value }))}
+                        />
+                      </Field>
+                      <Field label="Title" id={`section-title-${section.id}`}>
+                        <Input
+                          id={`section-title-${section.id}`}
+                          placeholder={getSectionFieldPlaceholder(section, "title")}
+                          value={section.title ?? ""}
+                          onChange={(event) => updateSection(sectionIndex, (current) => ({ ...current, title: event.target.value }))}
+                        />
+                      </Field>
+                      <Field label="Subtitle" id={`section-subtitle-${section.id}`}>
+                        <Input
+                          id={`section-subtitle-${section.id}`}
+                          placeholder={getSectionFieldPlaceholder(section, "subtitle")}
+                          value={section.subtitle ?? ""}
+                          onChange={(event) => updateSection(sectionIndex, (current) => ({ ...current, subtitle: event.target.value }))}
+                        />
+                      </Field>
+                    </div>
                   <Field label="Body" id={`section-body-${section.id}`}>
                     <Textarea
                       id={`section-body-${section.id}`}
@@ -1177,6 +1232,7 @@ export function WebsiteCmsPage() {
                     })}
                   </div>
                 </CardContent>
+                ) : null}
               </Card>
             );
           })}
@@ -1187,71 +1243,100 @@ export function WebsiteCmsPage() {
         <EditableList
           title="Pages"
           description="Kelola halaman CMS seperti about-us, privacy-policy, dan terms dengan TinyMCE untuk konten visual."
-          onAdd={() => setPagesDraft([...(pagesDraft ?? pages), emptyPage()])}
+          onAdd={() => {
+            const newPage = emptyPage();
+            setPagesDraft([...(pagesDraft ?? pages), newPage]);
+            setOpenPageId(newPage.id);
+          }}
           onSave={() => savePagesMutation.mutate(pages)}
           isSaving={savePagesMutation.isPending}
         >
-          {pages.map((page) => (
-            <Card key={page.id} className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
-              <CardContent className="space-y-4 p-4">
-                <div className="flex justify-between gap-3">
-                  <div className="grid flex-1 gap-3 lg:grid-cols-2">
-                    <Field label="Slug" id={`page-slug-${page.id}`}>
-                      <Input
-                        id={`page-slug-${page.id}`}
-                        placeholder="Contoh: about-us"
-                        value={page.slug}
-                        onChange={(event) => updateListRow(pages, setPagesDraft, page.id, (row) => ({ ...row, slug: event.target.value }))}
-                      />
-                    </Field>
-                    <Field label="Title" id={`page-title-${page.id}`}>
-                      <Input
-                        id={`page-title-${page.id}`}
-                        placeholder="Contoh: Tentang Kami"
-                        value={page.title}
-                        onChange={(event) => updateListRow(pages, setPagesDraft, page.id, (row) => ({ ...row, title: event.target.value }))}
-                      />
-                    </Field>
-                  </div>
-                  <div className="flex h-10 items-center gap-3">
-                    <Switch
-                      checked={page.is_active}
-                      onCheckedChange={(checked) => updateListRow(pages, setPagesDraft, page.id, (row) => ({ ...row, is_active: checked }))}
-                    />
-                    <Button
+          {pages.map((page) => {
+            const isPageOpen = openPageId === page.id;
+
+            return (
+              <Card key={page.id} className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
+                <CardHeader className="border-b border-[var(--border)] pb-3 pt-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <button
                       type="button"
-                      variant="outline"
-                      className="h-9 w-9 px-0 text-[var(--danger-soft-foreground)]"
-                      onClick={() => {
-                        setPagesDraft(pages.filter((candidate) => candidate.id !== page.id));
-                        if (page.id > 0) deletePageMutation.mutate(page.id);
-                      }}
+                      className="flex flex-1 items-center gap-2 text-left"
+                      onClick={() => setOpenPageId(isPageOpen ? null : page.id)}
                     >
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </div>
-                </div>
-                <Field label="Content" id={`page-content-${page.id}`}>
-                  <div className="space-y-3">
-                    <TinyMceEditor
-                      placeholder={WEBSITE_PAGE_EDITOR_PLACEHOLDER}
-                      value={page.content ?? ""}
-                      onChange={(value) => updateListRow(pages, setPagesDraft, page.id, (row) => ({ ...row, content: value }))}
-                    />
-                    <p className="text-xs leading-6 text-[var(--muted-foreground)]">{WEBSITE_PAGE_EDITOR_HELPER_TEXT}</p>
-                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted-foreground)]">Preview Publik</p>
-                      <WebsiteRichContent
-                        content={page.content}
-                        emptyText="Konten halaman akan tampil di sini setelah kamu mulai menulis."
-                        className="mt-3"
+                      <ChevronDown
+                        className={`size-4 shrink-0 text-[var(--muted-foreground)] transition-transform ${isPageOpen ? "rotate-0" : "-rotate-90"}`}
                       />
+                      <span className="font-semibold text-[var(--foreground)]">
+                        {page.title || "Halaman Baru"}
+                      </span>
+                      {page.slug ? (
+                        <span className="rounded-full bg-[var(--surface-soft)] px-2 py-0.5 text-xs text-[var(--muted-foreground)] border border-[var(--border)]">
+                          /{page.slug}
+                        </span>
+                      ) : null}
+                    </button>
+                    <div className="flex items-center gap-3">
+                      <Switch
+                        checked={page.is_active}
+                        onCheckedChange={(checked) => updateListRow(pages, setPagesDraft, page.id, (row) => ({ ...row, is_active: checked }))}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-8 w-8 px-0 text-[var(--danger-soft-foreground)]"
+                        onClick={() => {
+                          setPagesDraft(pages.filter((candidate) => candidate.id !== page.id));
+                          if (page.id > 0) deletePageMutation.mutate(page.id);
+                        }}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
                     </div>
                   </div>
-                </Field>
-              </CardContent>
-            </Card>
-          ))}
+                </CardHeader>
+                {isPageOpen ? (
+                  <CardContent className="space-y-4 p-4">
+                    <div className="grid gap-3 lg:grid-cols-2">
+                      <Field label="Slug" id={`page-slug-${page.id}`}>
+                        <Input
+                          id={`page-slug-${page.id}`}
+                          placeholder="Contoh: about-us"
+                          value={page.slug}
+                          onChange={(event) => updateListRow(pages, setPagesDraft, page.id, (row) => ({ ...row, slug: event.target.value }))}
+                        />
+                      </Field>
+                      <Field label="Title" id={`page-title-${page.id}`}>
+                        <Input
+                          id={`page-title-${page.id}`}
+                          placeholder="Contoh: Tentang Kami"
+                          value={page.title}
+                          onChange={(event) => updateListRow(pages, setPagesDraft, page.id, (row) => ({ ...row, title: event.target.value }))}
+                        />
+                      </Field>
+                    </div>
+                    <Field label="Content" id={`page-content-${page.id}`}>
+                      <div className="space-y-3">
+                        <TinyMceEditor
+                          placeholder={WEBSITE_PAGE_EDITOR_PLACEHOLDER}
+                          value={page.content ?? ""}
+                          onChange={(value) => updateListRow(pages, setPagesDraft, page.id, (row) => ({ ...row, content: value }))}
+                        />
+                        <p className="text-xs leading-6 text-[var(--muted-foreground)]">{WEBSITE_PAGE_EDITOR_HELPER_TEXT}</p>
+                        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-4">
+                          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted-foreground)]">Preview Publik</p>
+                          <WebsiteRichContent
+                            content={page.content}
+                            emptyText="Konten halaman akan tampil di sini setelah kamu mulai menulis."
+                            className="mt-3"
+                          />
+                        </div>
+                      </div>
+                    </Field>
+                  </CardContent>
+                ) : null}
+              </Card>
+            );
+          })}
         </EditableList>
       ) : null}
 
@@ -1322,7 +1407,11 @@ export function WebsiteCmsPage() {
           <EditableList
             title="FAQ"
             description="Kelola pertanyaan publik dan hubungkan tiap FAQ ke kategori master di atas."
-            onAdd={() => setFaqsDraft([...(faqsDraft ?? faqs), emptyFaq()])}
+            onAdd={() => {
+              const newFaq = emptyFaq();
+              setFaqsDraft([...(faqsDraft ?? faqs), newFaq]);
+              setOpenFaqId(newFaq.id);
+            }}
             onSave={() => saveFaqsMutation.mutate(faqs)}
             isSaving={saveFaqsMutation.isPending}
             mergeContent
@@ -1330,85 +1419,110 @@ export function WebsiteCmsPage() {
           >
             {faqs.length > 0 ? (
               <div ref={faqListRef} className="relative space-y-4">
-                {faqs.map((faq) => (
-                  <div key={faq.id} className="rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-4">
-                    <div className="space-y-4">
-                      <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
-                        <div className="faq-drag-handle flex h-10 w-10 shrink-0 cursor-grab items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--card)] text-[var(--muted-foreground)] hover:bg-[var(--surface-hover)] hover:text-[var(--foreground)] transition lg:mb-0.5">
-                          <GripVertical className="size-4" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <Field label="Question" id={`faq-question-${faq.id}`}>
-                            <Input
-                              id={`faq-question-${faq.id}`}
-                              placeholder="Contoh: Apakah course bisa diakses lewat HP?"
-                              value={faq.question}
-                              onChange={(event) => updateListRow(faqs, setFaqsDraft, faq.id, (row) => ({ ...row, question: event.target.value }))}
-                            />
-                          </Field>
-                        </div>
-                        <div className="w-full lg:w-[220px] shrink-0">
-                          <Field label="Category" id={`faq-category-${faq.id}`}>
-                            <Select
-                              value={faq.faq_category_id ? String(faq.faq_category_id) : "none"}
-                              onValueChange={(value) => {
-                                const nextCategoryId = value === "none" ? null : Number(value);
-                                const nextCategory = faqCategories.find((category) => category.id === nextCategoryId) ?? null;
+                {faqs.map((faq) => {
+                  const isFaqOpen = openFaqId === faq.id;
+                  const catName = getFaqCategoryDisplayName(faq, faqCategories);
 
-                                updateListRow(faqs, setFaqsDraft, faq.id, (row) => ({
-                                  ...row,
-                                  faq_category_id: nextCategoryId,
-                                  category_name: nextCategory?.name ?? null,
-                                  category: nextCategory,
-                                }));
+                  return (
+                    <div key={faq.id} className="rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-4">
+                      <div className="space-y-4">
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+                          <div className="faq-drag-handle flex h-9 w-9 shrink-0 cursor-grab items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--muted-foreground)] hover:bg-[var(--surface-hover)] hover:text-[var(--foreground)] transition">
+                            <GripVertical className="size-4" />
+                          </div>
+                          <button
+                            type="button"
+                            className="flex flex-1 items-center gap-2 text-left"
+                            onClick={() => setOpenFaqId(isFaqOpen ? null : faq.id)}
+                          >
+                            <ChevronDown
+                              className={`size-4 shrink-0 text-[var(--muted-foreground)] transition-transform ${isFaqOpen ? "rotate-0" : "-rotate-90"}`}
+                            />
+                            <span className="font-semibold text-[var(--foreground)] truncate max-w-[400px]">
+                              {faq.question || "Pertanyaan FAQ Baru"}
+                            </span>
+                            {catName ? (
+                              <span className="rounded-full bg-[var(--card)] border border-[var(--border)] px-2.5 py-0.5 text-xs text-[var(--muted-foreground)] whitespace-nowrap">
+                                {catName}
+                              </span>
+                            ) : null}
+                          </button>
+                          <div className="flex h-10 items-center gap-3 shrink-0 lg:justify-self-end">
+                            <Switch
+                              checked={faq.is_active}
+                              onCheckedChange={(checked) => updateListRow(faqs, setFaqsDraft, faq.id, (row) => ({ ...row, is_active: checked }))}
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="h-8 w-8 px-0 text-[var(--danger-soft-foreground)]"
+                              onClick={() => {
+                                setFaqsDraft(faqs.filter((candidate) => candidate.id !== faq.id));
+                                if (faq.id > 0) deleteFaqMutation.mutate(faq.id);
                               }}
                             >
-                              <SelectTrigger id={`faq-category-${faq.id}`} className="h-9 w-full border-[var(--border)] bg-[var(--card)]">
-                                <SelectValue placeholder="Pilih kategori FAQ">
-                                  {getFaqCategoryDisplayName(faq, faqCategories) || undefined}
-                                </SelectValue>
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="none">Tanpa kategori</SelectItem>
-                                {faqCategories.map((category) => (
-                                  <SelectItem key={category.id} value={String(category.id)}>
-                                    {category.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </Field>
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </div>
                         </div>
-                        <div className="flex h-10 items-center gap-3 shrink-0 lg:justify-self-end lg:mb-0.5">
-                          <Switch
-                            checked={faq.is_active}
-                            onCheckedChange={(checked) => updateListRow(faqs, setFaqsDraft, faq.id, (row) => ({ ...row, is_active: checked }))}
-                          />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="h-9 w-9 px-0 text-[var(--danger-soft-foreground)]"
-                            onClick={() => {
-                              setFaqsDraft(faqs.filter((candidate) => candidate.id !== faq.id));
-                              if (faq.id > 0) deleteFaqMutation.mutate(faq.id);
-                            }}
-                          >
-                            <Trash2 className="size-4" />
-                          </Button>
-                        </div>
+
+                        {isFaqOpen ? (
+                          <div className="space-y-4 border-t border-[var(--border)] pt-4">
+                            <div className="grid gap-3 lg:grid-cols-[1fr_240px]">
+                              <Field label="Question" id={`faq-question-${faq.id}`}>
+                                <Input
+                                  id={`faq-question-${faq.id}`}
+                                  placeholder="Contoh: Apakah course bisa diakses lewat HP?"
+                                  value={faq.question}
+                                  onChange={(event) => updateListRow(faqs, setFaqsDraft, faq.id, (row) => ({ ...row, question: event.target.value }))}
+                                />
+                              </Field>
+                              <Field label="Category" id={`faq-category-${faq.id}`}>
+                                <Select
+                                  value={faq.faq_category_id ? String(faq.faq_category_id) : "none"}
+                                  onValueChange={(value) => {
+                                    const nextCategoryId = value === "none" ? null : Number(value);
+                                    const nextCategory = faqCategories.find((category) => category.id === nextCategoryId) ?? null;
+
+                                    updateListRow(faqs, setFaqsDraft, faq.id, (row) => ({
+                                      ...row,
+                                      faq_category_id: nextCategoryId,
+                                      category_name: nextCategory?.name ?? null,
+                                      category: nextCategory,
+                                    }));
+                                  }}
+                                >
+                                  <SelectTrigger id={`faq-category-${faq.id}`} className="h-9 w-full border-[var(--border)] bg-[var(--card)]">
+                                    <SelectValue placeholder="Pilih kategori FAQ">
+                                      {catName || undefined}
+                                    </SelectValue>
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="none">Tanpa kategori</SelectItem>
+                                    {faqCategories.map((category) => (
+                                      <SelectItem key={category.id} value={String(category.id)}>
+                                        {category.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </Field>
+                            </div>
+                            <Field label="Answer" id={`faq-answer-${faq.id}`}>
+                              <Textarea
+                                id={`faq-answer-${faq.id}`}
+                                placeholder="Tulis jawaban singkat, jelas, dan langsung ke inti pertanyaan."
+                                value={faq.answer}
+                                rows={3}
+                                onChange={(event) => updateListRow(faqs, setFaqsDraft, faq.id, (row) => ({ ...row, answer: event.target.value }))}
+                              />
+                            </Field>
+                          </div>
+                        ) : null}
                       </div>
-                      <Field label="Answer" id={`faq-answer-${faq.id}`}>
-                        <Textarea
-                          id={`faq-answer-${faq.id}`}
-                          placeholder="Tulis jawaban singkat, jelas, dan langsung ke inti pertanyaan."
-                          value={faq.answer}
-                          rows={3}
-                          onChange={(event) => updateListRow(faqs, setFaqsDraft, faq.id, (row) => ({ ...row, answer: event.target.value }))}
-                        />
-                      </Field>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <ListEmptyState message="Belum ada item FAQ. Tambahkan pertanyaan pertama setelah kategori siap dipakai." />
@@ -1421,7 +1535,11 @@ export function WebsiteCmsPage() {
         <EditableList
           title="Social Links"
           description="Kelola link sosial media yang tampil di footer, termasuk icon yang akan dipakai."
-          onAdd={() => setSocialDraft([...(socialDraft ?? socialLinks), emptySocialLink()])}
+          onAdd={() => {
+            const newSocial = emptySocialLink();
+            setSocialDraft([...(socialDraft ?? socialLinks), newSocial]);
+            setOpenSocialId(newSocial.id);
+          }}
           onSave={() => saveSocialMutation.mutate(socialLinks)}
           isSaving={saveSocialMutation.isPending}
         >
@@ -1429,34 +1547,48 @@ export function WebsiteCmsPage() {
             const previewIconMeta = resolveWebsiteSocialIcon(link);
             const PreviewIcon = previewIconMeta.icon;
             const isUploadedIcon = link.icon?.startsWith("/storage/") || link.icon?.startsWith("http");
+            const isSocialOpen = openSocialId === link.id;
 
             return (
               <Card key={link.id} className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
-                <CardContent className="space-y-4 p-4">
+                <CardHeader className="border-b border-[var(--border)] pb-3 pt-3">
                   <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <span className="inline-flex size-10 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] text-[var(--primary)] overflow-hidden">
+                    <button
+                      type="button"
+                      className="flex flex-1 items-center gap-3 text-left"
+                      onClick={() => setOpenSocialId(isSocialOpen ? null : link.id)}
+                    >
+                      <ChevronDown
+                        className={`size-4 shrink-0 text-[var(--muted-foreground)] transition-transform ${isSocialOpen ? "rotate-0" : "-rotate-90"}`}
+                      />
+                      <span className="inline-flex size-8 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] text-[var(--primary)] overflow-hidden shrink-0">
                         {isUploadedIcon ? (
                           <img
                             src={resolvePublicFileUrl(link.icon) ?? ""}
                             alt="Icon Preview"
-                            className="size-5 object-contain"
+                            className="size-4 object-contain"
                           />
                         ) : (
-                          <PreviewIcon className="size-4" />
+                          <PreviewIcon className="size-3.5" />
                         )}
                       </span>
-                      <div>
-                        <p className="text-sm font-semibold text-[var(--foreground)]">{link.label || "Social link baru"}</p>
-                        <p className="text-xs text-[var(--muted-foreground)]">{link.url || "URL belum diisi"}</p>
+                      <div className="truncate min-w-0">
+                        <span className="font-semibold text-[var(--foreground)]">
+                          {link.label || "Social Link Baru"}
+                        </span>
+                        {link.url ? (
+                          <span className="ml-2 hidden text-xs text-[var(--muted-foreground)] truncate sm:inline">
+                            {link.url}
+                          </span>
+                        ) : null}
                       </div>
-                    </div>
-                    <div className="flex h-10 items-center gap-3">
+                    </button>
+                    <div className="flex items-center gap-3">
                       <Switch checked={link.is_active} onCheckedChange={(checked) => updateListRow(socialLinks, setSocialDraft, link.id, (row) => ({ ...row, is_active: checked }))} />
                       <Button
                         type="button"
                         variant="outline"
-                        className="h-9 w-9 px-0 text-[var(--danger-soft-foreground)]"
+                        className="h-8 w-8 px-0 text-[var(--danger-soft-foreground)]"
                         onClick={() => {
                           setSocialDraft(socialLinks.filter((candidate) => candidate.id !== link.id));
                           if (link.id > 0) deleteSocialMutation.mutate(link.id);
@@ -1466,65 +1598,69 @@ export function WebsiteCmsPage() {
                       </Button>
                     </div>
                   </div>
-                  <div className="grid gap-3 lg:grid-cols-[240px_1fr]">
-                    <Field label="Upload Icon" id={`social-icon-file-${link.id}`}>
-                      <div className="flex flex-col gap-2">
-                        {link.icon && (link.icon.startsWith("/storage/") || link.icon.startsWith("http")) ? (
-                          <div className="flex items-center gap-2">
-                            <img
-                              src={resolvePublicFileUrl(link.icon) ?? ""}
-                              alt="Social Icon"
-                              className="h-8 w-8 rounded-lg border border-[var(--border)] object-contain bg-zinc-50 p-1"
-                            />
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="h-8 px-3 text-xs text-[var(--danger-soft-foreground)]"
-                              onClick={() => updateListRow(socialLinks, setSocialDraft, link.id, (row) => ({ ...row, icon: "" }))}
-                            >
-                              Hapus Icon
-                            </Button>
-                          </div>
-                        ) : null}
-                        <div className="flex items-center gap-2">
-                          <Input
-                            id={`social-icon-file-${link.id}`}
-                            type="file"
-                            accept="image/*"
-                            className="h-9 cursor-pointer border-[var(--border)] bg-[var(--card)] text-xs"
-                            onChange={(event) => handleUploadSocialIcon(link.id, event.target.files?.[0] ?? null)}
-                            disabled={uploadMutation.isPending}
-                          />
-                          {uploadMutation.isPending && uploadMutation.variables?.type === `social-${link.id}` ? (
-                            <span className="flex items-center gap-1 text-xs text-[var(--muted-foreground)] whitespace-nowrap">
-                              <Loader2 className="size-3 animate-spin" />
-                              Mengupload...
-                            </span>
+                </CardHeader>
+                {isSocialOpen ? (
+                  <CardContent className="space-y-4 p-4">
+                    <div className="grid gap-3 lg:grid-cols-[240px_1fr]">
+                      <Field label="Upload Icon" id={`social-icon-file-${link.id}`}>
+                        <div className="flex flex-col gap-2">
+                          {link.icon && (link.icon.startsWith("/storage/") || link.icon.startsWith("http")) ? (
+                            <div className="flex items-center gap-2">
+                              <img
+                                src={resolvePublicFileUrl(link.icon) ?? ""}
+                                alt="Social Icon"
+                                className="h-8 w-8 rounded-lg border border-[var(--border)] object-contain bg-zinc-50 p-1"
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="h-8 px-3 text-xs text-[var(--danger-soft-foreground)]"
+                                onClick={() => updateListRow(socialLinks, setSocialDraft, link.id, (row) => ({ ...row, icon: "" }))}
+                              >
+                                Hapus Icon
+                              </Button>
+                            </div>
                           ) : null}
+                          <div className="flex items-center gap-2">
+                            <Input
+                              id={`social-icon-file-${link.id}`}
+                              type="file"
+                              accept="image/*"
+                              className="h-9 cursor-pointer border-[var(--border)] bg-[var(--card)] text-xs"
+                              onChange={(event) => handleUploadSocialIcon(link.id, event.target.files?.[0] ?? null)}
+                              disabled={uploadMutation.isPending}
+                            />
+                            {uploadMutation.isPending && uploadMutation.variables?.type === `social-${link.id}` ? (
+                              <span className="flex items-center gap-1 text-xs text-[var(--muted-foreground)] whitespace-nowrap">
+                                <Loader2 className="size-3 animate-spin" />
+                                Mengupload...
+                              </span>
+                            ) : null}
+                          </div>
                         </div>
-                      </div>
-                    </Field>
-                    <Field label="Label" id={`social-label-${link.id}`}>
+                      </Field>
+                      <Field label="Label" id={`social-label-${link.id}`}>
+                        <Input
+                          id={`social-label-${link.id}`}
+                          placeholder="Contoh: Instagram Resmi"
+                          value={link.label}
+                          onChange={(event) => updateListRow(socialLinks, setSocialDraft, link.id, (row) => ({ ...row, label: event.target.value }))}
+                        />
+                      </Field>
+                    </div>
+                    <Field label="URL" id={`social-url-${link.id}`}>
                       <Input
-                        id={`social-label-${link.id}`}
-                        placeholder="Contoh: Instagram Resmi"
-                        value={link.label}
-                        onChange={(event) => updateListRow(socialLinks, setSocialDraft, link.id, (row) => ({ ...row, label: event.target.value }))}
+                        id={`social-url-${link.id}`}
+                        placeholder="https://instagram.com/username"
+                        value={link.url}
+                        onChange={(event) => updateListRow(socialLinks, setSocialDraft, link.id, (row) => ({ ...row, url: event.target.value }))}
                       />
                     </Field>
-                  </div>
-                  <Field label="URL" id={`social-url-${link.id}`}>
-                    <Input
-                      id={`social-url-${link.id}`}
-                      placeholder="https://instagram.com/username"
-                      value={link.url}
-                      onChange={(event) => updateListRow(socialLinks, setSocialDraft, link.id, (row) => ({ ...row, url: event.target.value }))}
-                    />
-                  </Field>
-                  <p className="text-xs leading-6 text-[var(--muted-foreground)]">
-                    Kosongkan atau hapus upload icon untuk mendeteksi icon secara otomatis berdasarkan Label atau URL (misal: Instagram, Facebook, YouTube).
-                  </p>
-                </CardContent>
+                    <p className="text-xs leading-6 text-[var(--muted-foreground)]">
+                      Kosongkan atau hapus upload icon untuk mendeteksi icon secara otomatis berdasarkan Label atau URL (misal: Instagram, Facebook, YouTube).
+                    </p>
+                  </CardContent>
+                ) : null}
               </Card>
             );
           })}

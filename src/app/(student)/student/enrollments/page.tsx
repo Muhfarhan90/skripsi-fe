@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { BookOpen, GraduationCap, Trophy } from "lucide-react";
 import { getStudentEnrollments } from "@/features/student/api/store-api";
 import { formatRemainingAccessTime } from "@/features/student/lib/date-time";
+import { resolvePublicFileUrl } from "@/lib/file-url";
 import type { StoreEnrollment } from "@/types/store";
 
 type ClassTab = "in_progress" | "completed";
@@ -47,7 +48,7 @@ function ClassCard({ enrollment }: { enrollment: StoreEnrollment }) {
         {enrollment.course?.thumbnail ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={enrollment.course.thumbnail}
+            src={resolvePublicFileUrl(enrollment.course.thumbnail) ?? ""}
             alt={enrollment.course?.title ?? "Course thumbnail"}
             className="h-full w-full object-cover"
           />

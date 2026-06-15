@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { BookOpen, ChevronDown, LayoutDashboard, LogOut, Search } from "lucide-react";
+import { BookOpen, ChevronDown, LayoutDashboard, LogOut, Menu, Search, X } from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -41,6 +42,7 @@ export function PublicSiteHeader({
   const dashboardHref = getDefaultPathByRole(user?.role_id, user?.role_name);
   const initials = user?.fullname?.trim().charAt(0).toUpperCase() || "U";
   const categories = uniqueCourseCategories(courses);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-[var(--border)] bg-[var(--card)]/92 backdrop-blur-xl">
@@ -49,14 +51,14 @@ export function PublicSiteHeader({
         <BrandLogo
           href="/"
           title={settings.site_name}
-          subtitle={settings.site_tagline || "Platform Belajar"}
           logoUrl={settings.logo_url}
           hideTextOnMobile
           size="sm"
           titleClassName="font-semibold tracking-tight"
         />
 
-        <nav className="flex items-center gap-0.5 sm:gap-1">
+        {/* Desktop Navigation */}
+        <nav className="hidden md:flex items-center gap-0.5 sm:gap-1">
           <div className="group relative">
             <Link
               href="/courses"
@@ -99,9 +101,10 @@ export function PublicSiteHeader({
           </Link>
         </nav>
 
+        {/* Desktop Search */}
         <form
           action="/courses"
-          className="hidden min-w-0 flex-1 items-center rounded-full border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-1.5 transition focus-within:border-[var(--primary)] focus-within:bg-white focus-within:ring-2 focus-within:ring-[var(--primary)]/10 lg:flex"
+          className="hidden min-w-0 flex-1 items-center rounded-full border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-1.5 transition focus-within:border-[var(--primary)] focus-within:bg-white focus-within:ring-2 focus-within:ring-[var(--primary)]/10 lg:flex max-w-xs ml-4"
         >
           <Search className="size-4 shrink-0 text-[var(--muted-foreground)]" />
           <input
@@ -112,7 +115,8 @@ export function PublicSiteHeader({
           />
         </form>
 
-        <div className="ml-auto flex shrink-0 items-center gap-2">
+        {/* Desktop Auth */}
+        <div className="hidden md:flex ml-auto shrink-0 items-center gap-2">
           {user ? (
             <>
               <Link
@@ -174,7 +178,114 @@ export function PublicSiteHeader({
             </>
           )}
         </div>
+
+        {/* Mobile Toggle Button */}
+        <div className="ml-auto flex md:hidden items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="inline-flex size-9 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-soft)] text-[var(--foreground)] transition hover:bg-[var(--surface-hover)]"
+            aria-label="Toggle menu"
+          >
+            {isMobileMenuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+          </button>
+        </div>
       </div>
+
+      {/* Mobile Drawer Dropdown */}
+      {isMobileMenuOpen && (
+        <div className="border-t border-[var(--border)] bg-[var(--card)] px-4 py-4 md:hidden animate-in slide-in-from-top duration-200">
+          <nav className="flex flex-col gap-4">
+            {/* Search Input for Mobile */}
+            <form action="/courses" className="flex items-center rounded-full border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2">
+              <Search className="size-4 shrink-0 text-[var(--muted-foreground)]" />
+              <input
+                type="search"
+                name="search"
+                placeholder="Cari course atau instructor..."
+                className="min-w-0 flex-1 bg-transparent px-3 py-0.5 text-sm font-medium text-[var(--foreground)] outline-none placeholder:text-[var(--muted-foreground)]"
+              />
+            </form>
+
+            <div className="space-y-1">
+              <p className="px-3 py-1 text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)]">Navigation</p>
+              <Link
+                href="/courses"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-bold text-[var(--foreground)] transition hover:bg-[var(--surface-hover)]"
+              >
+                <BookOpen className="size-4 text-[var(--primary)]" />
+                Semua Courses
+              </Link>
+              {categories.map((category) => (
+                <Link
+                  key={category}
+                  href={`/courses?category=${encodeURIComponent(category)}`}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="block rounded-2xl pl-10 pr-3 py-2 text-sm font-medium text-[var(--muted-foreground)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--foreground)]"
+                >
+                  {category}
+                </Link>
+              ))}
+              <Link
+                href="/instructors"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="block rounded-2xl px-3 py-2.5 text-sm font-bold text-[var(--foreground)] transition hover:bg-[var(--surface-hover)]"
+              >
+                Instructor
+              </Link>
+            </div>
+
+            <div className="border-t border-[var(--border)] pt-3">
+              {user ? (
+                <div className="space-y-2">
+                  <div className="px-3 py-1">
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--muted-foreground)]">Masuk sebagai</p>
+                    <p className="truncate text-sm font-semibold text-[var(--foreground)]">{user.email}</p>
+                  </div>
+                  <Link
+                    href={dashboardHref}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold transition hover:bg-[var(--surface-hover)]"
+                  >
+                    <LayoutDashboard className="size-4" />
+                    Dashboard
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      logoutMutation.mutate();
+                    }}
+                    disabled={logoutMutation.isPending}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-[var(--danger-soft-foreground)] transition hover:bg-[var(--danger-soft-bg)] disabled:opacity-70"
+                  >
+                    <LogOut className="size-4" />
+                    {logoutMutation.isPending ? "Memproses..." : "Logout"}
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2 px-2">
+                  <Link
+                    href="/login"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="inline-flex h-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-soft)] text-sm font-bold text-[var(--foreground)] transition hover:bg-[var(--surface-hover)]"
+                  >
+                    Masuk
+                  </Link>
+                  <Link
+                    href="/register"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="inline-flex h-10 items-center justify-center rounded-full bg-[var(--primary)] text-sm font-bold text-white shadow-sm transition hover:opacity-90"
+                  >
+                    Daftar
+                  </Link>
+                </div>
+              )}
+            </div>
+          </nav>
+        </div>
+      )}
     </header>
   );
 }

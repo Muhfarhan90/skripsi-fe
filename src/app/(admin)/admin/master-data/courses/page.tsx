@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmAlertDialog } from "@/components/ui/confirm-alert-dialog";
 import { Input } from "@/components/ui/input";
 import { ApiError } from "@/lib/api/client";
+import { resolvePublicFileUrl } from "@/lib/file-url";
 import {
   createEmptyAdminPaginationMeta,
   deleteAdminCourse,
@@ -153,7 +154,7 @@ export default function AdminCoursesPage() {
                             <>
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
-                                src={course.thumbnail}
+                                src={resolvePublicFileUrl(course.thumbnail) ?? ""}
                                 alt={course.title}
                                 className="h-full w-full object-cover"
                               />

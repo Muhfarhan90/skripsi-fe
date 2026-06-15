@@ -14,6 +14,9 @@ import {
   Shapes,
   Star,
   TicketPercent,
+  MessageSquare,
+  ClipboardCheck,
+  GraduationCap,
   type LucideIcon,
 } from "lucide-react";
 import { isExactAdminRole } from "@/features/auth/lib/roles";
@@ -34,7 +37,10 @@ export type AdminNavIcon =
   | "reports"
   | "activityLog"
   | "courseActivity"
-  | "courseReviews";
+  | "courseReviews"
+  | "forum"
+  | "assignmentReviews"
+  | "studentProgress";
 
 export type AdminNavigationVisibility = "all" | "platform-admin";
 
@@ -95,6 +101,9 @@ const ADMIN_ICON_MAP: Record<AdminNavIcon, LucideIcon> = {
   activityLog: History,
   courseActivity: ClipboardList,
   courseReviews: Star,
+  forum: MessageSquare,
+  assignmentReviews: ClipboardCheck,
+  studentProgress: GraduationCap,
 };
 
 const ADMIN_ENTITY_LABEL: Record<AdminMasterEntity, string> = {
@@ -165,31 +174,25 @@ export const ADMIN_NAVIGATION: AdminNavigationGroup[] = [
     title: "COURSE ACTIVITY",
     items: [
       {
-        key: "course-activity",
-        label: "Course Activity",
-        href: "/admin/course-activity",
-        description: "Workspace transaksional untuk instructor dan admin",
-        icon: "courseActivity",
-        children: [
-          {
-            key: "course-activity-forum",
-            label: "Forum",
-            href: "/admin/course-activity/forum",
-            description: "Moderasi diskusi course lintas offering",
-          },
-          {
-            key: "course-activity-assignment-reviews",
-            label: "Assignment Review",
-            href: "/admin/course-activity/assignment-reviews",
-            description: "Tinjau submission assignment per offering",
-          },
-          {
-            key: "course-activity-student-progress",
-            label: "Student Progress",
-            href: "/admin/course-activity/student-progress",
-            description: "Pantau progres dan status siswa per offering",
-          },
-        ],
+        key: "course-activity-forum",
+        label: "Forum",
+        href: "/admin/course-activity/forum",
+        description: "Moderasi diskusi course lintas offering",
+        icon: "forum",
+      },
+      {
+        key: "course-activity-assignment-reviews",
+        label: "Assignment Review",
+        href: "/admin/course-activity/assignment-reviews",
+        description: "Tinjau submission assignment per offering",
+        icon: "assignmentReviews",
+      },
+      {
+        key: "course-activity-student-progress",
+        label: "Student Progress",
+        href: "/admin/course-activity/student-progress",
+        description: "Pantau progres dan status siswa per offering",
+        icon: "studentProgress",
       },
       {
         key: "course-reviews",
@@ -227,7 +230,6 @@ export const ADMIN_NAVIGATION: AdminNavigationGroup[] = [
         href: "/admin/master-data/categories",
         description: "Kelola kategori course",
         icon: "categories",
-        visibility: "platform-admin",
       },
       {
         key: "master-data-skills",
@@ -235,7 +237,6 @@ export const ADMIN_NAVIGATION: AdminNavigationGroup[] = [
         href: "/admin/master-data/skills",
         description: "Kelola badge skill course",
         icon: "skills",
-        visibility: "platform-admin",
       },
       {
         key: "master-data-courses",
@@ -243,7 +244,6 @@ export const ADMIN_NAVIGATION: AdminNavigationGroup[] = [
         href: "/admin/master-data/courses",
         description: "Kelola konten master course",
         icon: "courses",
-        visibility: "platform-admin",
       },
       {
         key: "course-offerings",

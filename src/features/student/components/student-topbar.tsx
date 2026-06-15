@@ -290,7 +290,6 @@ export function StudentTopbar({
             <Link href="/" className="flex items-center gap-3 shrink-0">
               <BrandLogo
                 title={websiteSettings?.site_name || "Student Panel"}
-                subtitle={websiteSettings?.site_tagline || "Skripsi LMS"}
                 logoUrl={websiteSettings?.logo_url}
                 size="md"
               />

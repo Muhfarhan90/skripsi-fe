@@ -78,31 +78,7 @@ export function HeroMediaSlider({ slides, siteName }: HeroMediaSliderProps) {
                   </div>
                 )}
 
-                <div className="absolute inset-x-0 bottom-0 z-20 p-4 sm:p-5">
-                  <div className="rounded-[1.5rem] border border-white/10 bg-[var(--primary)]/85 p-4 text-white backdrop-blur-md">
-                    {slide.eyebrow ? (
-                      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-white/65">
-                        {slide.eyebrow}
-                      </p>
-                    ) : null}
-                    <h3 className="mt-2 line-clamp-2 text-lg font-black leading-tight">
-                      {slide.title || siteName}
-                    </h3>
-                    {slide.description ? (
-                      <p className="mt-2 line-clamp-2 text-sm leading-6 text-white/75">
-                        {slide.description}
-                      </p>
-                    ) : null}
-                    {slide.href ? (
-                      <Link
-                        href={slide.href}
-                        className="pointer-events-auto mt-4 inline-flex h-9 items-center rounded-full border border-white/20 bg-white/10 px-4 text-xs font-black text-white transition hover:bg-white/20"
-                      >
-                        {slide.hrefLabel || "Lihat detail"}
-                      </Link>
-                    ) : null}
-                  </div>
-                </div>
+
               </article>
             ))}
           </div>

@@ -60,7 +60,6 @@ export function AuthShell({
             <CardHeader className="space-y-3 px-5 pt-6 sm:px-8 sm:pt-8">
               <BrandLogo
                 title={websiteSettings.site_name}
-                subtitle={websiteSettings.site_tagline || "Platform Belajar"}
                 logoUrl={websiteSettings.logo_url}
                 size="sm"
               />
