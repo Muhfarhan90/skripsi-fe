@@ -38,7 +38,7 @@ export default function StudentCatalogPage() {
       <header className="px-1 py-1">
         <h1 className="text-2xl font-black tracking-tight text-[var(--foreground)]">Katalog Course</h1>
         <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-          Course yang sudah di-enroll atau menunggu pembayaran tidak ditampilkan.
+          Jelajahi dan temukan course terbaik untuk mendukung proses belajar Anda.
         </p>
       </header>
 
