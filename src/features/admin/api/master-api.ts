@@ -864,6 +864,11 @@ function buildFormDataPayload(payload: Record<string, unknown>, method?: "PUT" |
       return;
     }
 
+    if (typeof value === "boolean") {
+      formData.set(key, value ? "1" : "0");
+      return;
+    }
+
     formData.set(key, value === null ? "" : String(value));
   });
 
