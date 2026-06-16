@@ -800,6 +800,7 @@ export interface LessonPayload {
   description?: string | null;
   type: "video" | "file";
   lesson_url?: string | null;
+  lesson_file?: File | null;
   duration?: number | null;
   sort_order?: number | null;
   is_preview?: boolean;
@@ -1493,16 +1494,26 @@ export function getAdminLessonById(id: number) {
 }
 
 export function createAdminLesson(payload: LessonPayload) {
+  const normalizedPayload = normalizePayload(payload);
+  const body = hasFilePayload(normalizedPayload)
+    ? buildFormDataPayload(normalizedPayload)
+    : JSON.stringify(normalizedPayload);
+
   return apiRequest<AdminCourseCurriculumLesson>("/api/admin/lessons", {
     method: "POST",
-    body: JSON.stringify(normalizePayload(payload)),
+    body,
   });
 }
 
 export function updateAdminLesson(id: number, payload: Partial<LessonPayload>) {
+  const normalizedPayload = normalizePayload(payload);
+  const hasFile = hasFilePayload(normalizedPayload);
+
   return apiRequest<AdminCourseCurriculumLesson>(`/api/admin/lessons/${id}`, {
-    method: "PUT",
-    body: JSON.stringify(normalizePayload(payload)),
+    method: hasFile ? "POST" : "PUT",
+    body: hasFile
+      ? buildFormDataPayload(normalizedPayload, "PUT")
+      : JSON.stringify(normalizedPayload),
   });
 }
 

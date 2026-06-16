@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils/cn";
 
 interface CourseLessonEditorPageProps {
   courseId: number;
@@ -32,6 +33,7 @@ interface LessonFormState {
   type: "video" | "file";
   duration: string;
   lesson_url: string;
+  lesson_file: File | null;
   description: string;
   is_preview: boolean;
 }
@@ -47,6 +49,7 @@ const DEFAULT_FORM: LessonFormState = {
   type: "video",
   duration: "",
   lesson_url: "",
+  lesson_file: null,
   description: "",
   is_preview: false,
 };
@@ -60,6 +63,8 @@ export function CourseLessonEditorPage({
   const router = useRouter();
   const queryClient = useQueryClient();
   const [draftForm, setDraftForm] = useState<LessonFormState | null>(null);
+  const [sourceType, setSourceType] = useState<"link" | "upload">("link");
+  const [hasInitializedSource, setHasInitializedSource] = useState(false);
   const isEditMode = typeof lessonId === "number";
   const fallbackReturnTo = `/admin/master-data/courses/${courseId}?step=curriculum`;
   const returnTarget = returnTo || fallbackReturnTo;
@@ -85,6 +90,7 @@ export function CourseLessonEditorPage({
         type: editingLesson.type,
         duration: String(editingLesson.duration ?? ""),
         lesson_url: editingLesson.lesson_url ?? "",
+        lesson_file: null,
         description: editingLesson.description ?? "",
         is_preview: Boolean(editingLesson.is_preview),
       };
@@ -92,6 +98,15 @@ export function CourseLessonEditorPage({
 
     return DEFAULT_FORM;
   }, [editingLesson, isEditMode]);
+
+  // Safely initialize sourceType from existing lesson url on edit
+  if (isEditMode && editingLesson && !hasInitializedSource) {
+    const isUploaded =
+      editingLesson.lesson_url?.startsWith("/storage/") ||
+      editingLesson.lesson_url?.startsWith("/uploads/");
+    setSourceType(isUploaded ? "upload" : "link");
+    setHasInitializedSource(true);
+  }
 
   const form = draftForm ?? baseForm;
 
@@ -107,8 +122,11 @@ export function CourseLessonEditorPage({
       if (!form.title.trim()) {
         throw new Error("Judul lesson wajib diisi");
       }
-      if (!form.lesson_url.trim()) {
+      if (sourceType === "link" && !form.lesson_url.trim()) {
         throw new Error("URL materi wajib diisi");
+      }
+      if (sourceType === "upload" && !form.lesson_file && !form.lesson_url.trim()) {
+        throw new Error("Berkas materi wajib diunggah");
       }
       if (form.duration.trim()) {
         const parsed = Number(form.duration);
@@ -122,7 +140,8 @@ export function CourseLessonEditorPage({
         title: form.title.trim(),
         type: form.type,
         duration: form.duration.trim() ? Number(form.duration) : null,
-        lesson_url: form.lesson_url.trim() || null,
+        lesson_url: sourceType === "link" ? form.lesson_url.trim() : (form.lesson_file ? null : form.lesson_url),
+        lesson_file: sourceType === "upload" ? form.lesson_file : null,
         description: form.description.trim() || null,
         is_preview: form.is_preview,
       };
@@ -242,15 +261,81 @@ export function CourseLessonEditorPage({
             </div>
 
             <div className="space-y-1.5 md:col-span-2">
-              <Label htmlFor="lesson-url">URL Materi</Label>
-              <Input
-                id="lesson-url"
-                value={form.lesson_url}
-                onChange={(event) => updateForm("lesson_url", event.target.value)}
-                placeholder="https://..."
-                className="border-[var(--border)] bg-[var(--card)]"
-              />
+              <Label>Sumber Materi</Label>
+              <div className="flex gap-4 mb-2">
+                <button
+                  type="button"
+                  onClick={() => setSourceType("link")}
+                  className={cn(
+                    "flex-1 h-9 rounded-xl border text-sm font-semibold transition active:scale-95",
+                    sourceType === "link"
+                      ? "border-[var(--primary)] bg-[var(--primary)] text-white"
+                      : "border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] hover:bg-[var(--surface-hover)]"
+                  )}
+                >
+                  Tautan URL
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSourceType("upload")}
+                  className={cn(
+                    "flex-1 h-9 rounded-xl border text-sm font-semibold transition active:scale-95",
+                    sourceType === "upload"
+                      ? "border-[var(--primary)] bg-[var(--primary)] text-white"
+                      : "border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] hover:bg-[var(--surface-hover)]"
+                  )}
+                >
+                  Unggah Berkas
+                </button>
+              </div>
             </div>
+
+            {sourceType === "link" ? (
+              <div className="space-y-1.5 md:col-span-2">
+                <Label htmlFor="lesson-url">URL Tautan Materi</Label>
+                <Input
+                  id="lesson-url"
+                  value={form.lesson_url}
+                  onChange={(event) => updateForm("lesson_url", event.target.value)}
+                  placeholder="https://..."
+                  className="border-[var(--border)] bg-[var(--card)]"
+                />
+              </div>
+            ) : (
+              <div className="space-y-1.5 md:col-span-2">
+                <Label htmlFor="lesson-file">Unggah Berkas Materi</Label>
+                <div className="flex flex-col gap-2 rounded-xl border border-dashed border-[var(--border)] bg-[var(--card)] p-4">
+                  <Input
+                    id="lesson-file"
+                    type="file"
+                    accept={form.type === "video" ? "video/*" : ".pdf,.docx,.zip,.rar,.txt,.pptx"}
+                    onChange={(event) => updateForm("lesson_file", event.target.files?.[0] ?? null)}
+                    className="border-[var(--border)] bg-[var(--muted)]"
+                  />
+                  {form.lesson_file ? (
+                    <p className="text-xs text-emerald-600 font-medium">
+                      Berkas terpilih: {form.lesson_file.name} ({(form.lesson_file.size / (1024 * 1024)).toFixed(2)} MB)
+                    </p>
+                  ) : form.lesson_url ? (
+                    <p className="text-xs text-[var(--muted-foreground)]">
+                      Berkas aktif saat ini:{" "}
+                      <a
+                        href={form.lesson_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[var(--primary)] underline hover:brightness-95"
+                      >
+                        {form.lesson_url.split("/").pop()}
+                      </a>
+                    </p>
+                  ) : (
+                    <p className="text-xs text-[var(--muted-foreground)]">
+                      Belum ada berkas yang diunggah. Maksimal berkas adalah 100MB.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
 
             <div className="space-y-1.5 md:col-span-2">
               <Label htmlFor="lesson-description">Deskripsi Lesson</Label>
