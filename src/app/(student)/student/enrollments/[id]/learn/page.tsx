@@ -57,6 +57,7 @@ import {
 import { printCertificatePreview } from "@/features/student/lib/certificate-print";
 import { formatUtcDateTimeToJakarta, parseUtcDateTime } from "@/features/student/lib/date-time";
 import { StudentCourseForumPanel } from "@/features/student/components/student-course-forum-panel";
+import { resolvePublicFileUrl } from "@/lib/file-url";
 import type {
   StoreAssignment,
   StoreCurriculumSection,
@@ -66,6 +67,10 @@ import type {
 } from "@/types/store";
 
 function toEmbeddableUrl(url: string): string {
+  if (url.startsWith("/storage/") || url.startsWith("storage/")) {
+    return resolvePublicFileUrl(url) || url;
+  }
+
   try {
     const parsed = new URL(url);
     const normalizedHost = parsed.hostname.replace(/^www\./, "").toLowerCase();
@@ -162,6 +167,12 @@ interface LessonMaterialFrameProps {
 }
 
 function LessonMaterialFrame({ title, src, type, watermarkText }: LessonMaterialFrameProps) {
+  // Detect if the src points directly to an uploaded video file
+  const isDirectVideo =
+    src.startsWith("http")
+      ? /\.(mp4|webm|ogg)(\?|$)/i.test(src)
+      : src.startsWith("/storage/") || src.includes("/storage/lessons/");
+
   return (
     <div
       className={[
@@ -169,7 +180,19 @@ function LessonMaterialFrame({ title, src, type, watermarkText }: LessonMaterial
         type === "file" ? "h-[58vh] min-h-80 sm:h-[62vh] lg:h-[70vh]" : "aspect-video max-h-[70vh]",
       ].join(" ")}
     >
-      <iframe title={title} src={src} className="h-full w-full bg-black/5" allow="autoplay" />
+      {isDirectVideo ? (
+        <video
+          controls
+          playsInline
+          className="h-full w-full bg-black object-contain"
+          title={title}
+        >
+          <source src={src} />
+          Browser Anda tidak mendukung pemutaran video langsung.
+        </video>
+      ) : (
+        <iframe title={title} src={src} className="h-full w-full bg-black/5" allow="autoplay" />
+      )}
       <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden" aria-hidden="true">
         <div className="absolute inset-0 flex items-center justify-center px-6">
           <div className="-rotate-[24deg] rounded-md border border-white/8 bg-slate-950/[0.12] px-4 py-2 text-center text-xs font-medium lowercase tracking-[0.18em] text-white/[0.2] shadow-sm backdrop-blur-[1px] sm:px-5 sm:py-2.5 sm:text-sm">
