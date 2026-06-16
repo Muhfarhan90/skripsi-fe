@@ -12,9 +12,12 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  applicationName: "Pre-University LMS",
-  title: "Pre-University LMS",
-  description: "Platform pembelajaran dengan pengalaman instalable dan siap dipakai pada koneksi yang tidak stabil.",
+  applicationName: "UPNVJT Pre-University",
+  title: {
+    default: "UPNVJT Pre-University",
+    template: "%s | UPNVJT Pre-University",
+  },
+  description: "Platform pembelajaran Pre-University UPN \"Veteran\" Jawa Timur untuk membantu transisi akademik calon mahasiswa.",
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [
@@ -26,7 +29,7 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    title: "Pre-University LMS",
+    title: "UPNVJT Pre-University",
     statusBarStyle: "default",
   },
 };

@@ -5,9 +5,9 @@ export const dynamic = "force-static";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/",
-    name: "Pre-University LMS",
-    short_name: "LMS",
-    description: "Platform pembelajaran yang tetap siap dipasang dan dipakai pada koneksi yang tidak stabil.",
+    name: "UPNVJT Pre-University",
+    short_name: "UPNVJT Pre-Uni",
+    description: "Platform pembelajaran Pre-University UPN \"Veteran\" Jawa Timur untuk membantu transisi akademik calon mahasiswa.",
     start_url: "/",
     scope: "/",
     display: "standalone",
