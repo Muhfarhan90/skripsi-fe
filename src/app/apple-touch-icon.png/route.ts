@@ -1,7 +1,8 @@
-import { createPwaIconResponse } from "@/features/pwa/lib/pwa-icon";
+import { createPwaIconResponse, getPwaLogoDataUri } from "@/features/pwa/lib/pwa-icon";
 
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
 
-export function GET() {
-  return createPwaIconResponse({ size: 180 });
+export async function GET() {
+  const logoDataUri = await getPwaLogoDataUri();
+  return createPwaIconResponse({ size: 180, logoDataUri });
 }
