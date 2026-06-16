@@ -23,6 +23,8 @@ import {
   type AdminQuickNavigationItem,
 } from "@/features/admin/data/navigation";
 import { cn } from "@/lib/utils/cn";
+import { useAuthStore } from "@/features/auth/store/auth-store";
+import { resolvePublicFileUrl } from "@/lib/file-url";
 
 type DashboardTheme = "light" | "dark";
 
@@ -50,6 +52,7 @@ export function AdminTopbar({
   onOpenMobileSidebar,
 }: AdminTopbarProps) {
   const router = useRouter();
+  const user = useAuthStore((state) => state.user);
   const logoutMutation = useLogoutAction();
   const quickNavigationItems = useMemo(() => getAdminQuickNavigationItems(roleName), [roleName]);
   const [searchKeyword, setSearchKeyword] = useState("");
@@ -175,9 +178,16 @@ export function AdminTopbar({
             className="inline-flex items-center gap-2 rounded-md px-1 py-1 text-left transition hover:bg-[var(--surface-hover)]"
             aria-label="Buka menu profil admin"
           >
-            <span className="inline-flex size-9 items-center justify-center rounded-full bg-[var(--primary)] text-xs font-semibold text-white">
-              {fullName.trim().charAt(0).toUpperCase() || "A"}
-            </span>
+            {user?.avatar ? (
+              <div
+                className="size-9 rounded-full bg-cover bg-center bg-[var(--muted)] border border-[var(--border)] shadow-sm"
+                style={{ backgroundImage: `url("${resolvePublicFileUrl(user.avatar)}")` }}
+              />
+            ) : (
+              <span className="inline-flex size-9 items-center justify-center rounded-full bg-[var(--primary)] text-xs font-semibold text-white">
+                {fullName.trim().charAt(0).toUpperCase() || "A"}
+              </span>
+            )}
             <span className="hidden min-w-0 sm:block">
               <span className="block max-w-32 truncate text-sm font-semibold text-[var(--foreground)]">{fullName}</span>
             </span>

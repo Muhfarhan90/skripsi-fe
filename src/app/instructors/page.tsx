@@ -10,6 +10,7 @@ import { PublicSiteHeader } from "@/features/website/components/public-site-head
 import { SiteFooter } from "@/features/website/components/site-footer";
 import { buildPublicInstructorProfiles } from "@/features/website/lib/public-instructors";
 import { createDefaultWebsiteSetting } from "@/features/website/lib/website-settings";
+import { resolvePublicFileUrl } from "@/lib/file-url";
 
 function formatReviewAverage(value: number | null | undefined): string {
   const numeric = Number(value ?? 0);
@@ -132,9 +133,18 @@ function InstructorsPageContent() {
               >
                 <div className="bg-[var(--primary)]/10 p-6">
                   <div className="flex items-start justify-between gap-4">
-                    <span className="inline-flex size-16 items-center justify-center rounded-3xl bg-[var(--primary)] text-lg font-black text-white shadow-lg">
-                      {instructor.initials}
-                    </span>
+                    {instructor.avatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={resolvePublicFileUrl(instructor.avatarUrl) || undefined}
+                        alt={instructor.name}
+                        className="size-16 rounded-3xl object-cover shadow-lg"
+                      />
+                    ) : (
+                      <span className="inline-flex size-16 items-center justify-center rounded-3xl bg-[var(--primary)] text-lg font-black text-white shadow-lg">
+                        {instructor.initials}
+                      </span>
+                    )}
                     <span className="rounded-full border border-white/80 bg-white/80 px-3 py-1 text-[11px] font-black uppercase tracking-[0.12em] text-[var(--foreground)]">
                       {instructor.courseCount} course
                     </span>

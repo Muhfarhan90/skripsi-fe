@@ -917,14 +917,13 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
           throw new Error("ID course tidak valid untuk proses update");
         }
 
+        // 1. Selalu perbarui metadata course utama terlebih dahulu (termasuk thumbnail)
+        await updateAdminCourse(validCourseId, coursePayload);
+
+        // 2. Kemudian simpan/perbarui data curriculum (sections & lessons)
         const updatedCurriculum = await upsertAdminCourseCurriculum(validCourseId, {
-          course: courseMetadataPayload,
           ...(includeSections ? { sections: curriculumSectionsPayload ?? [] } : {}),
         });
-
-        if (thumbnailPayload instanceof File) {
-          await updateAdminCourse(validCourseId, coursePayload);
-        }
 
         return updatedCurriculum;
       }
@@ -1488,19 +1487,8 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
   const isLastStep = activeStepIndex === COURSE_WIZARD_STEPS.length - 1;
   const isPrimaryActionPending = saveMutation.isPending || initializeCourseMutation.isPending;
   const autosaveStatusLabel = useMemo(() => {
-    if (!isEditing || validCourseId === null) return null;
-    if (autosaveMutation.isPending) return "Menyimpan otomatis...";
-    if (autosaveErrorMessage) return `Autosave gagal: ${autosaveErrorMessage}`;
-    if (lastAutosavedAt) return `Autosave terakhir ${lastAutosavedAt.toLocaleTimeString("id-ID")}`;
-    return isDirty ? "Perubahan belum tersimpan otomatis." : "Semua perubahan tersimpan.";
-  }, [
-    autosaveErrorMessage,
-    autosaveMutation.isPending,
-    isDirty,
-    isEditing,
-    lastAutosavedAt,
-    validCourseId,
-  ]);
+    return isDirty ? "Perubahan belum disimpan." : "Semua perubahan telah disimpan.";
+  }, [isDirty]);
 
   const clearStepErrors = useCallback((prev: CourseFormErrors, stepIndex: number): CourseFormErrors => {
     const next: CourseFormErrors = { ...prev };
@@ -1667,39 +1655,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
     };
   }, []);
 
-  useEffect(() => {
-    if (!isEditing || validCourseId === null) return;
-    if (!isDirty) return;
-    if (saveMutation.isPending || autosaveMutation.isPending) return;
-    if (lastAutosavedFingerprintRef.current === autosaveFingerprint) return;
-
-    if (autosaveTimerRef.current) {
-      clearTimeout(autosaveTimerRef.current);
-    }
-
-    autosaveTimerRef.current = setTimeout(() => {
-      setAutosaveErrorMessage(null);
-      autosaveMutation.mutate({
-        submittedForm: form,
-        fingerprint: autosaveFingerprint,
-      });
-    }, AUTOSAVE_DELAY_MS);
-
-    return () => {
-      if (autosaveTimerRef.current) {
-        clearTimeout(autosaveTimerRef.current);
-      }
-    };
-  }, [
-    autosaveFingerprint,
-    autosaveMutation,
-    autosaveMutation.isPending,
-    form,
-    isDirty,
-    isEditing,
-    saveMutation.isPending,
-    validCourseId,
-  ]);
+  // Autosave dinonaktifkan sesuai permintaan user. Perubahan hanya disimpan saat tombol "Simpan" diklik secara manual.
 
   useEffect(() => {
     if (activeStepIndex !== 1) return;

@@ -60,7 +60,6 @@ export function StudentLayoutClient({ fullName, children }: StudentLayoutClientP
                     </span>
                   ))}
                 </div>
-                <h1 className="text-xl font-bold tracking-tight text-[var(--foreground)] sm:text-2xl">{pageTitle}</h1>
               </div>
             )}
             {children}

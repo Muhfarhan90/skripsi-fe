@@ -141,7 +141,7 @@ export default function StudentProfilePage() {
   }
 
   return (
-    <section className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-4 lg:gap-6 items-start pb-8">
+    <section className="grid grid-cols-1 lg:grid-cols-[360px_1fr] lg:grid-rows-[auto_1fr] gap-4 lg:gap-6 items-start pb-8">
       {/* Block A: Avatar + name card */}
       <div className="space-y-4 order-1 lg:col-start-1 lg:row-start-1 lg:col-span-1">
         <article className="overflow-hidden rounded-2xl bg-[var(--primary)] text-white shadow-md">
