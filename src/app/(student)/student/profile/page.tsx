@@ -142,9 +142,8 @@ export default function StudentProfilePage() {
 
   return (
     <section className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-4 lg:gap-6 items-start pb-8">
-      {/* Left Column: Avatar & Settings */}
-      <div className="space-y-4 lg:col-span-1">
-        {/* ── Avatar + name card ──────────────────────────────── */}
+      {/* Block A: Avatar + name card */}
+      <div className="space-y-4 order-1 lg:col-start-1 lg:row-start-1 lg:col-span-1">
         <article className="overflow-hidden rounded-2xl bg-[var(--primary)] text-white shadow-md">
           {/* Header strip */}
           <div className="px-5 pt-5 pb-4">
@@ -189,9 +188,11 @@ export default function StudentProfilePage() {
             ) : null}
           </div>
         </article>
+      </div>
 
-        {/* ── Settings & actions ───────────────────────────────── */}
-        {!isEditing ? (
+      {/* Block B: Settings & actions (placed at bottom on mobile, below avatar on desktop) */}
+      {!isEditing ? (
+        <div className="order-3 lg:col-start-1 lg:row-start-2 lg:col-span-1">
           <article className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
             <div className="border-b border-[var(--border)] px-4 py-3">
               <p className="text-sm font-bold text-[var(--foreground)]">Pengaturan</p>
@@ -250,11 +251,11 @@ export default function StudentProfilePage() {
               </div>
             </div>
           </article>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
 
-      {/* Right Column: Edit Form or Account Info */}
-      <div className="space-y-4 lg:col-span-1">
+      {/* Block C: Edit Form or Account Info (Main details) */}
+      <div className="space-y-4 order-2 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:col-span-1">
         {/* ── Edit form ────────────────────────────────────────── */}
         {isEditing ? (
           <form
