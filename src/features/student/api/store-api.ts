@@ -110,6 +110,19 @@ export function createStudentOrder(payload: {
   });
 }
 
+export function checkStudentVoucher(payload: { voucher_code: string; subtotal: number }) {
+  return studentRequest<{
+    id: number;
+    code: string;
+    discount_type: string;
+    discount_amount: number;
+    discount: number;
+  }>("/api/orders/check-voucher", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 
 
 export function getStudentOrders(options?: {

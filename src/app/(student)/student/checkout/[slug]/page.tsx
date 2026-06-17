@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import {
   createStudentOrder,
   getPublishedCourseBySlug,
+  checkStudentVoucher,
 } from "@/features/student/api/store-api";
 import { ApiError } from "@/lib/api/client";
 import { hasValidDiscount } from "@/features/student/lib/pricing";
@@ -28,11 +29,45 @@ export default function StudentCheckoutPage() {
   const slug = typeof params.slug === "string" ? params.slug : "";
   const [voucherCode, setVoucherCode] = useState("");
   const [note, setNote] = useState("");
+  const [appliedVoucher, setAppliedVoucher] = useState<{
+    id: number;
+    code: string;
+    discount_type: string;
+    discount_amount: number;
+    discount: number;
+  } | null>(null);
 
   const courseQuery = useQuery({
     queryKey: ["store", "course-detail", slug],
     queryFn: () => getPublishedCourseBySlug(slug),
     enabled: slug.length > 0,
+  });
+
+  const checkVoucherMutation = useMutation({
+    mutationFn: () => {
+      const course = courseQuery.data;
+      if (!course) {
+        throw new Error("Course belum tersedia.");
+      }
+      const hasDiscount = hasValidDiscount(course.price, course.discount_price);
+      const activePrice = hasDiscount ? Number(course.discount_price ?? 0) : Number(course.price ?? 0);
+      return checkStudentVoucher({
+        voucher_code: voucherCode.trim(),
+        subtotal: activePrice,
+      });
+    },
+    onSuccess: (data) => {
+      setAppliedVoucher(data);
+      toast.success("Voucher berhasil diterapkan!");
+    },
+    onError: (error) => {
+      setAppliedVoucher(null);
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+        return;
+      }
+      toast.error(error instanceof Error ? error.message : "Voucher tidak valid.");
+    },
   });
 
   const checkoutMutation = useMutation({
@@ -44,7 +79,7 @@ export default function StudentCheckoutPage() {
 
       return createStudentOrder({
         course_id: course.id,
-        voucher_code: voucherCode.trim() || undefined,
+        voucher_code: appliedVoucher?.code || undefined,
         note: note.trim() || undefined,
         payment_method: "gateway",
       });
@@ -172,13 +207,23 @@ export default function StudentCheckoutPage() {
                   <span className="line-through">{formatCurrency(course.price)}</span>
                 </div>
               ) : null}
+              {appliedVoucher ? (
+                <div className="flex items-center justify-between text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
+                  <span>Diskon Voucher ({appliedVoucher.code})</span>
+                  <span>-{formatCurrency(appliedVoucher.discount)}</span>
+                </div>
+              ) : null}
               <div className="border-t border-[var(--border)] pt-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-bold text-[var(--foreground)]">Estimasi total</span>
-                  <span className="text-base font-bold text-[var(--primary)]">{formatCurrency(activePrice)}</span>
+                  <span className="text-base font-bold text-[var(--primary)]">
+                    {formatCurrency(activePrice - (appliedVoucher?.discount ?? 0))}
+                  </span>
                 </div>
                 <p className="mt-1 text-[11px] text-[var(--muted-foreground)]">
-                  Total akhir mengikuti voucher yang valid.
+                  {appliedVoucher 
+                    ? "Voucher berhasil digunakan." 
+                    : "Total akhir mengikuti voucher yang valid."}
                 </p>
               </div>
             </div>
@@ -189,16 +234,46 @@ export default function StudentCheckoutPage() {
               <Tag className="size-3.5" />
               Kode Voucher
             </label>
-            <input
-              id="voucher"
-              value={voucherCode}
-              onChange={(event) => setVoucherCode(event.target.value)}
-              placeholder="Contoh: HEMAT10"
-              className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] px-3 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
-            />
-            <p className="text-[11px] text-[var(--muted-foreground)]">
-              Voucher akan divalidasi saat pesanan dibuat.
-            </p>
+            <div className="flex gap-2">
+              <input
+                id="voucher"
+                value={voucherCode}
+                onChange={(event) => setVoucherCode(event.target.value)}
+                disabled={Boolean(appliedVoucher)}
+                placeholder="Contoh: HEMAT10"
+                className="h-10 flex-1 rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] px-3 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 disabled:opacity-70"
+              />
+              {appliedVoucher ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAppliedVoucher(null);
+                    setVoucherCode("");
+                  }}
+                  className="inline-flex h-10 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 px-4 text-xs font-extrabold text-rose-600 transition hover:bg-rose-100 active:scale-95"
+                >
+                  Batal
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => checkVoucherMutation.mutate()}
+                  disabled={!voucherCode.trim() || checkVoucherMutation.isPending}
+                  className="inline-flex h-10 items-center justify-center rounded-xl bg-[var(--primary)] px-4 text-xs font-extrabold text-white transition hover:opacity-90 active:scale-95 disabled:opacity-50"
+                >
+                  {checkVoucherMutation.isPending ? "..." : "Gunakan"}
+                </button>
+              )}
+            </div>
+            {appliedVoucher ? (
+              <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                Voucher &quot;{appliedVoucher.code}&quot; berhasil diterapkan!
+              </p>
+            ) : (
+              <p className="text-[11px] text-[var(--muted-foreground)]">
+                Masukkan kode voucher untuk mendapatkan potongan harga.
+              </p>
+            )}
           </div>
 
           <button
