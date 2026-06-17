@@ -228,44 +228,34 @@ export default function StudentCheckoutPage() {
               </div>
             </div>
           </div>
-
           <div className="space-y-1.5">
             <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--foreground)]" htmlFor="voucher">
               <Tag className="size-3.5" />
               Kode Voucher
             </label>
-            <div className="relative flex items-center">
+            <div className="flex items-center overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] focus-within:border-[var(--primary)] focus-within:ring-2 focus-within:ring-[var(--primary)]/20">
               <input
                 id="voucher"
                 value={voucherCode}
-                onChange={(event) => setVoucherCode(event.target.value)}
-                disabled={Boolean(appliedVoucher)}
+                onChange={(event) => {
+                  const val = event.target.value;
+                  setVoucherCode(val);
+                  if (!val.trim()) {
+                    setAppliedVoucher(null);
+                  }
+                }}
                 placeholder="Contoh: HEMAT10"
-                className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] pl-3 pr-20 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 disabled:opacity-70"
+                className="h-10 flex-1 bg-transparent px-3 text-sm outline-none"
               />
-              <div className="absolute right-1">
-                {appliedVoucher ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAppliedVoucher(null);
-                      setVoucherCode("");
-                    }}
-                    className="inline-flex h-8 items-center justify-center rounded-lg border border-rose-200 bg-rose-50 px-3.5 text-xs font-extrabold text-rose-600 transition hover:bg-rose-100 active:scale-95"
-                  >
-                    Batal
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => checkVoucherMutation.mutate()}
-                    disabled={!voucherCode.trim() || checkVoucherMutation.isPending}
-                    className="inline-flex h-8 items-center justify-center rounded-lg bg-[var(--primary)] px-3.5 text-xs font-extrabold text-white transition hover:opacity-90 active:scale-95 disabled:opacity-50"
-                  >
-                    {checkVoucherMutation.isPending ? "..." : "Klaim"}
-                  </button>
-                )}
-              </div>
+              <div className="h-10 border-l border-[var(--border)]" />
+              <button
+                type="button"
+                onClick={() => checkVoucherMutation.mutate()}
+                disabled={!voucherCode.trim() || checkVoucherMutation.isPending}
+                className="inline-flex h-10 items-center justify-center bg-[var(--primary)] px-6 text-sm font-bold text-white transition hover:opacity-90 active:scale-95 disabled:opacity-50 shrink-0"
+              >
+                {checkVoucherMutation.isPending ? "..." : "Klaim"}
+              </button>
             </div>
             {appliedVoucher ? (
               <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
