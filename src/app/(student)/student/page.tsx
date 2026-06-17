@@ -194,34 +194,6 @@ function QuickActionCard({
   );
 }
 
-function ProgressLane({
-  label,
-  value,
-  total,
-  toneClass,
-}: {
-  label: string;
-  value: number;
-  total: number;
-  toneClass: string;
-}) {
-  const width = total > 0 ? Math.max(8, Math.round((value / total) * 100)) : 0;
-
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between gap-3 text-sm">
-        <span className="font-medium text-[var(--foreground)]">{label}</span>
-        <span className="text-[var(--muted-foreground)]">
-          <span className="font-semibold text-[var(--foreground)]">{value}</span> / {total}
-        </span>
-      </div>
-      <div className="h-2.5 overflow-hidden rounded-full bg-[var(--surface-soft)]">
-        {value > 0 ? <div className={`h-full rounded-full ${toneClass}`} style={{ width: `${width}%` }} /> : null}
-      </div>
-    </div>
-  );
-}
-
 export default function StudentPage() {
   const user = useAuthStore((state) => state.user);
   const enrollmentsQuery = useQuery({
@@ -246,7 +218,8 @@ export default function StudentPage() {
   const recentNotifications = notificationsQuery.data?.items ?? [];
   const continueLearningEnrollment = selectContinueLearningEnrollment(enrollments);
   const latestCompletedEnrollment = selectLatestCompletedEnrollment(enrollments);
-  const activeEnrollmentsCount = enrollments.filter((enrollment) => !isCompletedEnrollment(enrollment)).length;
+  const activeEnrollments = enrollments.filter((enrollment) => !isCompletedEnrollment(enrollment));
+  const activeEnrollmentsCount = activeEnrollments.length;
   const completedEnrollmentsCount = enrollments.filter((enrollment) => isCompletedEnrollment(enrollment)).length;
   const unreadNotificationsCount = notificationsQuery.data?.meta.unread_count ?? 0;
   const firstName = getFirstName(user?.fullname);
@@ -393,52 +366,61 @@ export default function StudentPage() {
         <section className="rounded-[1.8rem] bg-[var(--card)] p-5 shadow-[0_8px_30px_rgba(15,23,42,0.025)] border border-border/30 sm:p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--primary)]">Progres Belajar</p>
-              <h2 className="mt-2 text-xl font-semibold text-[var(--foreground)]">Progres Belajar {user?.fullname}</h2>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--primary)]">Progress per Course</p>
+              <h2 className="mt-2 text-xl font-semibold text-[var(--foreground)]">Progres kelas aktif {user?.fullname}</h2>
             </div>
             <Link href="/student/enrollments" className="text-sm font-semibold text-[var(--primary)]">
               Detail kelas
             </Link>
           </div>
 
-          <article className="mt-5 rounded-[1.5rem] bg-[var(--surface-soft)] p-5">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
-                  Distribusi belajar
-                </p>
-                <h3 className="mt-2 text-xl font-semibold text-[var(--foreground)]">
-                  Ringkasan kelas aktif dan yang sudah selesai
-                </h3>
-                <p className="mt-2 max-w-2xl text-sm leading-7 text-[var(--muted-foreground)]">
-                  Pantau kelas yang sedang Anda pelajari dan kelas yang telah berhasil Anda selesaikan di sini.
-                </p>
+          <div className="mt-5 space-y-3">
+            {enrollmentsQuery.isLoading ? (
+              <div className="space-y-3">
+                {[1, 2].map((i) => (
+                  <div key={i} className="h-20 animate-pulse rounded-2xl bg-[var(--surface-soft)] border border-border/10" />
+                ))}
               </div>
-              <div className="flex flex-wrap gap-2 text-xs">
-                <span className="rounded-full bg-[var(--card)] px-3 py-1.5 font-medium text-[var(--foreground)] border border-border/40">
-                  {activeEnrollmentsCount} kelas aktif
-                </span>
-                <span className="rounded-full bg-[var(--card)] px-3 py-1.5 font-medium text-[var(--foreground)] border border-border/40">
-                  {completedEnrollmentsCount} kelas selesai
-                </span>
+            ) : activeEnrollments.length > 0 ? (
+              activeEnrollments.map((enrollment) => {
+                const progress = clampProgress(enrollment.progress);
+                return (
+                  <Link
+                    key={enrollment.id}
+                    href={getContinueLearningHref(enrollment)}
+                    className="group block rounded-2xl border border-border/30 bg-[var(--surface-soft)] p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:bg-white dark:hover:bg-[var(--card)] hover:border-[var(--primary)]/20 active:scale-[0.99]"
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="font-semibold text-sm leading-snug text-[var(--foreground)] group-hover:text-[var(--primary)] transition-colors">
+                          {enrollment.course?.title ?? `Course #${enrollment.course_id}`}
+                        </span>
+                        <span className="shrink-0 text-sm font-bold text-[var(--foreground)]">
+                          {progress}%
+                        </span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-white dark:bg-[var(--card)] border border-border/10">
+                        <div
+                          className="h-full rounded-full bg-[var(--primary)] transition-all duration-300"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })
+            ) : (
+              <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-soft)] p-6 text-center text-sm text-[var(--muted-foreground)]">
+                <p>Tidak ada kelas aktif saat ini.</p>
+                <Link
+                  href="/student/catalog"
+                  className="mt-3 inline-flex h-9 items-center justify-center rounded-xl bg-[var(--primary)] px-4 text-xs font-semibold text-[var(--primary-foreground)] transition hover:opacity-90"
+                >
+                  Cari Kelas
+                </Link>
               </div>
-            </div>
-
-            <div className="mt-5 space-y-4">
-              <ProgressLane
-                label="Aktif"
-                value={activeEnrollmentsCount}
-                total={Math.max(enrollments.length, 1)}
-                toneClass="bg-[var(--primary)]"
-              />
-              <ProgressLane
-                label="Selesai"
-                value={completedEnrollmentsCount}
-                total={Math.max(enrollments.length, 1)}
-                toneClass="bg-[var(--secondary)]"
-              />
-            </div>
-          </article>
+            )}
+          </div>
 
           {latestCompletedEnrollment ? (
             <article className="mt-4 flex flex-col gap-3 rounded-[1.5rem] bg-[var(--surface-soft)] p-4 sm:flex-row sm:items-center sm:justify-between">
