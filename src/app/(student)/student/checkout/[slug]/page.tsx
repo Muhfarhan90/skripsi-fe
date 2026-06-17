@@ -234,36 +234,38 @@ export default function StudentCheckoutPage() {
               <Tag className="size-3.5" />
               Kode Voucher
             </label>
-            <div className="flex gap-2">
+            <div className="relative flex items-center">
               <input
                 id="voucher"
                 value={voucherCode}
                 onChange={(event) => setVoucherCode(event.target.value)}
                 disabled={Boolean(appliedVoucher)}
                 placeholder="Contoh: HEMAT10"
-                className="h-10 flex-1 rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] px-3 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 disabled:opacity-70"
+                className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] pl-3 pr-20 text-sm outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 disabled:opacity-70"
               />
-              {appliedVoucher ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAppliedVoucher(null);
-                    setVoucherCode("");
-                  }}
-                  className="inline-flex h-10 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 px-4 text-xs font-extrabold text-rose-600 transition hover:bg-rose-100 active:scale-95"
-                >
-                  Batal
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => checkVoucherMutation.mutate()}
-                  disabled={!voucherCode.trim() || checkVoucherMutation.isPending}
-                  className="inline-flex h-10 items-center justify-center rounded-xl bg-[var(--primary)] px-4 text-xs font-extrabold text-white transition hover:opacity-90 active:scale-95 disabled:opacity-50"
-                >
-                  {checkVoucherMutation.isPending ? "..." : "Gunakan"}
-                </button>
-              )}
+              <div className="absolute right-1">
+                {appliedVoucher ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAppliedVoucher(null);
+                      setVoucherCode("");
+                    }}
+                    className="inline-flex h-8 items-center justify-center rounded-lg border border-rose-200 bg-rose-50 px-3.5 text-xs font-extrabold text-rose-600 transition hover:bg-rose-100 active:scale-95"
+                  >
+                    Batal
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => checkVoucherMutation.mutate()}
+                    disabled={!voucherCode.trim() || checkVoucherMutation.isPending}
+                    className="inline-flex h-8 items-center justify-center rounded-lg bg-[var(--primary)] px-3.5 text-xs font-extrabold text-white transition hover:opacity-90 active:scale-95 disabled:opacity-50"
+                  >
+                    {checkVoucherMutation.isPending ? "..." : "Klaim"}
+                  </button>
+                )}
+              </div>
             </div>
             {appliedVoucher ? (
               <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
