@@ -67,7 +67,7 @@ export function HeroMediaSlider({ slides, siteName }: HeroMediaSliderProps) {
                 <img
                   src={slide.imageUrl}
                   alt={slide.title || siteName}
-                  className="aspect-video w-full object-cover"
+                  className="aspect-video w-full object-contain"
                 />
               ) : (
                 <div className="flex aspect-video w-full items-center justify-center">

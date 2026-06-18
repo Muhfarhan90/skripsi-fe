@@ -511,6 +511,7 @@ export function WebsiteCmsPage() {
   const [faqsDraft, setFaqsDraft] = useState<EditableFaq[] | null>(null);
   const [socialDraft, setSocialDraft] = useState<EditableSocialLink[] | null>(null);
   const [openLandingSection, setOpenLandingSection] = useState<string>("hero");
+  const [isUploadingHero, setIsUploadingHero] = useState(false);
 
   const [openPageId, setOpenPageId] = useState<number | null>(null);
   const [openFaqId, setOpenFaqId] = useState<number | null>(null);
@@ -818,23 +819,34 @@ export function WebsiteCmsPage() {
     );
   };
 
-  const handleUploadHeroImage = (sectionIndex: number, file: File | null) => {
-    if (!file) return;
-    uploadMutation.mutate(
-      { type: "section-hero-gallery", file },
-      {
-        onSuccess: (data) => {
-          updateSection(sectionIndex, (current) => {
-            const currentImages = current.hero_images ?? [];
-            return {
-              ...current,
-              hero_images: [...currentImages, data.path],
-            };
-          });
-          toast.success("Gambar hero berhasil diupload");
-        },
-      }
-    );
+  const handleUploadHeroImages = async (sectionIndex: number, files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setIsUploadingHero(true);
+
+    const fileArray = Array.from(files);
+
+    try {
+      const uploadPromises = fileArray.map((file) =>
+        uploadAdminWebsiteAsset("section-hero-gallery", file)
+      );
+
+      const results = await Promise.all(uploadPromises);
+      const paths = results.map((res) => res.path);
+
+      updateSection(sectionIndex, (current) => {
+        const currentImages = current.hero_images ?? [];
+        return {
+          ...current,
+          hero_images: [...currentImages, ...paths],
+        };
+      });
+
+      toast.success("Semua gambar hero berhasil diunggah");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Gagal mengunggah beberapa gambar"));
+    } finally {
+      setIsUploadingHero(false);
+    }
   };
 
   const handleUploadSocialIcon = (linkId: number, file: File | null) => {
@@ -1093,43 +1105,45 @@ export function WebsiteCmsPage() {
                       onChange={(event) => updateSection(sectionIndex, (current) => ({ ...current, body: event.target.value }))}
                     />
                   </Field>
-                  <Field label="Gambar Section" id={`section-image-file-${section.id}`}>
-                    <div className="flex flex-col gap-3">
-                      {section.image_url ? (
-                        <div className="flex items-center gap-3">
-                          <img
-                            src={resolvePublicFileUrl(section.image_url) ?? ""}
-                            alt="Section Preview"
-                            className="h-20 max-w-[200px] rounded-lg border border-[var(--border)] object-cover bg-zinc-50"
-                          />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="h-8 px-3 text-xs text-[var(--danger-soft-foreground)]"
-                            onClick={() => updateSection(sectionIndex, (current) => ({ ...current, image_url: "" }))}
-                          >
-                            Hapus Gambar
-                          </Button>
-                        </div>
-                      ) : null}
-                      <div className="flex items-center gap-3">
-                        <Input
-                          id={`section-image-file-${section.id}`}
-                          type="file"
-                          accept="image/*"
-                          className="max-w-xs cursor-pointer border-[var(--border)] bg-[var(--card)]"
-                          onChange={(event) => handleUploadSectionImage(sectionIndex, event.target.files?.[0] ?? null)}
-                          disabled={uploadMutation.isPending}
-                        />
-                        {uploadMutation.isPending && uploadMutation.variables?.type === `section-${section.section_key}` ? (
-                          <span className="flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
-                            <Loader2 className="size-3 animate-spin" />
-                            Mengupload...
-                          </span>
+                  {section.section_key !== "hero" && (
+                    <Field label="Gambar Section" id={`section-image-file-${section.id}`}>
+                      <div className="flex flex-col gap-3">
+                        {section.image_url ? (
+                          <div className="flex items-center gap-3">
+                            <img
+                              src={resolvePublicFileUrl(section.image_url) ?? ""}
+                              alt="Section Preview"
+                              className="h-20 max-w-[200px] rounded-lg border border-[var(--border)] object-cover bg-zinc-50"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="h-8 px-3 text-xs text-[var(--danger-soft-foreground)]"
+                              onClick={() => updateSection(sectionIndex, (current) => ({ ...current, image_url: "" }))}
+                            >
+                              Hapus Gambar
+                            </Button>
+                          </div>
                         ) : null}
+                        <div className="flex items-center gap-3">
+                          <Input
+                            id={`section-image-file-${section.id}`}
+                            type="file"
+                            accept="image/*"
+                            className="max-w-xs cursor-pointer border-[var(--border)] bg-[var(--card)]"
+                            onChange={(event) => handleUploadSectionImage(sectionIndex, event.target.files?.[0] ?? null)}
+                            disabled={uploadMutation.isPending}
+                          />
+                          {uploadMutation.isPending && uploadMutation.variables?.type === `section-${section.section_key}` ? (
+                            <span className="flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
+                              <Loader2 className="size-3 animate-spin" />
+                              Mengupload...
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
-                    </div>
-                  </Field>
+                    </Field>
+                  )}
                   {section.section_key === "hero" && (
                     <Field label="Hero Slider Images (Banyak Gambar)" id={`section-hero-images-${section.id}`}>
                       <div className="space-y-4">
@@ -1140,7 +1154,7 @@ export function WebsiteCmsPage() {
                                 <img
                                   src={resolvePublicFileUrl(imgUrl) ?? ""}
                                   alt={`Hero Preview ${imgIndex + 1}`}
-                                  className="aspect-video w-full rounded-md object-cover bg-zinc-50"
+                                  className="aspect-video w-full rounded-md object-contain bg-zinc-100 dark:bg-zinc-900"
                                 />
                                 <div className="mt-2 flex justify-end">
                                   <Button
@@ -1168,12 +1182,13 @@ export function WebsiteCmsPage() {
                           <Input
                             id={`section-hero-images-file-${section.id}`}
                             type="file"
+                            multiple
                             accept="image/*"
                             className="max-w-xs cursor-pointer border-[var(--border)] bg-[var(--card)]"
-                            onChange={(event) => handleUploadHeroImage(sectionIndex, event.target.files?.[0] ?? null)}
-                            disabled={uploadMutation.isPending}
+                            onChange={(event) => handleUploadHeroImages(sectionIndex, event.target.files)}
+                            disabled={isUploadingHero}
                           />
-                          {uploadMutation.isPending && uploadMutation.variables?.type === "section-hero-gallery" ? (
+                          {isUploadingHero ? (
                             <span className="flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
                               <Loader2 className="size-3 animate-spin" />
                               Mengupload...
