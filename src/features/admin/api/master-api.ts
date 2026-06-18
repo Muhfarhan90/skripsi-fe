@@ -545,11 +545,27 @@ export interface InstructorDashboardOverview {
   courses: InstructorDashboardCourse[];
 }
 
+export interface AdminDashboardChartData {
+  label: string;
+  students: number;
+  orders: number;
+  transactions: number;
+  revenue: number;
+}
+
+export interface InstructorDashboardChartData {
+  label: string;
+  enrollments: number;
+  forum_posts: number;
+}
+
 export interface AdminDashboard {
   context: "admin" | "instructor";
   metrics: AdminDashboardMetric[];
   recent_activities: AdminDashboardActivity[];
   instructor_overview?: InstructorDashboardOverview | null;
+  charts_data?: AdminDashboardChartData[];
+  instructor_charts_data?: InstructorDashboardChartData[];
 }
 
 export interface AdminSalesReportFilters {
@@ -944,8 +960,13 @@ export function getAdminRoles() {
   });
 }
 
-export function getAdminDashboard() {
-  return apiRequest<AdminDashboard>("/api/admin/dashboard", {
+export function getAdminDashboard(startDate?: string, endDate?: string) {
+  const queryParams = new URLSearchParams();
+  if (startDate) queryParams.set("start_date", startDate);
+  if (endDate) queryParams.set("end_date", endDate);
+  
+  const queryStr = queryParams.toString() ? `?${queryParams.toString()}` : "";
+  return apiRequest<AdminDashboard>(`/api/admin/dashboard${queryStr}`, {
     method: "GET",
   });
 }

@@ -1,8 +1,9 @@
 "use client";
 
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, subMonths, startOfMonth, endOfMonth, format as formatStr } from "date-fns";
 import { id as indonesianLocale } from "date-fns/locale";
 import {
   ArrowRight,
@@ -17,11 +18,40 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DatePicker } from "@/components/ui/date-picker";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { OverviewMetricCard } from "@/features/admin/components/overview-metric-card";
 import { getAdminDashboard, type AdminDashboard, type InstructorDashboardOverview } from "@/features/admin/api/master-api";
 import { getNotifications, notificationQueryKeys } from "@/features/notifications/api/notification-api";
 import type { UserNotification } from "@/types/notification";
+
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  PointElement,
+  LineElement,
+  Title as ChartTitle,
+  Tooltip as ChartTooltip,
+  Legend,
+  Filler,
+  type ChartOptions,
+} from "chart.js";
+import { Bar, Line } from "react-chartjs-2";
+
+// Register ChartJS elements
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  PointElement,
+  LineElement,
+  ChartTitle,
+  ChartTooltip,
+  Legend,
+  Filler
+);
 
 function formatRelativeTime(value: string | null | undefined): string {
   if (!value) {
@@ -46,11 +76,42 @@ function getNotificationHref(notification: UserNotification): string {
 }
 
 export default function AdminPage() {
+  const [filterType, setFilterType] = useState<string>("6_months");
+  const [customStart, setCustomStart] = useState<string>("");
+  const [customEnd, setCustomEnd] = useState<string>("");
+
+  const dates = useMemo(() => {
+    const now = new Date();
+    let start = "";
+    let end = "";
+
+    if (filterType === "month") {
+      start = formatStr(startOfMonth(now), "yyyy-MM-dd");
+      end = formatStr(endOfMonth(now), "yyyy-MM-dd");
+    } else if (filterType === "prev_month") {
+      const prevMonth = subMonths(now, 1);
+      start = formatStr(startOfMonth(prevMonth), "yyyy-MM-dd");
+      end = formatStr(endOfMonth(prevMonth), "yyyy-MM-dd");
+    } else if (filterType === "3_months") {
+      start = formatStr(startOfMonth(subMonths(now, 2)), "yyyy-MM-dd");
+      end = formatStr(endOfMonth(now), "yyyy-MM-dd");
+    } else if (filterType === "6_months") {
+      start = formatStr(startOfMonth(subMonths(now, 5)), "yyyy-MM-dd");
+      end = formatStr(endOfMonth(now), "yyyy-MM-dd");
+    } else if (filterType === "custom") {
+      start = customStart;
+      end = customEnd;
+    }
+    return { start, end };
+  }, [filterType, customStart, customEnd]);
+
   const dashboardQuery = useQuery({
-    queryKey: ["admin", "dashboard"],
-    queryFn: getAdminDashboard,
+    queryKey: ["admin", "dashboard", dates.start, dates.end],
+    queryFn: () => getAdminDashboard(dates.start || undefined, dates.end || undefined),
     staleTime: 30_000,
+    enabled: filterType !== "custom" || (!!customStart && !!customEnd),
   });
+
   const notificationsQuery = useQuery({
     queryKey: notificationQueryKeys.feed(1, 4),
     queryFn: () => getNotifications({ page: 1, perPage: 4 }),
@@ -80,6 +141,51 @@ export default function AdminPage() {
         }
       />
 
+      {/* Date Range Filter Bar */}
+      <div className="flex flex-col gap-4 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {[
+            { value: "month", label: "Bulan Ini" },
+            { value: "prev_month", label: "Bulan Lalu" },
+            { value: "3_months", label: "3 Bulan Terakhir" },
+            { value: "6_months", label: "6 Bulan Terakhir" },
+            { value: "custom", label: "Kustom Tanggal" },
+          ].map((preset) => (
+            <button
+              key={preset.value}
+              type="button"
+              onClick={() => setFilterType(preset.value)}
+              className={[
+                "rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors duration-200 cursor-pointer",
+                filterType === preset.value
+                  ? "bg-[var(--primary)] text-white"
+                  : "bg-[var(--surface-soft)] text-[var(--muted-foreground)] hover:bg-[var(--muted)] hover:text-[var(--foreground)]",
+              ].join(" ")}
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
+
+        {filterType === "custom" && (
+          <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+            <DatePicker
+              value={customStart}
+              onChange={setCustomStart}
+              placeholder="Tanggal Mulai"
+              className="w-full sm:w-40"
+            />
+            <span className="text-center text-xs text-[var(--muted-foreground)] sm:px-1">s/d</span>
+            <DatePicker
+              value={customEnd}
+              onChange={setCustomEnd}
+              placeholder="Tanggal Selesai"
+              className="w-full sm:w-40"
+            />
+          </div>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {dashboardQuery.isLoading
           ? Array.from({ length: 4 }).map((_, index) => (
@@ -99,6 +205,77 @@ export default function AdminPage() {
               />
             ))}
       </div>
+
+      {/* Chart Section */}
+      {dashboardQuery.isLoading ? (
+        <div className="h-[360px] animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)]" />
+      ) : (
+        <>
+          {/* Admin Charts */}
+          {!isInstructorDashboard && dashboardQuery.data?.charts_data && (
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              {/* Chart 1: Pendaftaran Siswa & Jumlah Order */}
+              <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <div>
+                    <CardTitle className="text-base font-semibold text-[var(--foreground)]">
+                      Tren Pendaftaran & Order
+                    </CardTitle>
+                    <p className="text-xs text-[var(--muted-foreground)]">
+                      Membandingkan jumlah registrasi siswa baru dan order yang masuk
+                    </p>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-2">
+                  <div className="h-[300px] w-full flex items-center justify-center">
+                    <AdminActivityChart data={dashboardQuery.data.charts_data} />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Chart 2: Pendapatan */}
+              <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <div>
+                    <CardTitle className="text-base font-semibold text-[var(--foreground)]">
+                      Tren Pendapatan & Transaksi Sukses
+                    </CardTitle>
+                    <p className="text-xs text-[var(--muted-foreground)]">
+                      Total omset dan frekuensi pembayaran yang berhasil diselesaikan
+                    </p>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-2">
+                  <div className="h-[300px] w-full flex items-center justify-center">
+                    <AdminRevenueChart data={dashboardQuery.data.charts_data} />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Instructor Charts */}
+          {isInstructorDashboard && dashboardQuery.data?.instructor_charts_data && (
+            <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div>
+                  <CardTitle className="text-base font-semibold text-[var(--foreground)]">
+                    Aktivitas Kelas & Tren Pendaftaran Siswa
+                  </CardTitle>
+                  <p className="text-xs text-[var(--muted-foreground)]">
+                    Jumlah siswa baru yang mendaftar (enrollment) dan postingan diskusi forum per periode
+                  </p>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-2">
+                <div className="h-[300px] w-full flex items-center justify-center">
+                  <InstructorActivityChart data={dashboardQuery.data.instructor_charts_data} />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
 
       {isInstructorDashboard ? (
         <InstructorDashboardPanels
@@ -443,4 +620,242 @@ function StatChip({
       <p className="mt-1 text-sm font-bold text-[var(--foreground)]">{value}</p>
     </div>
   );
+}
+
+// Chart Components
+function AdminActivityChart({ data }: { data: NonNullable<AdminDashboard["charts_data"]> }) {
+  const chartData = {
+    labels: data.map((item) => item.label),
+    datasets: [
+      {
+        type: "bar" as const,
+        label: "Siswa Baru",
+        data: data.map((item) => item.students),
+        backgroundColor: "rgba(59, 130, 246, 0.8)",
+        borderColor: "rgb(59, 130, 246)",
+        borderWidth: 1.5,
+        borderRadius: 4,
+        barPercentage: 0.6,
+      },
+      {
+        type: "line" as const,
+        label: "Order Masuk",
+        data: data.map((item) => item.orders),
+        borderColor: "rgb(245, 158, 11)",
+        backgroundColor: "rgba(245, 158, 11, 0.1)",
+        borderWidth: 2,
+        tension: 0.3,
+        pointBackgroundColor: "rgb(245, 158, 11)",
+        pointHoverRadius: 6,
+      },
+    ],
+  };
+
+  const options: ChartOptions<"bar" | "line"> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: "top" as const,
+        labels: {
+          boxWidth: 12,
+          usePointStyle: true,
+          font: { family: "Inter, sans-serif", size: 11 },
+        },
+      },
+      tooltip: {
+        backgroundColor: "rgba(15, 23, 42, 0.95)",
+        titleFont: { family: "Inter, sans-serif", size: 12, weight: "bold" },
+        bodyFont: { family: "Inter, sans-serif", size: 12 },
+        padding: 10,
+        cornerRadius: 8,
+      },
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: { font: { family: "Inter, sans-serif", size: 11 } },
+      },
+      y: {
+        grid: { color: "rgba(226, 232, 240, 0.6)" },
+        ticks: {
+          precision: 0,
+          font: { family: "Inter, sans-serif", size: 11 },
+        },
+      },
+    },
+  };
+
+  return <Bar data={chartData as any} options={options as any} />;
+}
+
+function AdminRevenueChart({ data }: { data: NonNullable<AdminDashboard["charts_data"]> }) {
+  const chartData = {
+    labels: data.map((item) => item.label),
+    datasets: [
+      {
+        type: "line" as const,
+        label: "Pendapatan",
+        data: data.map((item) => item.revenue),
+        borderColor: "rgb(16, 185, 129)",
+        backgroundColor: "rgba(16, 185, 129, 0.1)",
+        borderWidth: 2.5,
+        fill: true,
+        tension: 0.3,
+        yAxisID: "y",
+        pointBackgroundColor: "rgb(16, 185, 129)",
+        pointHoverRadius: 6,
+      },
+      {
+        type: "bar" as const,
+        label: "Transaksi Sukses",
+        data: data.map((item) => item.transactions),
+        backgroundColor: "rgba(139, 92, 246, 0.75)",
+        borderColor: "rgb(139, 92, 246)",
+        borderWidth: 1.5,
+        borderRadius: 4,
+        barPercentage: 0.4,
+        yAxisID: "y1",
+      },
+    ],
+  };
+
+  const options: ChartOptions<"line" | "bar"> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: "top" as const,
+        labels: {
+          boxWidth: 12,
+          usePointStyle: true,
+          font: { family: "Inter, sans-serif", size: 11 },
+        },
+      },
+      tooltip: {
+        backgroundColor: "rgba(15, 23, 42, 0.95)",
+        titleFont: { family: "Inter, sans-serif", size: 12, weight: "bold" },
+        bodyFont: { family: "Inter, sans-serif", size: 12 },
+        padding: 10,
+        cornerRadius: 8,
+        callbacks: {
+          label: (context) => {
+            let label = context.dataset.label || "";
+            if (label) {
+              label += ": ";
+            }
+            if (context.datasetIndex === 0) {
+              label += new Intl.NumberFormat("id-ID", {
+                style: "currency",
+                currency: "IDR",
+                maximumFractionDigits: 0,
+              }).format(context.parsed.y ?? 0);
+            } else {
+              label += (context.parsed.y ?? 0) + " kali";
+            }
+            return label;
+          },
+        },
+      },
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: { font: { family: "Inter, sans-serif", size: 11 } },
+      },
+      y: {
+        type: "linear" as const,
+        display: true,
+        position: "left" as const,
+        grid: { color: "rgba(226, 232, 240, 0.6)" },
+        ticks: {
+          font: { family: "Inter, sans-serif", size: 11 },
+          callback: (value) => {
+            return "Rp" + new Intl.NumberFormat("id-ID", {
+              notation: "compact",
+              compactDisplay: "short",
+            }).format(Number(value));
+          },
+        },
+      },
+      y1: {
+        type: "linear" as const,
+        display: true,
+        position: "right" as const,
+        grid: { drawOnChartArea: false },
+        ticks: {
+          precision: 0,
+          font: { family: "Inter, sans-serif", size: 11 },
+        },
+      },
+    },
+  };
+
+  return <Line data={chartData as any} options={options as any} />;
+}
+
+function InstructorActivityChart({ data }: { data: NonNullable<AdminDashboard["instructor_charts_data"]> }) {
+  const chartData = {
+    labels: data.map((item) => item.label),
+    datasets: [
+      {
+        type: "bar" as const,
+        label: "Siswa Baru (Enrollment)",
+        data: data.map((item) => item.enrollments),
+        backgroundColor: "rgba(99, 102, 241, 0.8)",
+        borderColor: "rgb(99, 102, 241)",
+        borderWidth: 1.5,
+        borderRadius: 4,
+        barPercentage: 0.5,
+      },
+      {
+        type: "line" as const,
+        label: "Post Forum",
+        data: data.map((item) => item.forum_posts),
+        borderColor: "rgb(236, 72, 153)",
+        backgroundColor: "rgba(236, 72, 153, 0.1)",
+        borderWidth: 2,
+        tension: 0.3,
+        pointBackgroundColor: "rgb(236, 72, 153)",
+        pointHoverRadius: 6,
+      },
+    ],
+  };
+
+  const options: ChartOptions<"bar" | "line"> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: "top" as const,
+        labels: {
+          boxWidth: 12,
+          usePointStyle: true,
+          font: { family: "Inter, sans-serif", size: 11 },
+        },
+      },
+      tooltip: {
+        backgroundColor: "rgba(15, 23, 42, 0.95)",
+        titleFont: { family: "Inter, sans-serif", size: 12, weight: "bold" },
+        bodyFont: { family: "Inter, sans-serif", size: 12 },
+        padding: 10,
+        cornerRadius: 8,
+      },
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: { font: { family: "Inter, sans-serif", size: 11 } },
+      },
+      y: {
+        grid: { color: "rgba(226, 232, 240, 0.6)" },
+        ticks: {
+          precision: 0,
+          font: { family: "Inter, sans-serif", size: 11 },
+        },
+      },
+    },
+  };
+
+  return <Bar data={chartData as any} options={options as any} />;
 }
