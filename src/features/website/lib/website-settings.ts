@@ -244,6 +244,7 @@ export function createDefaultWebsiteSetting(): WebsiteSetting {
     hero_highlight: "",
     hero_description: "",
     hero_image_url: null,
+    hero_images: [],
     hero_primary_cta_label: "",
     hero_primary_cta_url: "/register",
     hero_secondary_cta_label: "",

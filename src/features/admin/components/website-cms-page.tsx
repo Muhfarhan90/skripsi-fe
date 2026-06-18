@@ -210,6 +210,7 @@ function buildSectionPayload(section: EditableSection): WebsiteSectionPayload {
     subtitle: nullableText(section.subtitle),
     body: nullableText(section.body),
     image_url: nullableText(section.image_url),
+    hero_images: section.hero_images ?? null,
     cta_label: nullableText(section.cta_label),
     cta_url: nullableText(section.cta_url),
     secondary_cta_label: nullableText(section.secondary_cta_label),
@@ -817,6 +818,25 @@ export function WebsiteCmsPage() {
     );
   };
 
+  const handleUploadHeroImage = (sectionIndex: number, file: File | null) => {
+    if (!file) return;
+    uploadMutation.mutate(
+      { type: "section-hero-gallery", file },
+      {
+        onSuccess: (data) => {
+          updateSection(sectionIndex, (current) => {
+            const currentImages = current.hero_images ?? [];
+            return {
+              ...current,
+              hero_images: [...currentImages, data.path],
+            };
+          });
+          toast.success("Gambar hero berhasil diupload");
+        },
+      }
+    );
+  };
+
   const handleUploadSocialIcon = (linkId: number, file: File | null) => {
     if (!file) return;
     uploadMutation.mutate(
@@ -1110,6 +1130,59 @@ export function WebsiteCmsPage() {
                       </div>
                     </div>
                   </Field>
+                  {section.section_key === "hero" && (
+                    <Field label="Hero Slider Images (Banyak Gambar)" id={`section-hero-images-${section.id}`}>
+                      <div className="space-y-4">
+                        {section.hero_images && section.hero_images.length > 0 ? (
+                          <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4">
+                            {section.hero_images.map((imgUrl, imgIndex) => (
+                              <div key={imgIndex} className="relative rounded-lg border border-[var(--border)] p-2 bg-[var(--surface-soft)]">
+                                <img
+                                  src={resolvePublicFileUrl(imgUrl) ?? ""}
+                                  alt={`Hero Preview ${imgIndex + 1}`}
+                                  className="aspect-video w-full rounded-md object-cover bg-zinc-50"
+                                />
+                                <div className="mt-2 flex justify-end">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="h-7 px-2 text-xs text-[var(--danger-soft-foreground)]"
+                                    onClick={() =>
+                                      updateSection(sectionIndex, (current) => {
+                                        const nextImages = [...(current.hero_images ?? [])];
+                                        nextImages.splice(imgIndex, 1);
+                                        return { ...current, hero_images: nextImages };
+                                      })
+                                    }
+                                  >
+                                    Hapus
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-[var(--muted-foreground)]">Belum ada gambar hero slider. Silakan upload gambar di bawah.</p>
+                        )}
+                        <div className="flex items-center gap-3">
+                          <Input
+                            id={`section-hero-images-file-${section.id}`}
+                            type="file"
+                            accept="image/*"
+                            className="max-w-xs cursor-pointer border-[var(--border)] bg-[var(--card)]"
+                            onChange={(event) => handleUploadHeroImage(sectionIndex, event.target.files?.[0] ?? null)}
+                            disabled={uploadMutation.isPending}
+                          />
+                          {uploadMutation.isPending && uploadMutation.variables?.type === "section-hero-gallery" ? (
+                            <span className="flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
+                              <Loader2 className="size-3 animate-spin" />
+                              Mengupload...
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                    </Field>
+                  )}
                   <div className="grid gap-4 lg:grid-cols-4">
                     <Field label="CTA Label" id={`section-cta-label-${section.id}`}>
                       <Input

@@ -55,6 +55,7 @@ export interface WebsiteSection {
   subtitle: string | null;
   body: string | null;
   image_url: string | null;
+  hero_images?: string[] | null;
   cta_label: string | null;
   cta_url: string | null;
   secondary_cta_label: string | null;
@@ -105,6 +106,7 @@ export interface WebsiteHomeContent extends WebsiteSettingGlobal {
   hero_highlight: string;
   hero_description: string;
   hero_image_url: string | null;
+  hero_images?: string[] | null;
   hero_primary_cta_label: string;
   hero_primary_cta_url: string;
   hero_secondary_cta_label: string;

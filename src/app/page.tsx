@@ -97,7 +97,6 @@ const STATIC_FAQS = [
 
 function buildHeroSlides(
   websiteSettings: ReturnType<typeof createDefaultWebsiteSetting>,
-  previewCourses: Awaited<ReturnType<typeof getPublishedCourses>>,
   catalogHref: string,
 ): HeroMediaSlide[] {
   const slides = new Map<string, HeroMediaSlide>();
@@ -111,31 +110,35 @@ function buildHeroSlides(
     slides.set(key, slide);
   };
 
-  registerSlide({
-    id: "hero-primary",
-    imageUrl: resolvePublicFileUrl(websiteSettings.hero_image_url),
-    eyebrow: websiteSettings.hero_badge || "Platform Persiapan Kuliah Pre-University",
-    title: websiteSettings.hero_title
-      ? `${websiteSettings.hero_title} ${websiteSettings.hero_highlight}`.trim()
-      : "Persiapan Akademik Pre-University Terbaik",
-    description: websiteSettings.hero_description || "Platform belajar pre-university terlengkap untuk membekali Anda dengan kompetensi dasar perkuliahan. Jembatani kesenjangan materi sekolah menengah dengan standar perguruan tinggi, ikuti modul interaktif, dan raih sertifikat kesiapan kuliah.",
-    href: catalogHref,
-    hrefLabel: websiteSettings.hero_primary_cta_label || "Buka katalog",
-  });
+  const heroImages = websiteSettings.hero_images ?? [];
 
-  previewCourses.forEach((course) => {
-    registerSlide({
-      id: `course-${course.id}`,
-      imageUrl: resolvePublicFileUrl(course.thumbnail),
-      eyebrow: course.category_name || "Preview Course",
-      title: course.title,
-      description: course.instructor_name || course.description || "Course pilihan untuk mulai belajar.",
-      href: `/courses/${course.slug}`,
-      hrefLabel: "Detail course",
+  if (heroImages.length > 0) {
+    heroImages.forEach((imgUrl, index) => {
+      registerSlide({
+        id: `hero-image-${index}`,
+        imageUrl: resolvePublicFileUrl(imgUrl),
+        title: websiteSettings.hero_title || websiteSettings.site_name || "Hero Slide",
+        eyebrow: websiteSettings.hero_badge,
+        description: websiteSettings.hero_description,
+        href: catalogHref,
+        hrefLabel: websiteSettings.hero_primary_cta_label || "Buka katalog",
+      });
     });
-  });
+  } else {
+    registerSlide({
+      id: "hero-primary",
+      imageUrl: resolvePublicFileUrl(websiteSettings.hero_image_url),
+      eyebrow: websiteSettings.hero_badge || "Platform Persiapan Kuliah Pre-University",
+      title: websiteSettings.hero_title
+        ? `${websiteSettings.hero_title} ${websiteSettings.hero_highlight}`.trim()
+        : "Persiapan Akademik Pre-University Terbaik",
+      description: websiteSettings.hero_description || "Platform belajar pre-university terlengkap untuk membekali Anda dengan kompetensi dasar perkuliahan. Jembatani kesenjangan materi sekolah menengah dengan standar perguruan tinggi, ikuti modul interaktif, dan raih sertifikat kesiapan kuliah.",
+      href: catalogHref,
+      hrefLabel: websiteSettings.hero_primary_cta_label || "Buka katalog",
+    });
+  }
 
-  return Array.from(slides.values()).slice(0, 6);
+  return Array.from(slides.values()).slice(0, 8);
 }
 
 function LandingPageSkeleton() {
@@ -226,7 +229,7 @@ export default function RootPage() {
   const previewCourses = courses.slice(0, 4);
   const websiteSettings = websiteSettingsQuery.data ?? createDefaultWebsiteSetting();
 
-  const heroSlides = buildHeroSlides(websiteSettings, previewCourses, catalogHref);
+  const heroSlides = buildHeroSlides(websiteSettings, catalogHref);
   const featuredSectionClass = "relative overflow-hidden bg-white dark:bg-[var(--card)]";
   const featuresSectionClass = "relative overflow-hidden bg-[var(--surface-soft)]";
   const learningSectionClass = "relative overflow-hidden border-y border-[var(--border)]/60 bg-white dark:bg-[var(--card)]";
