@@ -937,10 +937,32 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
       router.replace(`/admin/master-data/courses/${createdCourse.id}?step=${nextStepKey}`);
       router.refresh();
     },
+  });
+
+  const updateCourseMetadataMutation = useMutation({
+    mutationFn: async (nextStepIndex: number) => {
+      if (validCourseId === null) {
+        throw new Error("ID course tidak valid untuk proses update");
+      }
+
+      await updateAdminCourse(validCourseId, buildCoursePayload(form));
+      return {
+        nextStepIndex,
+      };
+    },
+    onSuccess: ({ nextStepIndex }) => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "courses"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "courses", "curriculum", validCourseId] });
+
+      const nextStepKey = COURSE_WIZARD_STEPS[nextStepIndex]?.key ?? "curriculum";
+      router.replace(`/admin/master-data/courses/${validCourseId}?step=${nextStepKey}`, { scroll: false });
+      router.refresh();
+      toast.success("Informasi course dan thumbnail berhasil disimpan");
+    },
     onError: (error) => {
       const nextErrors = mapApiError(error);
       setFormErrors(nextErrors);
-      toast.error(nextErrors[FORM_ERROR_KEY] ?? "Gagal menyiapkan course untuk lanjut ke curriculum");
+      toast.error(nextErrors[FORM_ERROR_KEY] ?? "Gagal menyimpan informasi course");
     },
   });
 
@@ -1499,7 +1521,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
   );
 
   const goToStep = (nextStepIndex: number) => {
-    if (initializeCourseMutation.isPending) return;
+    if (initializeCourseMutation.isPending || updateCourseMetadataMutation.isPending) return;
     if (nextStepIndex === activeStepIndex) return;
     if (nextStepIndex < 0 || nextStepIndex >= COURSE_WIZARD_STEPS.length) return;
 
@@ -1540,6 +1562,11 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
 
     if (!isEditing && validCourseId === null && activeStepIndex === 0 && nextStepIndex >= 1) {
       initializeCourseMutation.mutate(nextStepIndex);
+      return;
+    }
+
+    if (validCourseId !== null && activeStepIndex === 0 && nextStepIndex >= 1) {
+      updateCourseMetadataMutation.mutate(nextStepIndex);
       return;
     }
 
