@@ -242,7 +242,6 @@ export function QuizDetailPage({ courseId, quizId }: QuizDetailPageProps) {
       .slice()
       .sort((a, b) => a.sort_order - b.sort_order);
   }, [curriculumQuery.data?.sections]);
-
   const sectionLabelMap = useMemo(
     () => new Map(courseSections.map((section) => [String(section.id), section.title])),
     [courseSections],
@@ -269,10 +268,9 @@ export function QuizDetailPage({ courseId, quizId }: QuizDetailPageProps) {
       if (
         isInvalidOptionalNumber(quizForm.duration) ||
         isInvalidOptionalNumber(quizForm.passing_score) ||
-        isInvalidOptionalNumber(quizForm.weight) ||
         isInvalidOptionalNumber(quizForm.max_attempts)
       ) {
-        throw new Error("Durasi, passing score, weight, dan max attempts harus angka >= 0");
+        throw new Error("Durasi, passing score, dan max attempts harus angka >= 0");
       }
       if (quizForm.open_at && quizForm.close_at && new Date(quizForm.close_at) < new Date(quizForm.open_at)) {
         throw new Error("Waktu tutup quiz harus lebih besar atau sama dengan waktu buka quiz");
@@ -283,7 +281,7 @@ export function QuizDetailPage({ courseId, quizId }: QuizDetailPageProps) {
         description: quizForm.description.trim() || null,
         duration: toNonNegativeNumberOrZero(quizForm.duration),
         passing_score: toNonNegativeNumberOrZero(quizForm.passing_score),
-        weight: toNonNegativeNumberOrZero(quizForm.weight),
+        weight: quizForm.weight.trim() ? toNonNegativeNumberOrZero(quizForm.weight) : 100,
         max_attempts: toNonNegativeNumberOrZero(quizForm.max_attempts),
         open_at: toApiDateTimeOrNull(quizForm.open_at),
         close_at: toApiDateTimeOrNull(quizForm.close_at),
@@ -1106,18 +1104,6 @@ export function QuizDetailPage({ courseId, quizId }: QuizDetailPageProps) {
                 min={0}
                 value={quizForm.passing_score}
                 onChange={(event) => setQuizForm((prev) => ({ ...prev, passing_score: event.target.value }))}
-                className="border-[var(--border)] bg-[var(--card)]"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="quiz-weight">Weight</Label>
-              <Input
-                id="quiz-weight"
-                type="number"
-                min={0}
-                value={quizForm.weight}
-                onChange={(event) => setQuizForm((prev) => ({ ...prev, weight: event.target.value }))}
                 className="border-[var(--border)] bg-[var(--card)]"
               />
             </div>

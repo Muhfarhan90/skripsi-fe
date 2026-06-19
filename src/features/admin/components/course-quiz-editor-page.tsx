@@ -43,7 +43,7 @@ const DEFAULT_FORM: QuizFormState = {
   description: "",
   duration: "",
   passing_score: "",
-  weight: "",
+  weight: "100",
   max_attempts: "",
   open_at: "",
   close_at: "",
@@ -100,7 +100,6 @@ export function CourseQuizEditorPage({ courseId, sectionId, returnTo }: CourseQu
   const selectedSection = useMemo(() => {
     return (curriculumQuery.data?.sections ?? []).find((section) => section.id === sectionId);
   }, [curriculumQuery.data?.sections, sectionId]);
-
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!form.title.trim()) {
@@ -109,10 +108,9 @@ export function CourseQuizEditorPage({ courseId, sectionId, returnTo }: CourseQu
       if (
         isInvalidOptionalNumber(form.duration) ||
         isInvalidOptionalNumber(form.passing_score) ||
-        isInvalidOptionalNumber(form.weight) ||
         isInvalidOptionalNumber(form.max_attempts)
       ) {
-        throw new Error("Durasi, passing score, weight, dan max attempts harus angka >= 0");
+        throw new Error("Durasi, passing score, dan max attempts harus angka >= 0");
       }
       if (form.open_at && form.close_at && new Date(form.close_at) < new Date(form.open_at)) {
         throw new Error("Waktu tutup quiz harus lebih besar atau sama dengan waktu buka quiz");
@@ -123,7 +121,7 @@ export function CourseQuizEditorPage({ courseId, sectionId, returnTo }: CourseQu
         description: form.description.trim() || null,
         duration: toNonNegativeNumberOrZero(form.duration),
         passing_score: toNonNegativeNumberOrZero(form.passing_score),
-        weight: toNonNegativeNumberOrZero(form.weight),
+        weight: form.weight.trim() ? toNonNegativeNumberOrZero(form.weight) : 100,
         max_attempts: toNonNegativeNumberOrZero(form.max_attempts),
         open_at: toApiDateTimeOrNull(form.open_at),
         close_at: toApiDateTimeOrNull(form.close_at),
@@ -236,18 +234,6 @@ export function CourseQuizEditorPage({ courseId, sectionId, returnTo }: CourseQu
                 min={0}
                 value={form.passing_score}
                 onChange={(event) => setForm((prev) => ({ ...prev, passing_score: event.target.value }))}
-                className="border-[var(--border)] bg-[var(--card)]"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="quiz-weight">Weight</Label>
-              <Input
-                id="quiz-weight"
-                type="number"
-                min={0}
-                value={form.weight}
-                onChange={(event) => setForm((prev) => ({ ...prev, weight: event.target.value }))}
                 className="border-[var(--border)] bg-[var(--card)]"
               />
             </div>

@@ -16,10 +16,17 @@ export interface StoreCourse {
   reviews_avg_rating?: number | null;
   thumbnail: string | null;
   status: string;
+  skills?: StoreCourseSkill[];
   requirements: string | null;
   outcomes: string | null;
   sections?: StoreCurriculumSection[];
   created_at: string;
+}
+
+export interface StoreCourseSkill {
+  id: number;
+  name: string;
+  slug: string;
 }
 
 export interface StoreUserSummary {
@@ -39,10 +46,47 @@ export interface StoreCourseOfferingSummary {
   is_active: boolean;
 }
 
+export interface StoreCompletionSnapshot {
+  course_id?: number | null;
+  course_offering_id?: number | null;
+  lesson_ids?: number[];
+  quiz_ids?: number[];
+  assignment_ids?: number[];
+  required_assignment_ids?: number[];
+  quiz_grade_items?: Array<{
+    quiz_id: number;
+    weight: number;
+    passing_score?: number | null;
+  }>;
+  assignment_grade_items?: Array<{
+    assignment_id: number;
+    is_required_for_certificate?: boolean;
+  }>;
+  snapshot_at?: string | null;
+}
+
+export interface StoreCourseOfferingSnapshot {
+  course_id?: number | null;
+  course_title?: string | null;
+  course_slug?: string | null;
+  academic_period_id?: number | null;
+  period_code?: string | null;
+  period_name?: string | null;
+  price?: number | string | null;
+  discount_price?: number | string | null;
+  final_price?: number | string | null;
+}
+
 export interface StoreOrderItem {
   course_id: number | null;
   course_offering_id: number | null;
   price: number;
+  course_title?: string | null;
+  course_slug?: string | null;
+  period_code?: string | null;
+  period_name?: string | null;
+  course_snapshot?: Record<string, unknown> | null;
+  course_offering_snapshot?: StoreCourseOfferingSnapshot | null;
   course?: StoreCourse;
   course_offering?: StoreCourseOfferingSummary | null;
 }
@@ -93,6 +137,7 @@ export interface StoreEnrollment {
   ended_at?: string | null;
   completed_at: string | null;
   expired_at: string | null;
+  completion_snapshot?: StoreCompletionSnapshot | null;
   has_certificate?: boolean;
   created_at: string;
   updated_at: string;
@@ -178,9 +223,12 @@ export interface StoreEnrollmentProgressSummary {
   progress: number;
   status: string;
   has_certificate?: boolean;
+  can_generate_certificate?: boolean;
+  certificate_block_reason?: string | null;
   completed_at: string | null;
   started_at?: string | null;
   ended_at?: string | null;
+  completion_snapshot?: StoreCompletionSnapshot | null;
   assignment_requirement?: StoreAssignmentRequirementSummary;
 }
 
@@ -194,6 +242,7 @@ export interface StoreLesson {
   duration: number | null;
   sort_order: number | null;
   is_preview: boolean;
+  status?: "published" | "archived" | string | null;
   created_at: string;
   updated_at: string;
 }

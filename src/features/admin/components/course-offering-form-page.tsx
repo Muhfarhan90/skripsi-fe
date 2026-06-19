@@ -213,7 +213,7 @@ function buildCertificateSettingPayload(form: CertificateSettingFormState): Cert
   };
 }
 
-function validateForm(form: CourseOfferingFormState): CourseOfferingFormErrors {
+function validateForm(form: CourseOfferingFormState, minimumCapacity = 1): CourseOfferingFormErrors {
   const errors: CourseOfferingFormErrors = {};
 
   if (!form.course_id) errors.course_id = "Course wajib dipilih";
@@ -224,6 +224,10 @@ function validateForm(form: CourseOfferingFormState): CourseOfferingFormErrors {
   const capacity = toPositiveInteger(form.capacity);
   if (form.capacity.trim() && capacity === null) {
     errors.capacity = "Kapasitas harus berupa bilangan bulat minimal 1";
+  }
+
+  if (capacity !== null && capacity < minimumCapacity) {
+    errors.capacity = `Kapasitas minimal ${minimumCapacity} karena sudah ada peserta pada offering ini`;
   }
 
   const price = toNonNegativeNumber(form.price);
@@ -375,10 +379,10 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
   const [activeCertificateEnrollmentId, setActiveCertificateEnrollmentId] = useState<number | null>(null);
   const [reviewDraft, setReviewDraft] = useState<{
     submissionId: number | null;
-    value: string;
+    notes: string;
   }>({
     submissionId: null,
-    value: "",
+    notes: "",
   });
 
   const coursesQuery = useQuery({
@@ -512,6 +516,9 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
   const enrolledCount = Number(offeringDetailQuery.data?.enrollments_count ?? 0);
   const parsedCapacity = toPositiveInteger(form.capacity) ?? 0;
   const fillRate = parsedCapacity > 0 ? Math.round((enrolledCount / parsedCapacity) * 100) : 0;
+  const hasEnrollments = enrolledCount > 0;
+  const isOfferingIdentityLocked = isEditing && hasEnrollments;
+  const minimumCapacity = isEditing && hasEnrollments ? enrolledCount : 1;
   const normalPrice = toNonNegativeNumber(form.price) ?? 0;
   const parsedDiscount = form.discount_price.trim() ? toNonNegativeNumber(form.discount_price) ?? 0 : 0;
   const hasActiveDiscount = parsedDiscount > 0 && parsedDiscount < normalPrice;
@@ -550,7 +557,7 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
   );
   const reviewNotes =
     reviewDraft.submissionId === effectiveSelectedSubmissionId
-      ? reviewDraft.value
+      ? reviewDraft.notes
       : selectedSubmission?.review_notes ?? "";
 
   useEffect(() => {
@@ -731,7 +738,7 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
 
   const persistForm = (nextIsActive?: boolean) => {
     const nextForm = nextIsActive === undefined ? form : { ...form, is_active: nextIsActive };
-    const validationErrors = validateForm(nextForm);
+    const validationErrors = validateForm(nextForm, minimumCapacity);
 
     if (Object.keys(validationErrors).length > 0) {
       setFormErrors(validationErrors);
@@ -1027,6 +1034,16 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
                   </div>
                 ) : null}
 
+                {isOfferingIdentityLocked ? (
+                  <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                    <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+                    <span>
+                      Course dan academic period dikunci karena offering ini sudah memiliki peserta. Kapasitas tetap bisa
+                      dinaikkan, tetapi tidak boleh lebih kecil dari jumlah peserta aktif.
+                    </span>
+                  </div>
+                ) : null}
+
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   {isAcademicPeriodLocked ? (
                     <div className="space-y-1.5 md:col-span-2">
@@ -1044,7 +1061,11 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
                   ) : (
                     <div className="space-y-1.5 md:col-span-2">
                       <Label>Academic Period</Label>
-                      <Select value={form.academic_period_id} onValueChange={(value) => handlePeriodChange(value ?? "")}>
+                      <Select
+                        value={form.academic_period_id}
+                        onValueChange={(value) => handlePeriodChange(value ?? "")}
+                        disabled={isOfferingIdentityLocked}
+                      >
                         <SelectTrigger className="w-full border-[var(--border)] bg-[var(--card)]">
                           <SelectValue>
                             {() => {
@@ -1073,7 +1094,11 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
 
                   <div className="space-y-1.5 md:col-span-2">
                     <Label>Course (Master)</Label>
-                    <Select value={form.course_id} onValueChange={(value) => handleCourseChange(value ?? "")}>
+                    <Select
+                      value={form.course_id}
+                      onValueChange={(value) => handleCourseChange(value ?? "")}
+                      disabled={isOfferingIdentityLocked}
+                    >
                       <SelectTrigger className="w-full border-[var(--border)] bg-[var(--card)]">
                         <SelectValue>
                           {() => {
@@ -1127,11 +1152,16 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
                     <Input
                       id="offering-capacity"
                       type="number"
-                      min={1}
+                      min={minimumCapacity}
                       value={form.capacity}
                       onChange={(event) => setForm((prev) => ({ ...prev, capacity: event.target.value }))}
                       className="border-[var(--border)] bg-[var(--card)]"
                     />
+                    {isEditing && minimumCapacity > 0 ? (
+                      <p className="text-xs text-[var(--muted-foreground)]">
+                        Minimal {minimumCapacity} sesuai jumlah peserta saat ini.
+                      </p>
+                    ) : null}
                     {formErrors.capacity ? <p className="text-xs text-red-600">{formErrors.capacity}</p> : null}
                   </div>
 
@@ -1144,6 +1174,11 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
                       placeholder="0"
                       className="border-[var(--border)] bg-[var(--card)]"
                     />
+                    {isEditing ? (
+                      <p className="text-xs text-[var(--muted-foreground)]">
+                        Jika offering sudah punya order, perubahan harga akan ditolak agar histori transaksi tetap stabil.
+                      </p>
+                    ) : null}
                     {formErrors.price ? <p className="text-xs text-red-600">{formErrors.price}</p> : null}
                   </div>
 
@@ -2052,11 +2087,12 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
                         onChange={(event) =>
                           setReviewDraft({
                             submissionId: effectiveSelectedSubmissionId,
-                            value: event.target.value,
+                            notes: event.target.value,
                           })
                         }
                         placeholder="Tulis feedback singkat untuk student..."
                         className="min-h-28 border-[var(--border)] bg-[var(--card)]"
+                        disabled={selectedSubmission.status === "approved"}
                       />
                       {selectedSubmission.review_notes ? (
                         <p className="text-xs text-[var(--muted-foreground)]">
@@ -2079,7 +2115,7 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
                         type="button"
                         variant="outline"
                         onClick={() => handleSubmitReview("revision_required")}
-                        disabled={reviewMutation.isPending}
+                        disabled={reviewMutation.isPending || selectedSubmission.status === "approved"}
                         className="border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100"
                       >
                         {reviewMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : null}

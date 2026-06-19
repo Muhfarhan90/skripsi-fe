@@ -75,6 +75,7 @@ import { formatDateTime } from "@/features/admin/lib/offering-utils";
 
 type CourseFormMode = "create" | "edit";
 type LessonType = "video" | "file";
+type LessonStatus = "published" | "archived";
 type SectionContentType = "lesson" | "quiz" | "assignment";
 
 interface AdminCourseFormPageProps {
@@ -91,6 +92,7 @@ interface LessonFormState {
   lesson_url: string;
   duration: string;
   is_preview: boolean;
+  status: LessonStatus;
 }
 
 interface SectionFormState {
@@ -160,7 +162,6 @@ interface CourseWizardStepItem {
 }
 
 const FORM_ERROR_KEY = "__form";
-const AUTOSAVE_DELAY_MS = 15000;
 const LESSON_GROUP_CARD_CLASSNAME = "border-sky-200/80 bg-sky-50/40";
 const QUIZ_GROUP_CARD_CLASSNAME = "border-amber-200/80 bg-amber-50/40";
 const ASSIGNMENT_GROUP_CARD_CLASSNAME = "border-emerald-200/80 bg-emerald-50/40";
@@ -219,7 +220,7 @@ const DEFAULT_QUIZ_FORM: QuizFormState = {
   description: "",
   duration: "",
   passing_score: "",
-  weight: "",
+  weight: "100",
   max_attempts: "",
   open_at: "",
   close_at: "",
@@ -275,6 +276,7 @@ const lessonSchema = z
         message: "Durasi lesson harus berupa angka positif",
       }),
     is_preview: z.boolean(),
+    status: z.enum(["published", "archived"]),
   })
   .superRefine((lesson, context) => {
     if (!lesson.lesson_url.trim()) {
@@ -344,6 +346,7 @@ function mapCurriculumToFormState(curriculum: AdminCourseCurriculum): CourseForm
         lesson_url: lesson.lesson_url ?? "",
         duration: String(lesson.duration ?? 0),
         is_preview: Boolean(lesson.is_preview),
+        status: lesson.status === "archived" ? "archived" : "published",
       })),
     })),
   };
@@ -364,42 +367,6 @@ function buildCoursePayload(form: CourseFormState): CoursePayload {
   };
 }
 
-function parsePositiveInteger(raw: string): number | null {
-  const normalized = raw.trim();
-  if (!normalized) return null;
-  const parsed = Number(normalized);
-  if (!Number.isInteger(parsed) || parsed <= 0) return null;
-  return parsed;
-}
-
-function buildAutosaveCoursePayload(form: CourseFormState): Partial<CoursePayload> {
-  const payload: Partial<CoursePayload> = {
-    skill_ids: form.skill_ids
-      .map((skillId) => Number(skillId))
-      .filter((skillId) => Number.isInteger(skillId) && skillId > 0),
-    description: form.description.trim() || null,
-    requirements: form.requirements.trim() || null,
-    outcomes: form.outcomes.trim() || null,
-  };
-
-  const title = form.title.trim();
-  if (title) {
-    payload.title = title;
-  }
-
-  const categoryId = parsePositiveInteger(form.category_id);
-  if (categoryId !== null) {
-    payload.category_id = categoryId;
-  }
-
-  const instructorId = parsePositiveInteger(form.instructor_id);
-  if (instructorId !== null) {
-    payload.instructor_id = instructorId;
-  }
-
-  return payload;
-}
-
 function buildCurriculumPayloadSections(form: CourseFormState): CourseCurriculumSectionPayload[] {
   return form.sections.map((section, sectionIndex) => ({
     id: section.id,
@@ -414,6 +381,7 @@ function buildCurriculumPayloadSections(form: CourseFormState): CourseCurriculum
       duration: lesson.duration.trim() ? Number(lesson.duration) : 0,
       sort_order: lessonIndex + 1,
       is_preview: lesson.is_preview,
+      status: lesson.status,
     })),
   }));
 }
@@ -588,6 +556,7 @@ function isCourseFormDirty(currentForm: CourseFormState, baseForm: CourseFormSta
       if (currentLesson.lesson_url !== baseLesson.lesson_url) return true;
       if (currentLesson.duration !== baseLesson.duration) return true;
       if (currentLesson.is_preview !== baseLesson.is_preview) return true;
+      if (currentLesson.status !== baseLesson.status) return true;
     }
   }
 
@@ -626,11 +595,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
   );
   const highlightedForumPostId = parsePositiveIntegerOrNull(searchParams.get("forumPostId") ?? "");
   const highlightedReviewId = parsePositiveIntegerOrNull(searchParams.get("reviewId") ?? "");
-  const [lastAutosavedAt, setLastAutosavedAt] = useState<Date | null>(null);
-  const [autosaveErrorMessage, setAutosaveErrorMessage] = useState<string | null>(null);
   const sectionListRef = useRef<HTMLDivElement | null>(null);
-  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastAutosavedFingerprintRef = useRef<string>("");
 
   // SECTION 2: Reference data and curriculum detail.
   const categoryQuery = useQuery({
@@ -707,7 +672,6 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
   }, [curriculumQuery.data, isEditing, user]);
 
   const form = draftForm ?? baseForm;
-  const autosaveFingerprint = useMemo(() => JSON.stringify(form), [form]);
   const thumbnailPreviewUrl = useMemo(() => {
     const thumbnail = form.thumbnail;
     if (!thumbnail) return null;
@@ -910,7 +874,6 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
     }) => {
       const curriculumSectionsPayload = includeSections ? buildCurriculumPayloadSections(submittedForm) : undefined;
       const coursePayload = buildCoursePayload(submittedForm);
-      const { thumbnail: thumbnailPayload, ...courseMetadataPayload } = coursePayload;
 
       if (isEditing) {
         if (validCourseId === null) {
@@ -978,42 +941,6 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
       const nextErrors = mapApiError(error);
       setFormErrors(nextErrors);
       toast.error(nextErrors[FORM_ERROR_KEY] ?? "Gagal menyiapkan course untuk lanjut ke curriculum");
-    },
-  });
-
-  const autosaveMutation = useMutation({
-    mutationFn: async ({
-      submittedForm,
-      fingerprint,
-    }: {
-      submittedForm: CourseFormState;
-      fingerprint: string;
-    }) => {
-      if (!isEditing || validCourseId === null) {
-        throw new Error("Autosave hanya tersedia untuk course yang sudah memiliki ID.");
-      }
-
-      const curriculumValidation = z.array(sectionSchema).safeParse(submittedForm.sections);
-      const includeSections = curriculumValidation.success;
-      const curriculumSectionsPayload = includeSections
-        ? buildCurriculumPayloadSections(submittedForm)
-        : undefined;
-
-      await upsertAdminCourseCurriculum(validCourseId, {
-        course: buildAutosaveCoursePayload(submittedForm),
-        ...(includeSections ? { sections: curriculumSectionsPayload ?? [] } : {}),
-      });
-
-      return { fingerprint };
-    },
-    onSuccess: ({ fingerprint }) => {
-      lastAutosavedFingerprintRef.current = fingerprint;
-      setLastAutosavedAt(new Date());
-      setAutosaveErrorMessage(null);
-      queryClient.invalidateQueries({ queryKey: ["admin", "courses", "curriculum", validCourseId] });
-    },
-    onError: (error) => {
-      setAutosaveErrorMessage(normalizeError(error));
     },
   });
 
@@ -1132,10 +1059,9 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
       if (
         isInvalidOptionalNumber(quizForm.duration) ||
         isInvalidOptionalNumber(quizForm.passing_score) ||
-        isInvalidOptionalNumber(quizForm.weight) ||
         isInvalidOptionalNumber(quizForm.max_attempts)
       ) {
-        throw new Error("Durasi, passing score, weight, dan max attempts harus angka >= 0");
+        throw new Error("Durasi, passing score, dan max attempts harus angka >= 0");
       }
 
       if (quizForm.open_at && quizForm.close_at && new Date(quizForm.close_at) < new Date(quizForm.open_at)) {
@@ -1148,7 +1074,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
           description: quizForm.description.trim() || null,
           duration: toNonNegativeNumberOrZero(quizForm.duration),
           passing_score: toNonNegativeNumberOrZero(quizForm.passing_score),
-          weight: toNonNegativeNumberOrZero(quizForm.weight),
+          weight: quizForm.weight.trim() ? toNonNegativeNumberOrZero(quizForm.weight) : 100,
           max_attempts: toNonNegativeNumberOrZero(quizForm.max_attempts),
           open_at: toApiDateTimeOrNull(quizForm.open_at),
           close_at: toApiDateTimeOrNull(quizForm.close_at),
@@ -1162,7 +1088,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
         description: quizForm.description.trim() || null,
         duration: toNonNegativeNumberOrZero(quizForm.duration),
         passing_score: toNonNegativeNumberOrZero(quizForm.passing_score),
-        weight: toNonNegativeNumberOrZero(quizForm.weight),
+        weight: quizForm.weight.trim() ? toNonNegativeNumberOrZero(quizForm.weight) : 100,
         max_attempts: toNonNegativeNumberOrZero(quizForm.max_attempts),
         open_at: toApiDateTimeOrNull(quizForm.open_at),
         close_at: toApiDateTimeOrNull(quizForm.close_at),
@@ -1646,16 +1572,6 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
     }
     handleSaveCourse();
   };
-
-  useEffect(() => {
-    return () => {
-      if (autosaveTimerRef.current) {
-        clearTimeout(autosaveTimerRef.current);
-      }
-    };
-  }, []);
-
-  // Autosave dinonaktifkan sesuai permintaan user. Perubahan hanya disimpan saat tombol "Simpan" diklik secara manual.
 
   useEffect(() => {
     if (activeStepIndex !== 1) return;
@@ -2250,9 +2166,17 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
                               <p className="truncate text-sm font-medium text-[var(--foreground)]">
                                 {lesson.title || `Lesson ${lessonIndex + 1}`}
                               </p>
-                              <p className="text-xs text-[var(--muted-foreground)]">
-                                {lesson.type === "video" ? "Video Lesson" : "File Lesson"} | Durasi {lesson.duration || "-"} menit
-                              </p>
+                              <div className="mt-1 flex flex-wrap items-center gap-2">
+                                <p className="text-xs text-[var(--muted-foreground)]">
+                                  {lesson.type === "video" ? "Video Lesson" : "File Lesson"} | Durasi{" "}
+                                  {lesson.duration || "-"} menit
+                                </p>
+                                {lesson.status === "archived" ? (
+                                  <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
+                                    Archived
+                                  </span>
+                                ) : null}
+                              </div>
                             </div>
                           </div>
 
@@ -2676,18 +2600,6 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
                 min={0}
                 value={quizForm.passing_score}
                 onChange={(event) => setQuizForm((prev) => ({ ...prev, passing_score: event.target.value }))}
-                className="border-[var(--border)] bg-[var(--card)]"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="quiz-weight">Weight</Label>
-              <Input
-                id="quiz-weight"
-                type="number"
-                min={0}
-                value={quizForm.weight}
-                onChange={(event) => setQuizForm((prev) => ({ ...prev, weight: event.target.value }))}
                 className="border-[var(--border)] bg-[var(--card)]"
               />
             </div>

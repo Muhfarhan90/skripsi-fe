@@ -130,6 +130,37 @@ export interface AdminCourseOffering {
   updated_at?: string | null;
 }
 
+export interface AdminCompletionSnapshot {
+  course_id?: number | null;
+  course_offering_id?: number | null;
+  lesson_ids?: number[];
+  quiz_ids?: number[];
+  assignment_ids?: number[];
+  required_assignment_ids?: number[];
+  quiz_grade_items?: Array<{
+    quiz_id: number;
+    weight: number;
+    passing_score?: number | null;
+  }>;
+  assignment_grade_items?: Array<{
+    assignment_id: number;
+    is_required_for_certificate?: boolean;
+  }>;
+  snapshot_at?: string | null;
+}
+
+export interface AdminCourseOfferingSnapshot {
+  course_id?: number | null;
+  course_title?: string | null;
+  course_slug?: string | null;
+  academic_period_id?: number | null;
+  period_code?: string | null;
+  period_name?: string | null;
+  price?: number | string | null;
+  discount_price?: number | string | null;
+  final_price?: number | string | null;
+}
+
 export interface AdminSection {
   id: number;
   course_id: number;
@@ -149,6 +180,7 @@ export interface AdminCourseCurriculumLesson {
   duration: number;
   sort_order: number;
   is_preview: boolean;
+  status?: "published" | "archived" | string | null;
 }
 
 export interface AdminCourseCurriculumSection {
@@ -334,6 +366,12 @@ export interface AdminOrderItem {
   course_id: number | null;
   course_offering_id?: number | null;
   price: number;
+  course_title?: string | null;
+  course_slug?: string | null;
+  period_code?: string | null;
+  period_name?: string | null;
+  course_snapshot?: Record<string, unknown> | null;
+  course_offering_snapshot?: AdminCourseOfferingSnapshot | null;
   course?: {
     id: number;
     title: string;
@@ -416,6 +454,7 @@ export interface AdminOfferingEnrollment {
     approved_assignments: number;
     is_satisfied: boolean;
   } | null;
+  completion_snapshot?: AdminCompletionSnapshot | null;
   has_certificate: boolean;
   certificate_status: string;
   can_generate_certificate: boolean;
@@ -789,6 +828,7 @@ export interface CourseCurriculumLessonPayload {
   duration?: number;
   sort_order?: number;
   is_preview?: boolean;
+  status?: "published" | "archived";
 }
 
 export interface CourseCurriculumSectionPayload {
@@ -820,6 +860,7 @@ export interface LessonPayload {
   duration?: number | null;
   sort_order?: number | null;
   is_preview?: boolean;
+  status?: "published" | "archived";
 }
 
 export interface UserPayload {

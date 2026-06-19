@@ -124,6 +124,7 @@ export default function StudentEnrollmentDetailPage() {
   const nextLesson = nextLessonQuery.data;
   const curriculumSections = curriculumQuery.data?.sections ?? course?.sections ?? [];
   const progressValue = toProgressValue(summary?.progress ?? enrollment.progress);
+  const enrollmentStatus = summary?.status ?? enrollment.status;
   const requirementItems = parseTextItems(course?.requirements);
   const outcomeItems = parseTextItems(course?.outcomes);
   const descriptionText = course?.description?.trim() || "Deskripsi kelas belum tersedia.";
@@ -132,19 +133,22 @@ export default function StudentEnrollmentDetailPage() {
   const certificate = certificateQuery.data;
   const hasCertificate = summary?.has_certificate ?? enrollment.has_certificate ?? Boolean(certificate);
   const isProgressComplete = progressValue >= 100;
-  const learnHref = isProgressComplete
+  const canOpenCertificatePanel = hasCertificate || Boolean(summary?.can_generate_certificate);
+  const learnHref = canOpenCertificatePanel
     ? `/student/enrollments/${enrollment.id}/learn?panel=certificate`
     : `/student/enrollments/${enrollment.id}/learn`;
-  const primaryActionLabel = isProgressComplete ? "Lihat Sertifikat" : "Lanjut Belajar";
+  const primaryActionLabel = canOpenCertificatePanel ? "Lihat Sertifikat" : "Lanjut Belajar";
   const certificateStatus = hasCertificate
     ? "Sertifikat tersedia"
     : !isProgressComplete
       ? "Belum tersedia"
       : assignmentRequirement && !assignmentRequirement.is_satisfied
         ? "Menunggu approval assignment"
-        : certificateQuery.isLoading
-          ? "Sertifikat sedang disiapkan"
-          : "Belum tersedia";
+        : summary?.can_generate_certificate
+          ? "Siap digenerate"
+          : certificateQuery.isLoading
+            ? "Sertifikat sedang disiapkan"
+            : summary?.certificate_block_reason ?? "Belum tersedia";
   const instructorHref = course ? getCourseInstructorHref(course) : null;
 
   return (
@@ -163,7 +167,7 @@ export default function StudentEnrollmentDetailPage() {
             <div className="space-y-4">
               <div className="flex flex-wrap items-center gap-2.5">
                 <span className="rounded-full bg-[var(--primary)]/10 px-3.5 py-1 text-[10px] font-black uppercase tracking-wider text-[var(--primary)]">
-                  {enrollment.status}
+                  {enrollmentStatus}
                 </span>
                 {course?.category_name ? (
                   <span className="rounded-full border border-[var(--border)] bg-[var(--surface-soft)] px-3.5 py-1 text-[10px] font-black uppercase tracking-wider text-[var(--foreground)]">

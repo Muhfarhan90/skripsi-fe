@@ -46,9 +46,9 @@ export function AdminCourseActivityAssignmentReviewPage() {
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState("all");
   const [assignmentFilter, setAssignmentFilter] = useState("all");
-  const [reviewDraft, setReviewDraft] = useState<{ submissionId: number | null; value: string }>({
+  const [reviewDraft, setReviewDraft] = useState<{ submissionId: number | null; notes: string }>({
     submissionId: null,
-    value: "",
+    notes: "",
   });
 
   const activePeriodsQuery = useQuery({
@@ -131,7 +131,7 @@ export function AdminCourseActivityAssignmentReviewPage() {
   );
   const reviewNotes =
     reviewDraft.submissionId === effectiveSelectedSubmissionId
-      ? reviewDraft.value
+      ? reviewDraft.notes
       : selectedSubmission?.review_notes ?? "";
   const courseMasterHref = selectedOffering?.course_id
     ? `/admin/master-data/courses/${selectedOffering.course_id}?step=curriculum`
@@ -197,7 +197,7 @@ export function AdminCourseActivityAssignmentReviewPage() {
     setPage(1);
     setStatusFilter("all");
     setAssignmentFilter("all");
-    setReviewDraft({ submissionId: null, value: "" });
+    setReviewDraft({ submissionId: null, notes: "" });
 
     const nextParams = new URLSearchParams(searchParams.toString());
 
@@ -575,11 +575,12 @@ export function AdminCourseActivityAssignmentReviewPage() {
                         onChange={(event) =>
                           setReviewDraft({
                             submissionId: effectiveSelectedSubmissionId,
-                            value: event.target.value,
+                            notes: event.target.value,
                           })
                         }
                         placeholder="Tulis feedback singkat untuk student..."
                         className="min-h-28 border-[var(--border)] bg-[var(--card)]"
+                        disabled={selectedSubmission.status === "approved"}
                       />
                       {selectedSubmission.review_notes ? (
                         <p className="text-xs text-[var(--muted-foreground)]">
@@ -602,7 +603,7 @@ export function AdminCourseActivityAssignmentReviewPage() {
                         type="button"
                         variant="outline"
                         onClick={() => handleSubmitReview("revision_required")}
-                        disabled={reviewMutation.isPending}
+                        disabled={reviewMutation.isPending || selectedSubmission.status === "approved"}
                         className="border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100"
                       >
                         {reviewMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : null}

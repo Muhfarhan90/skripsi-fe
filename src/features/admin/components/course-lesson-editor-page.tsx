@@ -31,6 +31,7 @@ interface CourseLessonEditorPageProps {
 interface LessonFormState {
   title: string;
   type: "video" | "file";
+  status: "published" | "archived";
   duration: string;
   lesson_url: string;
   lesson_file: File | null;
@@ -47,6 +48,7 @@ function normalizeError(error: unknown): string {
 const DEFAULT_FORM: LessonFormState = {
   title: "",
   type: "video",
+  status: "published",
   duration: "",
   lesson_url: "",
   lesson_file: null,
@@ -88,6 +90,7 @@ export function CourseLessonEditorPage({
       return {
         title: editingLesson.title,
         type: editingLesson.type,
+        status: editingLesson.status === "archived" ? "archived" : "published",
         duration: String(editingLesson.duration ?? ""),
         lesson_url: editingLesson.lesson_url ?? "",
         lesson_file: null,
@@ -144,6 +147,7 @@ export function CourseLessonEditorPage({
         lesson_file: sourceType === "upload" ? form.lesson_file : null,
         description: form.description.trim() || null,
         is_preview: form.is_preview,
+        status: form.status,
       };
 
       if (isEditMode && lessonId) {
@@ -258,6 +262,25 @@ export function CourseLessonEditorPage({
                 onChange={(event) => updateForm("duration", event.target.value)}
                 className="border-[var(--border)] bg-[var(--card)]"
               />
+            </div>
+
+            <div className="space-y-1.5 md:col-span-2">
+              <Label>Status Lesson</Label>
+              <Select
+                value={form.status}
+                onValueChange={(value) => updateForm("status", (value as LessonFormState["status"]) ?? "published")}
+              >
+                <SelectTrigger className="h-9 w-full border-[var(--border)] bg-[var(--card)]">
+                  <SelectValue placeholder="Pilih status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="published">Published</SelectItem>
+                  <SelectItem value="archived">Archived</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-[var(--muted-foreground)]">
+                Archived menyembunyikan lesson dari akses student baru tanpa menghapus histori belajar.
+              </p>
             </div>
 
             <div className="space-y-1.5 md:col-span-2">
