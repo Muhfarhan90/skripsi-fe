@@ -21,6 +21,8 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { BrandLogo, BrandMark } from "@/components/shared/brand-logo";
 import { useLogoutAction } from "@/features/auth/hooks/use-logout-action";
+import { useAuthStore } from "@/features/auth/store/auth-store";
+import { resolvePublicFileUrl } from "@/lib/file-url";
 import { NotificationBell } from "@/features/notifications/components/notification-bell";
 import {
   getStudentMobileBackHref,
@@ -178,6 +180,7 @@ export function StudentTopbar({
   onToggleTheme,
 }: StudentTopbarProps) {
   const logoutMutation = useLogoutAction();
+  const user = useAuthStore((state) => state.user);
   const websiteSettingsQuery = useQuery({
     queryKey: ["public", "website-settings"],
     queryFn: getPublicWebsiteSettings,
@@ -263,9 +266,16 @@ export function StudentTopbar({
                   className="inline-flex size-9 items-center justify-center rounded-xl transition active:scale-95"
                   aria-label="Buka menu profil student"
                 >
-                  <span className="inline-flex size-9 items-center justify-center rounded-xl bg-[var(--primary)] text-xs font-bold text-white shadow-sm">
-                    {fullName.trim().charAt(0).toUpperCase() || "S"}
-                  </span>
+                  {user?.avatar ? (
+                    <div
+                      className="size-9 rounded-xl bg-cover bg-center border border-[var(--border)] bg-[var(--surface-soft)] shadow-inner"
+                      style={{ backgroundImage: `url("${resolvePublicFileUrl(user.avatar)}")` }}
+                    />
+                  ) : (
+                    <span className="inline-flex size-9 items-center justify-center rounded-xl bg-[var(--primary)] text-xs font-bold text-white shadow-sm">
+                      {fullName.trim().charAt(0).toUpperCase() || "S"}
+                    </span>
+                  )}
                 </PopoverTrigger>
 
                 <PopoverContent
@@ -333,9 +343,16 @@ export function StudentTopbar({
                 className="inline-flex items-center gap-2 rounded-xl px-2 py-1 text-left transition hover:bg-[var(--surface-hover)]"
                 aria-label="Buka menu profil student"
               >
-                <span className="inline-flex size-9 items-center justify-center rounded-full bg-[var(--primary)] text-xs font-semibold text-white shadow-sm">
-                  {fullName.trim().charAt(0).toUpperCase() || "S"}
-                </span>
+                {user?.avatar ? (
+                  <div
+                    className="size-9 rounded-full bg-cover bg-center border border-[var(--border)] bg-[var(--surface-soft)] shadow-inner"
+                    style={{ backgroundImage: `url("${resolvePublicFileUrl(user.avatar)}")` }}
+                  />
+                ) : (
+                  <span className="inline-flex size-9 items-center justify-center rounded-full bg-[var(--primary)] text-xs font-semibold text-white shadow-sm">
+                    {fullName.trim().charAt(0).toUpperCase() || "S"}
+                  </span>
+                )}
                 <span className="hidden min-w-0 sm:block">
                   <span className="block max-w-32 truncate text-sm font-semibold text-[var(--foreground)]">{fullName}</span>
                 </span>

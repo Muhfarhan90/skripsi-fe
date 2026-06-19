@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BookOpen,
@@ -24,6 +24,7 @@ import { useAuthStore } from "@/features/auth/store/auth-store";
 import { useTheme } from "@/providers/theme-provider";
 import { apiRequest } from "@/lib/api/client";
 import { cn } from "@/lib/utils/cn";
+import { resolvePublicFileUrl } from "@/lib/file-url";
 import type { AuthUser } from "@/types/auth";
 
 // ── API helpers ───────────────────────────────────────────────────────────────
@@ -37,12 +38,36 @@ interface UpdateProfilePayload {
   date_of_birth?: string | null;
   school_origin?: string | null;
   nisn?: string | null;
+  avatar?: File | string | null;
 }
 
 function updateProfile(payload: UpdateProfilePayload) {
+  const hasFile = payload.avatar instanceof File;
+
+  if (hasFile) {
+    const formData = new FormData();
+    Object.entries(payload).forEach(([key, val]) => {
+      if (val !== undefined && val !== null) {
+        if (key === "avatar") {
+          formData.append(key, val);
+        } else {
+          formData.append(key, String(val));
+        }
+      }
+    });
+    formData.append("_method", "PUT");
+
+    return apiRequest<AuthUser>("/api/auth/me", {
+      method: "POST",
+      body: formData,
+    });
+  }
+
+  const { avatar, ...jsonPayload } = payload;
+
   return apiRequest<AuthUser>("/api/auth/me", {
     method: "PUT",
-    body: JSON.stringify(payload),
+    body: JSON.stringify(jsonPayload),
   });
 }
 
@@ -116,6 +141,21 @@ export default function StudentProfilePage() {
       })
     : null;
 
+  const avatarPreviewUrl = useMemo(() => {
+    const avatar = form.avatar;
+    if (!avatar) return null;
+    if (avatar instanceof File) return URL.createObjectURL(avatar);
+    return resolvePublicFileUrl(avatar) ?? avatar;
+  }, [form.avatar]);
+
+  useEffect(() => {
+    if (!(form.avatar instanceof File) || !avatarPreviewUrl) {
+      return;
+    }
+
+    return () => URL.revokeObjectURL(avatarPreviewUrl);
+  }, [form.avatar, avatarPreviewUrl]);
+
   function startEdit() {
     setForm({
       fullname: user?.fullname ?? "",
@@ -126,8 +166,21 @@ export default function StudentProfilePage() {
       date_of_birth: user?.date_of_birth ?? "",
       school_origin: user?.school_origin ?? "",
       nisn: user?.nisn ?? "",
+      avatar: user?.avatar ?? null,
     });
     setIsEditing(true);
+  }
+
+  function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Ukuran berkas gambar maksimal 2MB.");
+      return;
+    }
+
+    setForm((f) => ({ ...f, avatar: file }));
   }
 
   function cancelEdit() {
@@ -137,6 +190,10 @@ export default function StudentProfilePage() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!form.fullname?.trim()) {
+      toast.error("Nama lengkap wajib diisi");
+      return;
+    }
     updateMutation.mutate(form);
   }
 
@@ -151,9 +208,17 @@ export default function StudentProfilePage() {
               {/* Avatar */}
               <div className="flex items-center gap-3">
                 <div className="relative">
-                  <span className="inline-flex size-16 items-center justify-center rounded-2xl bg-white/20 text-2xl font-bold text-white shadow-inner">
-                    {initials}
-                  </span>
+                  {user?.avatar ? (
+                    <div
+                      aria-label={user.fullname || "User Avatar"}
+                      className="size-16 rounded-2xl bg-cover bg-center bg-white/10 shadow-inner"
+                      style={{ backgroundImage: `url("${resolvePublicFileUrl(user.avatar)}")` }}
+                    />
+                  ) : (
+                    <span className="inline-flex size-16 items-center justify-center rounded-2xl bg-white/20 text-2xl font-bold text-white shadow-inner">
+                      {initials}
+                    </span>
+                  )}
                   <span className="absolute -bottom-1 -right-1 inline-flex size-5 items-center justify-center rounded-full border-2 border-[var(--primary)] bg-emerald-400">
                     <CheckCircle2 className="size-3 text-white" />
                   </span>
@@ -274,6 +339,45 @@ export default function StudentProfilePage() {
             </div>
 
             <div className="space-y-4 p-4">
+              {/* Foto Profil */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-[var(--foreground)]">
+                  Foto Profil
+                </label>
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    {avatarPreviewUrl ? (
+                      <div
+                        className="size-14 rounded-xl bg-cover bg-center border border-[var(--border)] bg-[var(--surface-soft)] shadow-inner"
+                        style={{ backgroundImage: `url("${avatarPreviewUrl}")` }}
+                      />
+                    ) : (
+                      <span className="inline-flex size-14 items-center justify-center rounded-xl bg-[var(--primary)]/10 text-xl font-bold text-[var(--primary)]">
+                        {initials}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarChange}
+                      className="hidden"
+                      id="avatar-upload"
+                    />
+                    <label
+                      htmlFor="avatar-upload"
+                      className="inline-flex h-8 cursor-pointer items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 text-xs font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-hover)] active:scale-95"
+                    >
+                      Pilih Gambar
+                    </label>
+                    <p className="text-[10px] text-[var(--muted-foreground)]">
+                      Format JPG, PNG, atau WebP maksimal 2MB.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               {/* Full name */}
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-[var(--foreground)]" htmlFor="fullname">
