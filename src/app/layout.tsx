@@ -11,22 +11,28 @@ const poppins = Poppins({
   weight: ["400", "500", "600", "700"],
 });
 
+const STATIC_PWA_ICON_VERSION = "cms-logo";
+
+function pwaIconPath(path: string): string {
+  return `${path}?v=${STATIC_PWA_ICON_VERSION}`;
+}
+
 export const metadata: Metadata = {
   applicationName: "UPNVJT Pre-University",
   title: {
     default: "UPNVJT Pre-University",
     template: "%s | UPNVJT Pre-University",
   },
-  description: "Platform pembelajaran Pre-University UPN \"Veteran\" Jawa Timur untuk membantu transisi akademik calon mahasiswa.",
+  description: 'Platform pembelajaran Pre-University UPN "Veteran" Jawa Timur untuk membantu transisi akademik calon mahasiswa.',
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/app-icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/app-icon-512.png", sizes: "512x512", type: "image/png" },
+      { url: pwaIconPath("/favicon.ico"), sizes: "any", type: "image/png" },
+      { url: pwaIconPath("/app-icon-192.png"), sizes: "192x192", type: "image/png" },
+      { url: pwaIconPath("/app-icon-512.png"), sizes: "512x512", type: "image/png" },
     ],
-    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
-    shortcut: ["/favicon.ico"],
+    apple: [{ url: pwaIconPath("/apple-touch-icon.png"), sizes: "180x180", type: "image/png" }],
+    shortcut: [pwaIconPath("/favicon.ico")],
   },
   appleWebApp: {
     capable: true,

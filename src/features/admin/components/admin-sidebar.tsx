@@ -31,9 +31,9 @@ interface SidebarMenuProps {
 
 function SidebarMenu({ pathname, roleName, collapsed, isMobile, onNavigate }: SidebarMenuProps) {
   const settingsQuery = useQuery({
-    queryKey: ["public-website-settings"],
+    queryKey: ["public", "website-settings"],
     queryFn: getPublicWebsiteSettings,
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
   });
   const settings = settingsQuery.data;
 

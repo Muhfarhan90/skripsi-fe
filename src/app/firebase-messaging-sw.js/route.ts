@@ -1,28 +1,49 @@
 import { NextResponse } from "next/server";
 import { getFirebaseWebConfig } from "@/lib/env";
+import {
+  getPwaAssetVersion,
+  getPwaWebsiteSettings,
+  getVersionedPwaIconPath,
+  PWA_ICON_PATHS,
+} from "@/features/pwa/lib/pwa-icon";
 
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
 
 const FIREBASE_COMPAT_SDK_VERSION = "10.13.2";
 const ENABLE_OFFLINE = process.env.NODE_ENV === "production";
 
-export function GET() {
+function createCacheVersion(version: string | null): string {
+  const normalized = (version || "default").replace(/[^a-zA-Z0-9_-]/g, "-").slice(0, 80);
+  return normalized || "default";
+}
+
+export async function GET() {
+  const settings = await getPwaWebsiteSettings();
+  const cacheVersion = createCacheVersion(getPwaAssetVersion(settings));
+  const offlineUrl = "/offline";
+  const manifestPath = getVersionedPwaIconPath("/manifest.webmanifest", settings);
+  const icon192 = getVersionedPwaIconPath(PWA_ICON_PATHS.icon192, settings);
+  const icon512 = getVersionedPwaIconPath(PWA_ICON_PATHS.icon512, settings);
+  const maskable192 = getVersionedPwaIconPath(PWA_ICON_PATHS.maskable192, settings);
+  const maskable512 = getVersionedPwaIconPath(PWA_ICON_PATHS.maskable512, settings);
+  const appleTouchIcon = getVersionedPwaIconPath(PWA_ICON_PATHS.appleTouch, settings);
+  const coreAssets = [
+    offlineUrl,
+    manifestPath,
+    icon192,
+    icon512,
+    maskable192,
+    maskable512,
+    appleTouchIcon,
+  ];
   const firebaseConfig = JSON.stringify(getFirebaseWebConfig());
 
   const script = `
 const ENABLE_OFFLINE = ${JSON.stringify(ENABLE_OFFLINE)};
-const STATIC_CACHE = "lms-static-v1";
-const RUNTIME_CACHE = "lms-runtime-v1";
-const OFFLINE_URL = "/offline";
-const CORE_ASSETS = [
-  OFFLINE_URL,
-  "/manifest.webmanifest",
-  "/app-icon-192.png",
-  "/app-icon-512.png",
-  "/app-icon-maskable-192.png",
-  "/app-icon-maskable-512.png",
-  "/apple-touch-icon.png",
-];
+const STATIC_CACHE = ${JSON.stringify(`lms-static-${cacheVersion}`)};
+const RUNTIME_CACHE = ${JSON.stringify(`lms-runtime-${cacheVersion}`)};
+const OFFLINE_URL = ${JSON.stringify(offlineUrl)};
+const CORE_ASSETS = ${JSON.stringify(coreAssets, null, 2)};
 
 let lastNotificationFingerprint = null;
 let lastNotificationAt = 0;
@@ -50,8 +71,8 @@ function normalizePayload(payload) {
     data.route ||
     fcmOptions.link ||
     "/";
-  const icon = notification.icon || data.icon || "/app-icon-192.png";
-  const badge = notification.badge || data.badge || "/app-icon-maskable-192.png";
+  const icon = notification.icon || data.icon || ${JSON.stringify(icon192)};
+  const badge = notification.badge || data.badge || ${JSON.stringify(maskable192)};
 
   return {
     title,
