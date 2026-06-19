@@ -61,6 +61,15 @@ export function formatProgress(progress: number | null | undefined): string {
   return `${Math.max(0, Number(progress ?? 0))}%`;
 }
 
+export function formatGradeScore(score: number | null | undefined): string {
+  if (score === null || score === undefined || Number.isNaN(Number(score))) {
+    return "-";
+  }
+
+  const normalized = Number(score);
+  return Number.isInteger(normalized) ? String(normalized) : normalized.toFixed(2);
+}
+
 export function formatAssignmentRequirementSummary(
   requirement: AdminOfferingEnrollment["assignment_requirement"] | null | undefined,
 ): string {
