@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, CheckCircle2, Clock3, PackageOpen, XCircle } from "lucide-react";
 import { getStudentOrders } from "@/features/student/api/store-api";
+import type { StoreOrderItem } from "@/types/store";
 
 function formatCurrency(amount: number | null | undefined): string {
   const value = Number(amount ?? 0);
@@ -21,6 +22,16 @@ function formatOrderDate(dateString: string | null | undefined): string {
     month: "short",
     year: "numeric",
   });
+}
+
+function getOrderItemCourseTitle(item: StoreOrderItem | undefined): string | null {
+  if (!item) return null;
+  return (
+    item.course_title?.trim() ||
+    item.course_offering_snapshot?.course_title?.trim() ||
+    item.course?.title?.trim() ||
+    null
+  );
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -128,9 +139,9 @@ export default function StudentOrdersPage() {
               </div>
 
               {/* Course titles preview */}
-              {order.items.length > 0 && order.items[0]?.course?.title ? (
+              {order.items.length > 0 && getOrderItemCourseTitle(order.items[0]) ? (
                 <p className="mt-2 line-clamp-1 text-xs text-[var(--muted-foreground)]">
-                  {order.items[0].course.title}
+                  {getOrderItemCourseTitle(order.items[0])}
                   {order.items.length > 1 ? ` +${order.items.length - 1} lainnya` : ""}
                 </p>
               ) : null}

@@ -10,8 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { StatusBadge } from "@/features/admin/components/status-badge";
 import { getAdminOrderById } from "@/features/admin/api/master-api";
-import { resolvePublicFileUrl } from "@/lib/file-url";
-import type { AdminOrderTransaction } from "@/features/admin/api/master-api";
+import type { AdminOrderItem, AdminOrderTransaction } from "@/features/admin/api/master-api";
 
 function formatCurrency(amount: number | string | null | undefined): string {
   return new Intl.NumberFormat("id-ID", {
@@ -38,6 +37,22 @@ function formatDateTime(value: string | null | undefined): string {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date);
+}
+
+function getOrderItemCourseTitle(item: AdminOrderItem): string {
+  return (
+    item.course_title?.trim() ||
+    item.course_offering_snapshot?.course_title?.trim() ||
+    item.course?.title?.trim() ||
+    `Course #${item.course_id ?? "-"}`
+  );
+}
+
+function getOrderItemPeriodLabel(item: AdminOrderItem): string | null {
+  const code = item.period_code?.trim() || item.course_offering_snapshot?.period_code?.trim();
+  const name = item.period_name?.trim() || item.course_offering_snapshot?.period_name?.trim();
+  const chunks = [code, name].filter(Boolean);
+  return chunks.length > 0 ? chunks.join(" - ") : null;
 }
 
 export default function AdminOrderDetailPage() {
@@ -127,10 +142,15 @@ export default function AdminOrderDetailPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--border)]">
-                    {order.items.map((item) => (
-                      <tr key={`${item.course_offering_id ?? item.course_id}-${item.price}`}>
+                    {order.items.map((item, index) => (
+                      <tr key={`${item.course_offering_id ?? item.course_id}-${item.price}-${index}`}>
                         <td className="px-4 py-3 text-sm text-[var(--foreground)]">
-                          {item.course?.title ?? `Course #${item.course_id ?? "-"}`}
+                          <div className="space-y-1">
+                            <p className="font-medium">{getOrderItemCourseTitle(item)}</p>
+                            {getOrderItemPeriodLabel(item) ? (
+                              <p className="text-xs text-[var(--muted-foreground)]">{getOrderItemPeriodLabel(item)}</p>
+                            ) : null}
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-right text-sm font-medium text-[var(--foreground)]">
                           {formatCurrency(item.price)}

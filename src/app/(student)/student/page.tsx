@@ -18,7 +18,7 @@ import { getNotifications, notificationQueryKeys } from "@/features/notification
 import { getStudentEnrollments, getStudentOrders } from "@/features/student/api/store-api";
 import { formatRemainingAccessTime } from "@/features/student/lib/date-time";
 import type { UserNotification } from "@/types/notification";
-import type { StoreEnrollment, StoreOrder } from "@/types/store";
+import type { StoreEnrollment, StoreOrder, StoreOrderItem } from "@/types/store";
 
 const currencyFormatter = new Intl.NumberFormat("id-ID", {
   style: "currency",
@@ -99,12 +99,25 @@ function formatShortDate(value: string | null | undefined): string {
   return shortDateFormatter.format(date);
 }
 
+function getOrderItemCourseTitle(item: StoreOrderItem | undefined): string | null {
+  if (!item) {
+    return null;
+  }
+
+  return (
+    item.course_title?.trim() ||
+    item.course_offering_snapshot?.course_title?.trim() ||
+    item.course?.title?.trim() ||
+    null
+  );
+}
+
 function summarizeOrderItems(order: StoreOrder): string {
   if (order.items.length === 0) {
     return "Belum ada item";
   }
 
-  const firstCourseTitle = order.items[0]?.course?.title;
+  const firstCourseTitle = getOrderItemCourseTitle(order.items[0]);
   if (order.items.length === 1 && firstCourseTitle) {
     return firstCourseTitle;
   }

@@ -4,10 +4,9 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { getStudentOrderById } from "@/features/student/api/store-api";
-import { resolvePublicFileUrl } from "@/lib/file-url";
 import type { StoreOrderItem } from "@/types/store";
 
-function formatCurrency(amount: number | null | undefined): string {
+function formatCurrency(amount: number | string | null | undefined): string {
   const value = Number(amount ?? 0);
   return new Intl.NumberFormat("id-ID", {
     style: "currency",
@@ -17,11 +16,27 @@ function formatCurrency(amount: number | null | undefined): string {
 }
 
 function hasItemDiscount(item: StoreOrderItem): boolean {
-  const originalPrice = Number(item.course_offering?.price ?? 0);
-  const discountPrice = Number(item.course_offering?.discount_price ?? 0);
+  const originalPrice = Number(item.course_offering_snapshot?.price ?? item.course_offering?.price ?? 0);
+  const discountPrice = Number(item.course_offering_snapshot?.discount_price ?? item.course_offering?.discount_price ?? 0);
   const paidPrice = Number(item.price ?? 0);
 
   return originalPrice > 0 && discountPrice > 0 && discountPrice < originalPrice && paidPrice === discountPrice;
+}
+
+function getOrderItemCourseTitle(item: StoreOrderItem): string {
+  return (
+    item.course_title?.trim() ||
+    item.course_offering_snapshot?.course_title?.trim() ||
+    item.course?.title?.trim() ||
+    `Course #${item.course_id ?? "-"}`
+  );
+}
+
+function getOrderItemPeriodLabel(item: StoreOrderItem): string | null {
+  const code = item.period_code?.trim() || item.course_offering_snapshot?.period_code?.trim();
+  const name = item.period_name?.trim() || item.course_offering_snapshot?.period_name?.trim();
+  const chunks = [code, name].filter(Boolean);
+  return chunks.length > 0 ? chunks.join(" - ") : null;
 }
 
 export default function StudentOrderDetailPage() {
@@ -62,16 +77,21 @@ export default function StudentOrderDetailPage() {
           <div>
             <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--muted-foreground)]">Item Pembelian</h2>
             <div className="mt-4 space-y-3">
-              {order.items.map((item) => (
+              {order.items.map((item, index) => (
                 <div
-                  key={item.course_offering_id ?? item.course_id ?? item.price}
-                  className="flex items-center justify-between gap-4 text-sm"
+                  key={`${item.course_offering_id ?? item.course_id ?? item.price}-${index}`}
+                  className="flex items-start justify-between gap-4 text-sm"
                 >
-                  <span className="font-medium text-foreground">{item.course?.title ?? `Course #${item.course_id}`}</span>
+                  <div className="min-w-0">
+                    <p className="font-medium text-foreground">{getOrderItemCourseTitle(item)}</p>
+                    {getOrderItemPeriodLabel(item) ? (
+                      <p className="mt-0.5 text-xs text-muted-foreground">{getOrderItemPeriodLabel(item)}</p>
+                    ) : null}
+                  </div>
                   <div className="text-right">
                     {hasItemDiscount(item) ? (
                       <p className="text-xs text-muted-foreground line-through">
-                        {formatCurrency(item.course_offering?.price)}
+                        {formatCurrency(item.course_offering_snapshot?.price ?? item.course_offering?.price)}
                       </p>
                     ) : null}
                     <p className="font-semibold text-foreground">
