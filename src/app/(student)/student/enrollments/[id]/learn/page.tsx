@@ -686,6 +686,9 @@ export default function StudentEnrollmentLearnPage() {
         ? "Revisi Assignment"
         : "Mulai Assignment"
       : null;
+  const isActiveAssignmentApproved = activeAssignment
+    ? approvedAssignmentIds.has(activeAssignment.id) || isAssignmentApproved(activeAssignment)
+    : false;
   const quizAttempts = quizAttemptsQuery.data ?? [];
   const activeQuizAttempt = getActiveQuizAttempt(quizAttempts);
   const latestQuizAttempt = getLatestQuizAttempt(quizAttempts);
@@ -1494,6 +1497,17 @@ export default function StudentEnrollmentLearnPage() {
                   </p>
                 ) : null}
               </div>
+              {isSelectedQuizPassed && nextLearningContent ? (
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => selectContent(nextLearningContent)}
+                    className="inline-flex h-9 items-center rounded-md border border-[var(--secondary)] bg-[var(--secondary)] px-3 text-sm font-medium text-[var(--secondary-foreground)] transition hover:opacity-90"
+                  >
+                    Materi Berikutnya
+                  </button>
+                </div>
+              ) : null}
               </div>
             ) : activeAssignment ? (
               <div className="space-y-4">
@@ -1596,6 +1610,18 @@ export default function StudentEnrollmentLearnPage() {
                   <p className="text-sm text-red-600">Status assignment belum bisa dimuat.</p>
                 ) : null}
               </div>
+
+              {isActiveAssignmentApproved && nextLearningContent ? (
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => selectContent(nextLearningContent)}
+                    className="inline-flex h-9 items-center rounded-md border border-[var(--secondary)] bg-[var(--secondary)] px-3 text-sm font-medium text-[var(--secondary-foreground)] transition hover:opacity-90"
+                  >
+                    Materi Berikutnya
+                  </button>
+                </div>
+              ) : null}
               </div>
             ) : (
               <p className="text-sm text-[var(--muted-foreground)]">
