@@ -950,8 +950,7 @@ export default function StudentEnrollmentLearnPage() {
                   ) : null}
                 </div>
                 {isCompleted ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-[var(--secondary)] px-2 py-0.5 text-[10px] font-semibold text-[var(--secondary-foreground)] sm:text-xs">
-                    <CheckCircle2 className="size-3.5" />
+                  <span className="inline-flex rounded-full bg-[var(--primary)]/10 px-2 py-0.5 text-[10px] font-semibold text-[var(--primary)] sm:text-xs">
                     Selesai
                   </span>
                 ) : isLocked ? (
