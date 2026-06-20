@@ -84,6 +84,17 @@ function formatDiscount(voucher: AdminVoucher): string {
   return voucher.discount_type === "percentage" ? `${amount}%` : `Rp${amount.toLocaleString("id-ID")}`;
 }
 
+function formatExpiredDate(value: string | null | undefined): string {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+}
+
 export default function AdminVouchersPage() {
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -236,6 +247,9 @@ export default function AdminVouchersPage() {
                     Batas Pakai
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
+                    Expired
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
                     Status
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">
@@ -246,13 +260,13 @@ export default function AdminVouchersPage() {
               <tbody className="divide-y divide-[var(--border)]">
                 {voucherQuery.isLoading ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-6 text-center text-sm text-[var(--muted-foreground)]">
+                    <td colSpan={6} className="px-4 py-6 text-center text-sm text-[var(--muted-foreground)]">
                       Memuat vouchers...
                     </td>
                   </tr>
                 ) : voucherQuery.isError ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-6 text-center text-sm text-red-600">
+                    <td colSpan={6} className="px-4 py-6 text-center text-sm text-red-600">
                       Gagal memuat vouchers. Coba refresh halaman.
                     </td>
                   </tr>
@@ -265,6 +279,9 @@ export default function AdminVouchersPage() {
                       </td>
                       <td className="px-4 py-3 text-sm text-[var(--muted-foreground)]">
                         {voucher.usage_limit ?? "-"}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-[var(--muted-foreground)]">
+                        {formatExpiredDate(voucher.expired_at)}
                       </td>
                       <td className="px-4 py-3 text-sm">
                         <StatusBadge value={voucher.is_active ? "Aktif" : "Nonaktif"} />
@@ -299,7 +316,7 @@ export default function AdminVouchersPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={5} className="px-4 py-6 text-center text-sm text-[var(--muted-foreground)]">
+                    <td colSpan={6} className="px-4 py-6 text-center text-sm text-[var(--muted-foreground)]">
                       Belum ada data vouchers.
                     </td>
                   </tr>
