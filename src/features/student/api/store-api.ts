@@ -367,16 +367,40 @@ export function getStudentEnrollmentAssignmentDetail(enrollmentId: number, assig
 export function submitStudentAssignment(
   enrollmentId: number,
   assignmentId: number,
-  payload: {
-    submission_text?: string;
-    attachment_url?: string;
-  },
+  payload:
+    | {
+        submission_text?: string;
+        attachment_url?: string;
+        attachment_file?: File;
+      }
+    | FormData,
 ) {
+  const body =
+    payload instanceof FormData
+      ? payload
+      : (() => {
+          const formData = new FormData();
+
+          if (payload.submission_text) {
+            formData.append("submission_text", payload.submission_text);
+          }
+
+          if (payload.attachment_url) {
+            formData.append("attachment_url", payload.attachment_url);
+          }
+
+          if (payload.attachment_file) {
+            formData.append("attachment_file", payload.attachment_file);
+          }
+
+          return formData;
+        })();
+
   return studentRequest<StoreAssignmentSubmission>(
     `/api/student/enrollments/${enrollmentId}/assignments/${assignmentId}/submit`,
     {
       method: "POST",
-      body: JSON.stringify(payload),
+      body,
     },
   );
 }

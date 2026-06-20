@@ -13,6 +13,28 @@ export function getLatestQuizAttempt(attempts: StoreQuizAttempt[]): StoreQuizAtt
   return attempts[0] ?? null;
 }
 
+export function isQuizAttemptPassed(
+  attempt: StoreQuizAttempt,
+  passingScore: number | null | undefined,
+): boolean {
+  if (attempt.status !== "graded") {
+    return false;
+  }
+
+  if (passingScore === null || passingScore === undefined) {
+    return true;
+  }
+
+  return attempt.total_score >= passingScore;
+}
+
+export function hasPassedQuizAttempt(
+  attempts: StoreQuizAttempt[],
+  passingScore: number | null | undefined,
+): boolean {
+  return attempts.some((attempt) => isQuizAttemptPassed(attempt, passingScore));
+}
+
 export function getStudentQuizActionLabel(attempts: StoreQuizAttempt[]): string {
   if (getActiveQuizAttempt(attempts)) {
     return "Lanjutkan Quiz";
@@ -61,7 +83,7 @@ export function getStudentQuizAttemptLinkClass(
     return `${baseClass} border-[var(--secondary)] bg-[var(--secondary)] text-[var(--secondary-foreground)]`;
   }
 
-  if (attempt.total_score >= passingScore) {
+  if (isQuizAttemptPassed(attempt, passingScore)) {
     return `${baseClass} border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100`;
   }
 

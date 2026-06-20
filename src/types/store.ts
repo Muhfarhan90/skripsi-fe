@@ -220,6 +220,8 @@ export interface StoreEnrollmentProgressSummary {
   total_assignments?: number;
   completed_assignments?: number;
   remaining_assignments?: number;
+  passed_quiz_ids?: number[];
+  approved_assignment_ids?: number[];
   progress: number;
   status: string;
   has_certificate?: boolean;

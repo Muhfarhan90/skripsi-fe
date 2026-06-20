@@ -32,6 +32,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import { resolvePublicFileUrl } from "@/lib/file-url";
 import {
   createAdminCourseOffering,
   createEmptyAdminPaginationMeta,
@@ -2066,7 +2067,7 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
                         <span className="font-medium text-[var(--foreground)]">Attachment:</span>{" "}
                         {selectedSubmission.attachment_url ? (
                           <a
-                            href={selectedSubmission.attachment_url}
+                            href={resolvePublicFileUrl(selectedSubmission.attachment_url) ?? selectedSubmission.attachment_url}
                             target="_blank"
                             rel="noreferrer"
                             className="text-[var(--primary)] underline-offset-2 hover:underline"

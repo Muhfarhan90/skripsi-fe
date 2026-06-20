@@ -23,6 +23,12 @@ export function getLatestAssignmentSubmission(
   return assignment.submissions?.[0] ?? null;
 }
 
+export function isAssignmentApproved(
+  assignment: Pick<StoreAssignment, "submissions" | "latest_submission">,
+): boolean {
+  return getLatestAssignmentSubmission(assignment)?.status === "approved";
+}
+
 export function hasRemainingAssignmentAttempts(
   maxAttempts: number | null | undefined,
   attemptsUsed: number,

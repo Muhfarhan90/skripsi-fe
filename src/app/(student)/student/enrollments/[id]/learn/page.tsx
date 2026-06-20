@@ -44,12 +44,14 @@ import {
   formatAssignmentStatus,
   getLatestAssignmentSubmission,
   getRemainingAssignmentAttempts,
+  isAssignmentApproved,
 } from "@/features/student/lib/assignment";
 import {
   buildStudentQuizAttemptHref,
   formatQuizAttemptStatus,
   formatQuizDuration,
   getActiveQuizAttempt,
+  hasPassedQuizAttempt,
   getLatestQuizAttempt,
   getStudentQuizAttemptLinkClass,
   getStudentQuizAttemptLinkLabel,
@@ -159,14 +161,37 @@ type SelectedContent =
 
 type LearnPanelTab = "course_content" | "forum";
 
+function isSameContent(left: SelectedContent, right: SelectedContent): boolean {
+  return left.kind === right.kind && left.data.id === right.data.id;
+}
+
+function getOrderedLearningContents(sections: StoreCurriculumSection[]): SelectedContent[] {
+  return sections.flatMap((section) => [
+    ...(section.lessons ?? []).map((lesson) => ({
+      kind: "lesson" as const,
+      sectionId: section.id,
+      data: lesson,
+    })),
+    ...(section.quizzes ?? []).map((quiz) => ({
+      kind: "quiz" as const,
+      sectionId: section.id,
+      data: quiz,
+    })),
+    ...(section.assignments ?? []).map((assignment) => ({
+      kind: "assignment" as const,
+      sectionId: section.id,
+      data: assignment,
+    })),
+  ]);
+}
+
 interface LessonMaterialFrameProps {
   title: string;
   src: string;
   type: StoreLesson["type"];
-  watermarkText: string;
 }
 
-function LessonMaterialFrame({ title, src, type, watermarkText }: LessonMaterialFrameProps) {
+function LessonMaterialFrame({ title, src, type }: LessonMaterialFrameProps) {
   // Detect if the src points directly to an uploaded video file
   const isDirectVideo =
     src.startsWith("http")
@@ -191,15 +216,14 @@ function LessonMaterialFrame({ title, src, type, watermarkText }: LessonMaterial
           Browser Anda tidak mendukung pemutaran video langsung.
         </video>
       ) : (
-        <iframe title={title} src={src} className="h-full w-full bg-black/5" allow="autoplay" />
+        <iframe
+          title={title}
+          src={src}
+          className="h-full w-full bg-black/5"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+          allowFullScreen
+        />
       )}
-      <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden" aria-hidden="true">
-        <div className="absolute inset-0 flex items-center justify-center px-6">
-          <div className="-rotate-[24deg] rounded-md border border-white/8 bg-slate-950/[0.12] px-4 py-2 text-center text-xs font-medium lowercase tracking-[0.18em] text-white/[0.2] shadow-sm backdrop-blur-[1px] sm:px-5 sm:py-2.5 sm:text-sm">
-            {watermarkText}
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
@@ -265,8 +289,9 @@ function canStartQuizFromLearn(
   quiz: StoreQuiz | null,
   attempts: StoreQuizAttempt[],
   isCooldownActive: boolean,
+  isPassed: boolean,
 ): boolean {
-  if (!quiz || !quiz.is_active || getActiveQuizAttempt(attempts)) {
+  if (!quiz || !quiz.is_active || isPassed || getActiveQuizAttempt(attempts)) {
     return false;
   }
 
@@ -377,6 +402,14 @@ export default function StudentEnrollmentLearnPage() {
       ),
     [progressQuery.data],
   );
+  const passedQuizIds = useMemo(
+    () => new Set(summaryQuery.data?.passed_quiz_ids ?? []),
+    [summaryQuery.data?.passed_quiz_ids],
+  );
+  const approvedAssignmentIds = useMemo(
+    () => new Set(summaryQuery.data?.approved_assignment_ids ?? []),
+    [summaryQuery.data?.approved_assignment_ids],
+  );
 
   const orderedLessons = useMemo(
     () =>
@@ -386,6 +419,10 @@ export default function StudentEnrollmentLearnPage() {
           lesson,
         })),
       ),
+    [sections],
+  );
+  const orderedLearningContents = useMemo(
+    () => getOrderedLearningContents(sections),
     [sections],
   );
 
@@ -563,6 +600,21 @@ export default function StudentEnrollmentLearnPage() {
     : hasSelectedContentInSections
       ? selectedContent
       : defaultSelectedContent;
+  const nextLearningContent = useMemo(() => {
+    if (!activeSelectedContent) {
+      return null;
+    }
+
+    const currentIndex = orderedLearningContents.findIndex((item) =>
+      isSameContent(item, activeSelectedContent),
+    );
+
+    if (currentIndex < 0) {
+      return null;
+    }
+
+    return orderedLearningContents[currentIndex + 1] ?? null;
+  }, [activeSelectedContent, orderedLearningContents]);
   const effectiveExpandedSectionIds = useMemo(() => {
     const availableIds = new Set(sections.map((section) => section.id));
     return expandedSectionIds.filter((sectionId) => availableIds.has(sectionId));
@@ -610,7 +662,6 @@ export default function StudentEnrollmentLearnPage() {
   const activeLesson = lessonDetailQuery.data?.lesson ?? selectedLesson;
   const activeLessonCompleted = activeLesson ? completedLessonIds.has(activeLesson.id) : false;
   const embedUrl = activeLesson?.lesson_url ? toEmbeddableUrl(activeLesson.lesson_url) : null;
-  const lessonWatermarkText = "pre univ upnvjt";
   const assignmentsById = useMemo(
     () => new Map((assignmentsQuery.data ?? []).map((assignment) => [assignment.id, assignment])),
     [assignmentsQuery.data],
@@ -638,12 +689,20 @@ export default function StudentEnrollmentLearnPage() {
   const quizAttempts = quizAttemptsQuery.data ?? [];
   const activeQuizAttempt = getActiveQuizAttempt(quizAttempts);
   const latestQuizAttempt = getLatestQuizAttempt(quizAttempts);
+  const isSelectedQuizPassed = selectedQuiz
+    ? passedQuizIds.has(selectedQuiz.id) || hasPassedQuizAttempt(quizAttempts, selectedQuiz.passing_score)
+    : false;
   const cooldownDeadline = getQuizCooldownDeadline(latestQuizAttempt);
   const cooldownDeadlineMs = cooldownDeadline?.getTime() ?? null;
   const remainingCooldownMs =
     cooldownDeadlineMs !== null ? Math.max(cooldownDeadlineMs - nowMs, 0) : null;
   const isCooldownActive = remainingCooldownMs !== null && remainingCooldownMs > 0;
-  const canStartSelectedQuiz = canStartQuizFromLearn(selectedQuiz, quizAttempts, isCooldownActive);
+  const canStartSelectedQuiz = canStartQuizFromLearn(
+    selectedQuiz,
+    quizAttempts,
+    isCooldownActive,
+    isSelectedQuizPassed,
+  );
   const quizActionLabel =
     activeQuizAttempt
       ? "Lanjutkan Quiz"
@@ -908,6 +967,7 @@ export default function StudentEnrollmentLearnPage() {
         {quizzesInSection.map((quiz) => {
           const isActive =
             activeSelectedContent?.kind === "quiz" && activeSelectedContent.data.id === quiz.id;
+          const isCompleted = passedQuizIds.has(quiz.id);
           return (
             <button
               key={`quiz-${quiz.id}`}
@@ -930,8 +990,15 @@ export default function StudentEnrollmentLearnPage() {
                     Quiz - Durasi: {formatLessonDuration(quiz.duration)}
                   </p>
                 </div>
-                <span className="inline-flex rounded-full border border-[var(--border)] px-2 py-0.5 text-[10px] font-semibold text-[var(--muted-foreground)] sm:text-xs">
-                  Quiz
+                <span
+                  className={[
+                    "inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold sm:text-xs",
+                    isCompleted
+                      ? "bg-[var(--primary)]/10 text-[var(--primary)]"
+                      : "border border-[var(--border)] text-[var(--muted-foreground)]",
+                  ].join(" ")}
+                >
+                  {isCompleted ? "Selesai" : "Quiz"}
                 </span>
               </div>
             </button>
@@ -943,6 +1010,7 @@ export default function StudentEnrollmentLearnPage() {
             activeSelectedContent?.kind === "assignment" && activeSelectedContent.data.id === assignment.id;
           const currentAssignment = assignmentsById.get(assignment.id) ?? assignment;
           const latestSubmission = getLatestAssignmentSubmission(currentAssignment);
+          const isCompleted = approvedAssignmentIds.has(assignment.id) || isAssignmentApproved(currentAssignment);
 
           return (
             <button
@@ -968,10 +1036,17 @@ export default function StudentEnrollmentLearnPage() {
                   </p>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1">
-                  <span className="inline-flex rounded-full border border-[var(--border)] px-2 py-0.5 text-[10px] font-semibold text-[var(--muted-foreground)] sm:text-xs">
-                    Assignment
+                  <span
+                    className={[
+                      "inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold sm:text-xs",
+                      isCompleted
+                        ? "bg-[var(--primary)]/10 text-[var(--primary)]"
+                        : "border border-[var(--border)] text-[var(--muted-foreground)]",
+                    ].join(" ")}
+                  >
+                    {isCompleted ? "Selesai" : "Assignment"}
                   </span>
-                  {latestSubmission ? (
+                  {latestSubmission && !isCompleted ? (
                     <span className="text-[11px] font-medium text-[var(--muted-foreground)]">
                       {formatAssignmentStatus(latestSubmission.status)}
                     </span>
@@ -1285,7 +1360,6 @@ export default function StudentEnrollmentLearnPage() {
                   title={`Materi ${activeLesson.title}`}
                   src={embedUrl}
                   type={activeLesson.type}
-                  watermarkText={lessonWatermarkText}
                 />
               ) : (
                 <div className="rounded-md border border-[var(--border)] bg-[var(--muted)] p-4 text-sm text-[var(--muted-foreground)]">
@@ -1293,7 +1367,7 @@ export default function StudentEnrollmentLearnPage() {
                 </div>
               )}
 
-              <div className="flex justify-end">
+              <div className="flex flex-wrap justify-end gap-2">
                 {activeLessonCompleted ? (
                   <span className="inline-flex h-9 items-center gap-2 rounded-md bg-[var(--primary)]/10 px-3 text-sm font-semibold text-[var(--primary)]">
                     <CheckCircle2 className="size-4" />
@@ -1309,6 +1383,15 @@ export default function StudentEnrollmentLearnPage() {
                     Tandai Selesai
                   </button>
                 )}
+                {activeLessonCompleted && nextLearningContent ? (
+                  <button
+                    type="button"
+                    onClick={() => selectContent(nextLearningContent)}
+                    className="inline-flex h-9 items-center rounded-md border border-[var(--secondary)] bg-[var(--secondary)] px-3 text-sm font-medium text-[var(--secondary-foreground)] transition hover:opacity-90"
+                  >
+                    Materi Berikutnya
+                  </button>
+                ) : null}
               </div>
               </div>
             ) : selectedQuiz ? (
@@ -1400,6 +1483,11 @@ export default function StudentEnrollmentLearnPage() {
                 ) : null}
                 {quizAttemptsQuery.isError ? (
                   <p className="text-sm text-red-600">Status attempt quiz belum bisa dimuat.</p>
+                ) : null}
+                {isSelectedQuizPassed ? (
+                  <p className="text-sm text-emerald-600">
+                    Quiz ini sudah lulus. Attempt baru tidak diperlukan.
+                  </p>
                 ) : null}
                 {isCooldownActive ? (
                   <p className="text-sm text-[var(--muted-foreground)]">

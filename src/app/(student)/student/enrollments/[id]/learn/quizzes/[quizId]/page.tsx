@@ -23,6 +23,7 @@ import {
 import {
   formatQuizAttemptStatus,
   getActiveQuizAttempt,
+  hasPassedQuizAttempt,
   getLatestQuizAttempt,
 } from "@/features/student/lib/quiz";
 import { formatUtcDateTimeToJakarta, parseUtcDateTime } from "@/features/student/lib/date-time";
@@ -242,6 +243,7 @@ export default function StudentEnrollmentQuizPage() {
   const isTimedOut = isAttemptInProgress && remainingTimeMs !== null && remainingTimeMs === 0;
   const canEditAttempt = isAttemptInProgress && !attemptLockReason && !isTimedOut;
   const canSubmitAttempt = isAttemptInProgress && (currentAttempt?.answers?.length ?? 0) > 0;
+  const isQuizPassed = hasPassedQuizAttempt(attempts, quiz?.passing_score);
   const unsupportedTypesLabel = (quiz?.unsupported_question_types ?? [])
     .map((type) => formatQuestionType(type))
     .join(", ");
@@ -519,6 +521,16 @@ export default function StudentEnrollmentQuizPage() {
             Attempt terkunci
           </p>
           <p className="mt-1">{attemptLockReason}</p>
+        </div>
+      ) : null}
+
+      {isQuizPassed ? (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+          <p className="flex items-center gap-2 font-medium">
+            <CheckCircle2 className="size-4" />
+            Quiz sudah lulus
+          </p>
+          <p className="mt-1">Attempt baru tidak diperlukan karena nilai lulus sudah tercapai.</p>
         </div>
       ) : null}
 

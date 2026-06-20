@@ -20,18 +20,10 @@ import {
   getRemainingAssignmentAttempts,
 } from "@/features/student/lib/assignment";
 import { formatUtcDateTimeToJakarta } from "@/features/student/lib/date-time";
+import { resolvePublicFileUrl } from "@/lib/file-url";
 
-function isHttpUrl(value: string | null | undefined): boolean {
-  if (!value) {
-    return false;
-  }
-
-  try {
-    const parsed = new URL(value);
-    return parsed.protocol === "http:" || parsed.protocol === "https:";
-  } catch {
-    return false;
-  }
+function getAttachmentHref(value: string | null | undefined): string | null {
+  return resolvePublicFileUrl(value) ?? value?.trim() ?? null;
 }
 
 export default function StudentEnrollmentAssignmentPage() {
@@ -45,6 +37,7 @@ export default function StudentEnrollmentAssignmentPage() {
   const hasRequestedSubmissionId = Number.isFinite(requestedSubmissionId) && requestedSubmissionId > 0;
   const [submissionText, setSubmissionText] = useState("");
   const [attachmentUrl, setAttachmentUrl] = useState("");
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
 
   const assignmentQuery = useQuery({
     queryKey: ["student", "enrollment", enrollmentId, "assignment", assignmentId, "detail"],
@@ -76,16 +69,19 @@ export default function StudentEnrollmentAssignmentPage() {
     : null;
   const canSubmit = assignment ? canSubmitAssignment(assignment) : false;
   const assignmentRequirement = summaryQuery.data?.assignment_requirement;
+  const selectedAttachmentHref = getAttachmentHref(selectedSubmission?.attachment_url);
 
   const submitMutation = useMutation({
     mutationFn: () =>
       submitStudentAssignment(enrollmentId, assignmentId, {
         submission_text: submissionText.trim() || undefined,
         attachment_url: attachmentUrl.trim() || undefined,
+        attachment_file: attachmentFile ?? undefined,
       }),
     onSuccess: (submission) => {
       setSubmissionText("");
       setAttachmentUrl("");
+      setAttachmentFile(null);
       queryClient.invalidateQueries({
         queryKey: ["student", "enrollment", enrollmentId, "assignment", assignmentId, "detail"],
       });
@@ -298,9 +294,9 @@ export default function StudentEnrollmentAssignmentPage() {
                 <div className="rounded-lg border border-[var(--border)] bg-[var(--muted)]/20 p-4">
                   <p className="text-sm font-medium text-[var(--foreground)]">Lampiran</p>
                   {selectedSubmission.attachment_url ? (
-                    isHttpUrl(selectedSubmission.attachment_url) ? (
+                    selectedAttachmentHref ? (
                       <a
-                        href={selectedSubmission.attachment_url}
+                        href={selectedAttachmentHref}
                         target="_blank"
                         rel="noreferrer"
                         className="mt-2 inline-flex text-sm text-primary hover:underline"
@@ -334,7 +330,7 @@ export default function StudentEnrollmentAssignmentPage() {
                 : "Kirim Assignment"}
             </h2>
             <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-              Isi minimal salah satu: teks submission atau lampiran URL/path.
+              Isi minimal salah satu: teks submission, upload file, atau URL lampiran.
             </p>
 
             {!canSubmit ? (
@@ -364,8 +360,34 @@ export default function StudentEnrollmentAssignmentPage() {
                 </div>
 
                 <div className="space-y-2">
+                  <label htmlFor="assignment-attachment-file" className="text-sm font-medium text-[var(--foreground)]">
+                    Upload File
+                  </label>
+                  <input
+                    key={attachmentFile?.name ?? "empty"}
+                    id="assignment-attachment-file"
+                    type="file"
+                    onChange={(event) => setAttachmentFile(event.target.files?.[0] ?? null)}
+                    className="block w-full rounded-md border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm text-[var(--foreground)] file:mr-3 file:rounded-md file:border-0 file:bg-[var(--secondary)] file:px-3 file:py-2 file:text-sm file:font-medium file:text-[var(--secondary-foreground)]"
+                    accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.zip,.rar,.7z,.txt,.jpg,.jpeg,.png"
+                  />
+                  {attachmentFile ? (
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--muted-foreground)]">
+                      <p>File dipilih: {attachmentFile.name}</p>
+                      <button
+                        type="button"
+                        onClick={() => setAttachmentFile(null)}
+                        className="text-primary hover:underline"
+                      >
+                        Hapus file
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="space-y-2">
                   <label htmlFor="assignment-attachment-url" className="text-sm font-medium text-[var(--foreground)]">
-                    Lampiran URL / Path
+                    Lampiran URL / Path Opsional
                   </label>
                   <input
                     id="assignment-attachment-url"
@@ -381,8 +403,8 @@ export default function StudentEnrollmentAssignmentPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      if (!submissionText.trim() && !attachmentUrl.trim()) {
-                        toast.error("Isi submission text atau attachment URL terlebih dahulu.");
+                      if (!submissionText.trim() && !attachmentUrl.trim() && !attachmentFile) {
+                        toast.error("Isi submission text, upload file, atau attachment URL terlebih dahulu.");
                         return;
                       }
 

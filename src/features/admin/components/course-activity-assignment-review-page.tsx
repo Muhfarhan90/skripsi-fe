@@ -33,6 +33,7 @@ import {
 } from "@/features/admin/lib/course-activity";
 import { formatDateTime, toStatusLabel } from "@/features/admin/lib/offering-utils";
 import { ApiError } from "@/lib/api/client";
+import { resolvePublicFileUrl } from "@/lib/file-url";
 
 export function AdminCourseActivityAssignmentReviewPage() {
   const router = useRouter();
@@ -554,7 +555,7 @@ export function AdminCourseActivityAssignmentReviewPage() {
                         <span className="font-medium text-[var(--foreground)]">Attachment:</span>{" "}
                         {selectedSubmission.attachment_url ? (
                           <a
-                            href={selectedSubmission.attachment_url}
+                            href={resolvePublicFileUrl(selectedSubmission.attachment_url) ?? selectedSubmission.attachment_url}
                             target="_blank"
                             rel="noreferrer"
                             className="text-[var(--primary)] underline-offset-2 hover:underline"
