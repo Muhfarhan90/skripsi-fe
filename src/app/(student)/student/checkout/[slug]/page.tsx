@@ -128,8 +128,8 @@ export default function StudentCheckoutPage() {
   const activePrice = hasDiscount ? Number(course.discount_price ?? 0) : Number(course.price ?? 0);
 
   return (
-    <section className="space-y-4">
-      <header className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-4 shadow-sm">
+    <section className="space-y-5">
+      <header className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-5 shadow-sm sm:px-5">
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--primary)]">Checkout Course</p>
         <h1 className="mt-1 text-xl font-bold text-[var(--foreground)]">Buat Order Course</h1>
         <p className="mt-1 text-sm text-[var(--muted-foreground)]">
@@ -137,8 +137,8 @@ export default function StudentCheckoutPage() {
         </p>
       </header>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
-        <article className="space-y-5 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <article className="space-y-5 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm sm:p-5">
           <div className="flex items-start gap-3">
             <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--primary)]/10 text-[var(--primary)]">
               <BookOpen className="size-5" />
@@ -193,28 +193,28 @@ export default function StudentCheckoutPage() {
           </div>
         </article>
 
-        <aside className="space-y-4 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm lg:h-fit">
+        <aside className="space-y-4 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm sm:p-5 lg:h-fit">
           <div>
             <p className="text-sm font-bold text-[var(--foreground)]">Ringkasan Pesanan</p>
             <div className="mt-3 space-y-3 rounded-xl bg-[var(--surface-soft)] p-3">
-              <div className="flex items-start justify-between gap-3 text-sm">
-                <span className="min-w-0 text-[var(--muted-foreground)]">{course.title}</span>
-                <span className="shrink-0 font-medium text-[var(--foreground)]">{formatCurrency(activePrice)}</span>
+              <div className="flex flex-wrap items-start justify-between gap-2 text-sm">
+                <span className="min-w-0 break-words text-[var(--muted-foreground)]">{course.title}</span>
+                <span className="font-medium text-[var(--foreground)]">{formatCurrency(activePrice)}</span>
               </div>
               {hasDiscount ? (
-                <div className="flex items-center justify-between text-xs text-[var(--muted-foreground)]">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--muted-foreground)]">
                   <span>Harga normal</span>
                   <span className="line-through">{formatCurrency(course.price)}</span>
                 </div>
               ) : null}
               {appliedVoucher ? (
-                <div className="flex items-center justify-between text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                   <span>Diskon Voucher ({appliedVoucher.code})</span>
                   <span>-{formatCurrency(appliedVoucher.discount)}</span>
                 </div>
               ) : null}
               <div className="border-t border-[var(--border)] pt-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="text-sm font-bold text-[var(--foreground)]">Estimasi total</span>
                   <span className="text-base font-bold text-[var(--primary)]">
                     {formatCurrency(activePrice - (appliedVoucher?.discount ?? 0))}
@@ -233,26 +233,27 @@ export default function StudentCheckoutPage() {
               <Tag className="size-3.5" />
               Kode Voucher
             </label>
-            <div className="flex items-center overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] focus-within:border-[var(--primary)] focus-within:ring-2 focus-within:ring-[var(--primary)]/20">
-              <input
-                id="voucher"
-                value={voucherCode}
-                onChange={(event) => {
-                  const val = event.target.value;
-                  setVoucherCode(val);
-                  if (!val.trim()) {
-                    setAppliedVoucher(null);
-                  }
-                }}
-                placeholder="Contoh: HEMAT10"
-                className="h-10 flex-1 bg-transparent px-3 text-sm outline-none"
-              />
-              <div className="h-10 border-l border-[var(--border)]" />
+            <div className="space-y-2 sm:flex sm:items-stretch sm:gap-2 sm:space-y-0">
+              <div className="flex min-w-0 flex-1 items-center overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] focus-within:border-[var(--primary)] focus-within:ring-2 focus-within:ring-[var(--primary)]/20">
+                <input
+                  id="voucher"
+                  value={voucherCode}
+                  onChange={(event) => {
+                    const val = event.target.value;
+                    setVoucherCode(val);
+                    if (!val.trim()) {
+                      setAppliedVoucher(null);
+                    }
+                  }}
+                  placeholder="Contoh: HEMAT10"
+                  className="h-10 min-w-0 flex-1 bg-transparent px-3 text-sm outline-none"
+                />
+              </div>
               <button
                 type="button"
                 onClick={() => checkVoucherMutation.mutate()}
                 disabled={!voucherCode.trim() || checkVoucherMutation.isPending}
-                className="inline-flex h-10 items-center justify-center bg-[var(--primary)] px-6 text-sm font-bold text-white transition hover:opacity-90 active:scale-95 disabled:opacity-50 shrink-0"
+                className="inline-flex h-10 w-full items-center justify-center rounded-xl bg-[var(--primary)] px-6 text-sm font-bold text-white transition hover:opacity-90 active:scale-95 disabled:opacity-50 sm:w-auto sm:shrink-0"
               >
                 {checkVoucherMutation.isPending ? "..." : "Klaim"}
               </button>

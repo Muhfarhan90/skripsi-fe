@@ -204,10 +204,10 @@ export default function StudentProfilePage() {
         <article className="overflow-hidden rounded-2xl bg-[var(--primary)] text-white shadow-md">
           {/* Header strip */}
           <div className="px-5 pt-5 pb-4">
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start justify-between gap-3 min-w-0 w-full">
               {/* Avatar */}
-              <div className="flex items-center gap-3">
-                <div className="relative">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="relative shrink-0">
                   {user?.avatar ? (
                     <div
                       aria-label={user.fullname || "User Avatar"}
@@ -223,13 +223,13 @@ export default function StudentProfilePage() {
                     <CheckCircle2 className="size-3 text-white" />
                   </span>
                 </div>
-                <div>
-                  <h1 className="text-lg font-bold text-white leading-tight">
+                <div className="min-w-0">
+                  <h1 className="text-lg font-bold text-white leading-tight truncate">
                     {user?.fullname ?? "—"}
                   </h1>
-                  <p className="text-sm text-white/70">{user?.email ?? "—"}</p>
+                  <p className="text-sm text-white/70 truncate">{user?.email ?? "—"}</p>
                   {joinDate ? (
-                    <p className="mt-0.5 text-xs text-white/50">Bergabung {joinDate}</p>
+                    <p className="mt-0.5 text-xs text-white/50 truncate">Bergabung {joinDate}</p>
                   ) : null}
                 </div>
               </div>
@@ -239,7 +239,7 @@ export default function StudentProfilePage() {
                 <button
                   type="button"
                   onClick={startEdit}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-white/30 bg-white/15 px-3 text-xs font-semibold text-white transition hover:bg-white/25 active:scale-95"
+                  className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-xl border border-white/30 bg-white/15 px-3 text-xs font-semibold text-white transition hover:bg-white/25 active:scale-95"
                 >
                   <Pencil className="size-3.5" />
                   Edit
