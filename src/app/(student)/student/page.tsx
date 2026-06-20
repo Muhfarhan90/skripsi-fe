@@ -1,6 +1,6 @@
 "use client";
 
-import type { ComponentType } from "react";
+import { useState, useEffect, type ComponentType } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -12,6 +12,8 @@ import {
   ReceiptText,
   Sparkles,
   Target,
+  Play,
+  X,
 } from "lucide-react";
 import { useAuthStore } from "@/features/auth/store/auth-store";
 import { getNotifications, notificationQueryKeys } from "@/features/notifications/api/notification-api";
@@ -209,6 +211,117 @@ function QuickActionCard({
 
 export default function StudentPage() {
   const user = useAuthStore((state) => state.user);
+  const [tourStep, setTourStep] = useState<number | null>(null);
+  const [hasSeenTour, setHasSeenTour] = useState(true);
+  const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({});
+
+  const TOUR_STEPS = [
+    {
+      key: "dashboard",
+      title: "1. Dashboard Utama",
+      content: "Halaman utama untuk melihat ringkasan belajar Anda, progres kelas aktif, notifikasi terbaru, dan order pending.",
+    },
+    {
+      key: "catalog",
+      title: "2. Katalog Kelas",
+      content: "Jelajahi berbagai pilihan kelas/course berkualitas yang siap diikuti untuk meningkatkan keahlian baru.",
+    },
+    {
+      key: "enrollments",
+      title: "3. Kelas Saya",
+      content: "Akses materi pelajaran, tonton video, kerjakan quiz, submit tugas, serta klaim sertifikat kelulusan Anda.",
+    },
+  ];
+
+  useEffect(() => {
+    const seen = localStorage.getItem("has_seen_tour");
+    if (seen === "true") {
+      setHasSeenTour(true);
+    } else {
+      setHasSeenTour(false);
+    }
+  }, []);
+
+  const getTargetElement = (key: string) => {
+    if (typeof window === "undefined") return null;
+    let el = document.getElementById(`tour-step-${key}`);
+    if (!el || (el as HTMLElement).offsetParent === null) {
+      el = document.getElementById(`tour-step-mobile-${key}`);
+    }
+    return el as HTMLElement | null;
+  };
+
+  useEffect(() => {
+    if (tourStep === null) return;
+
+    const step = TOUR_STEPS[tourStep];
+    const el = getTargetElement(step.key);
+
+    if (!el) {
+      setTooltipStyle({
+        position: "fixed",
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+        width: "300px",
+        zIndex: 100,
+      });
+      return;
+    }
+
+    const rect = el.getBoundingClientRect();
+    const isMobile = el.id.includes("mobile");
+
+    if (isMobile) {
+      setTooltipStyle({
+        position: "fixed",
+        bottom: `${window.innerHeight - rect.top + 12}px`,
+        left: `${Math.max(16, Math.min(window.innerWidth - 300, rect.left + rect.width / 2 - 140))}px`,
+        width: "280px",
+        zIndex: 100,
+      });
+    } else {
+      setTooltipStyle({
+        position: "fixed",
+        top: `${rect.bottom + 12}px`,
+        left: `${Math.max(16, Math.min(window.innerWidth - 300, rect.left + rect.width / 2 - 140))}px`,
+        width: "280px",
+        zIndex: 100,
+      });
+    }
+
+    el.classList.add("tour-highlight");
+
+    return () => {
+      el.classList.remove("tour-highlight");
+    };
+  }, [tourStep]);
+
+  const startTour = () => {
+    setTourStep(0);
+    localStorage.setItem("has_seen_tour", "true");
+    setHasSeenTour(true);
+  };
+
+  const dismissTourBanner = () => {
+    localStorage.setItem("has_seen_tour", "true");
+    setHasSeenTour(true);
+  };
+
+  const handleNextStep = () => {
+    setTourStep((prev) => (prev !== null && prev < TOUR_STEPS.length - 1 ? prev + 1 : null));
+  };
+
+  const handlePrevStep = () => {
+    setTourStep((prev) => (prev !== null && prev > 0 ? prev - 1 : null));
+  };
+
+  const handleSkipTour = () => {
+    setTourStep(null);
+    localStorage.setItem("has_seen_tour", "true");
+    setHasSeenTour(true);
+  };
+
   const enrollmentsQuery = useQuery({
     queryKey: ["student", "enrollments"],
     queryFn: getStudentEnrollments,
@@ -251,6 +364,43 @@ export default function StudentPage() {
       {hasAnyError ? (
         <div className="rounded-2xl border border-[var(--danger-soft-border)] bg-[var(--danger-soft-bg)] p-3 text-sm text-[var(--danger-soft-foreground)]">
           Sebagian data belum berhasil dimuat. Kamu masih bisa lanjut lewat menu kelas, notifikasi, atau order.
+        </div>
+      ) : null}
+
+      {enrollments.length === 0 && !hasSeenTour ? (
+        <div className="relative overflow-hidden rounded-[1.8rem] bg-gradient-to-r from-[var(--primary)] to-[#15a377] p-5 text-white shadow-md sm:p-6 transition-all duration-300">
+          <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1.5">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-white">
+                👋 Selamat Datang!
+              </span>
+              <h2 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
+                Mulai Panduan Pengguna Baru
+              </h2>
+              <p className="max-w-xl text-xs text-white/90 sm:text-sm">
+                Pelajari menu-menu utama platform ini (Dashboard, Katalog, Kelas Saya) lewat panduan interaktif 1 menit.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2.5">
+              <button
+                type="button"
+                onClick={startTour}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-white px-4 text-xs font-bold text-[var(--primary)] transition hover:bg-white/90 active:scale-95"
+              >
+                <Sparkles className="size-3.5 fill-current" />
+                Mulai Panduan
+              </button>
+              <button
+                type="button"
+                onClick={dismissTourBanner}
+                className="inline-flex h-10 items-center justify-center rounded-xl bg-white/10 px-4 text-xs font-semibold text-white transition hover:bg-white/25 active:scale-95"
+              >
+                Nanti Saja
+              </button>
+            </div>
+          </div>
+          <div className="absolute right-0 top-0 -mr-20 -mt-20 size-64 rounded-full bg-white/10 blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-1/3 -mb-20 size-48 rounded-full bg-white/10 blur-2xl pointer-events-none" />
         </div>
       ) : null}
 
@@ -583,11 +733,90 @@ export default function StudentPage() {
         </div>
 
         <div className="grid grid-cols-2 gap-4 xl:grid-cols-3">
-          <QuickActionCard href="/student/catalog" icon={BookOpen} title="Katalog" note="Cari course baru dan lanjut ke checkout." />
+          <QuickActionCard href="/student/catalog" icon={BookOpen} title="Katalog" note="Cari course baru and lanjut ke checkout." />
           <QuickActionCard href="/student/enrollments" icon={GraduationCap} title="Kelas Saya" note="Pantau progress dan akses materi kelas." />
           <QuickActionCard href="/student/orders" icon={ReceiptText} title="Orders" note="Cek pembayaran, invoice, dan status transaksi." />
+          
+          <div
+            onClick={startTour}
+            className="group flex min-h-32 flex-col justify-between rounded-[1.4rem] bg-[var(--card)] p-4 shadow-[0_8px_30px_rgba(15,23,42,0.025)] border border-border/30 transition hover:-translate-y-0.5 hover:shadow-md cursor-pointer"
+          >
+            <span className="inline-flex size-11 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500">
+              <Sparkles className="size-5 fill-current animate-pulse" />
+            </span>
+            <span className="min-w-0">
+              <span className="flex items-center justify-between gap-3">
+                <span className="block truncate text-sm font-semibold text-[var(--foreground)]">Panduan Menu</span>
+                <ArrowRight className="size-4 shrink-0 text-[var(--muted-foreground)] transition group-hover:text-amber-500" />
+              </span>
+              <span className="mt-1 block text-xs leading-5 text-[var(--muted-foreground)]">Mulai panduan interaktif langkah demi langkah untuk mengenal menu utama.</span>
+            </span>
+          </div>
         </div>
       </section>
+
+      {tourStep !== null ? (
+        <>
+          <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-[1.5px] transition-all duration-300" />
+          <div
+            style={tooltipStyle}
+            className="rounded-2xl border border-border/20 bg-[var(--card)] p-4 shadow-2xl transition-all duration-200 animate-in fade-in zoom-in-95 duration-150"
+          >
+            <div className="space-y-3">
+              <div>
+                <h3 className="text-sm font-bold text-[var(--foreground)]">
+                  {TOUR_STEPS[tourStep].title}
+                </h3>
+                <p className="mt-1 text-xs leading-relaxed text-[var(--muted-foreground)]">
+                  {TOUR_STEPS[tourStep].content}
+                </p>
+              </div>
+              <div className="flex items-center justify-between border-t border-border/20 pt-2.5">
+                <span className="text-[10px] font-medium text-[var(--muted-foreground)]">
+                  Langkah {tourStep + 1} dari {TOUR_STEPS.length}
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handleSkipTour}
+                    className="h-7 rounded-lg px-2 text-[10px] font-semibold text-[var(--muted-foreground)] hover:bg-[var(--surface-soft)] transition"
+                  >
+                    Lewati
+                  </button>
+                  {tourStep > 0 ? (
+                    <button
+                      type="button"
+                      onClick={handlePrevStep}
+                      className="h-7 rounded-lg border border-border/30 px-2.5 text-[10px] font-semibold text-[var(--foreground)] hover:bg-[var(--surface-soft)] transition"
+                    >
+                      Kembali
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={handleNextStep}
+                    className="h-7 rounded-lg bg-[var(--primary)] px-3 text-[10px] font-bold text-white hover:opacity-90 transition"
+                  >
+                    {tourStep === TOUR_STEPS.length - 1 ? "Selesai" : "Lanjut"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      ) : null}
+
+      <style>{`
+        .tour-highlight {
+          position: relative !important;
+          z-index: 60 !important;
+          background-color: rgba(15, 122, 90, 0.15) !important;
+          border-color: var(--primary) !important;
+          pointer-events: none !important;
+          box-shadow: 0 0 0 4px rgba(15, 122, 90, 0.35) !important;
+          transition: all 0.2s ease !important;
+        }
+      `}</style>
     </section>
   );
 }

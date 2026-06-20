@@ -309,15 +309,16 @@ export function StudentTopbar({
 
             <nav className="flex items-center gap-1.5">
               {[
-                { label: "Dashboard", href: "/student", icon: LayoutDashboard },
-                { label: "Katalog", href: "/student/catalog", icon: BookOpen },
-                { label: "Kelas Saya", href: "/student/enrollments", icon: GraduationCap },
+                { label: "Dashboard", href: "/student", icon: LayoutDashboard, id: "tour-step-dashboard" },
+                { label: "Katalog", href: "/student/catalog", icon: BookOpen, id: "tour-step-catalog" },
+                { label: "Kelas Saya", href: "/student/enrollments", icon: GraduationCap, id: "tour-step-enrollments" },
               ].map((item) => {
                 const Icon = item.icon;
                 const isActive = isStudentItemActive(pathname, item.href);
                 return (
                   <Link
                     key={item.href}
+                    id={item.id}
                     href={item.href}
                     className={cn(
                       "flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition duration-200",
