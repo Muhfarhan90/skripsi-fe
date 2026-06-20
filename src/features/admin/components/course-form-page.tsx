@@ -955,6 +955,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
       queryClient.invalidateQueries({ queryKey: ["admin", "courses", "curriculum", validCourseId] });
 
       const nextStepKey = COURSE_WIZARD_STEPS[nextStepIndex]?.key ?? "curriculum";
+      setActiveStepIndex(nextStepIndex);
       router.replace(`/admin/master-data/courses/${validCourseId}?step=${nextStepKey}`, { scroll: false });
       router.refresh();
       toast.success("Informasi course dan thumbnail berhasil disimpan");
