@@ -348,6 +348,29 @@ export default function StudentEnrollmentQuizPage() {
     onSuccess: (attempt) => {
       queryClient.setQueryData<StoreQuizAttempt>(getAttemptQueryKey(attempt.id), attempt);
       queryClient.invalidateQueries({ queryKey: attemptsQueryKey });
+
+      // Optimistically update summary progress and passed quiz IDs on the learn page
+      const isPassed = quiz && quiz.passing_score !== null
+        ? (attempt.total_score ?? 0) >= (quiz.passing_score ?? 0)
+        : true;
+
+      if (isPassed) {
+        queryClient.setQueryData<any>(
+          ["student", "enrollment", enrollmentId, "summary"],
+          (oldData: any) => {
+            if (!oldData) return oldData;
+            const passedQuizIds = oldData.passed_quiz_ids ?? [];
+            if (!passedQuizIds.includes(quizId)) {
+              return {
+                ...oldData,
+                passed_quiz_ids: [...passedQuizIds, quizId],
+              };
+            }
+            return oldData;
+          },
+        );
+      }
+
       toast.success("Quiz berhasil dikumpulkan.");
       router.replace(`/student/enrollments/${enrollmentId}/learn?quizId=${quizId}`);
     },

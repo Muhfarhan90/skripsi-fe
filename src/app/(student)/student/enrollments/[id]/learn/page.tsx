@@ -13,6 +13,7 @@ import {
   ClipboardList,
   FileText,
   HelpCircle,
+  Lock,
   PanelLeftClose,
   PanelLeftOpen,
   Star,
@@ -381,6 +382,11 @@ export default function StudentEnrollmentLearnPage() {
     enabled: Number.isFinite(enrollmentId) && enrollmentId > 0,
   });
 
+  const assignmentsById = useMemo(
+    () => new Map((assignmentsQuery.data ?? []).map((assignment) => [assignment.id, assignment])),
+    [assignmentsQuery.data],
+  );
+
   const sections = useMemo(
     () => curriculumQuery.data?.sections ?? [],
     [curriculumQuery.data?.sections],
@@ -426,22 +432,45 @@ export default function StudentEnrollmentLearnPage() {
     [sections],
   );
 
-  const lockedLessonIds = useMemo(() => {
-    const ids = new Set<number>();
-    let previousLessonCompleted = true;
+  const { lockedLessonIds, lockedQuizIds, lockedAssignmentIds } = useMemo(() => {
+    const lessonIds = new Set<number>();
+    const quizIds = new Set<number>();
+    const assignmentIds = new Set<number>();
 
-    for (const item of orderedLessons) {
-      if (!previousLessonCompleted) {
-        ids.add(item.lesson.id);
+    let previousItemCompleted = true;
+
+    for (const item of orderedLearningContents) {
+      if (!previousItemCompleted) {
+        if (item.kind === "lesson") {
+          lessonIds.add(item.data.id);
+        } else if (item.kind === "quiz") {
+          quizIds.add(item.data.id);
+        } else if (item.kind === "assignment") {
+          assignmentIds.add(item.data.id);
+        }
       }
 
-      if (!completedLessonIds.has(item.lesson.id)) {
-        previousLessonCompleted = false;
+      let currentItemCompleted = false;
+      if (item.kind === "lesson") {
+        currentItemCompleted = completedLessonIds.has(item.data.id);
+      } else if (item.kind === "quiz") {
+        currentItemCompleted = passedQuizIds.has(item.data.id);
+      } else if (item.kind === "assignment") {
+        const currentAssignment = assignmentsById.get(item.data.id) ?? item.data;
+        currentItemCompleted = approvedAssignmentIds.has(item.data.id) || isAssignmentApproved(currentAssignment);
+      }
+
+      if (!currentItemCompleted) {
+        previousItemCompleted = false;
       }
     }
 
-    return ids;
-  }, [completedLessonIds, orderedLessons]);
+    return {
+      lockedLessonIds: lessonIds,
+      lockedQuizIds: quizIds,
+      lockedAssignmentIds: assignmentIds,
+    };
+  }, [completedLessonIds, passedQuizIds, approvedAssignmentIds, orderedLearningContents, assignmentsById]);
 
   const requestedSelectedContent = useMemo(() => {
     const content = findRequestedContent(
@@ -455,12 +484,22 @@ export default function StudentEnrollmentLearnPage() {
       return null;
     }
 
+    if (content?.kind === "quiz" && lockedQuizIds.has(content.data.id)) {
+      return null;
+    }
+
+    if (content?.kind === "assignment" && lockedAssignmentIds.has(content.data.id)) {
+      return null;
+    }
+
     return content;
   }, [
     hasRequestedAssignmentId,
     hasRequestedLessonId,
     hasRequestedQuizId,
     lockedLessonIds,
+    lockedQuizIds,
+    lockedAssignmentIds,
     requestedAssignmentId,
     requestedLessonId,
     requestedQuizId,
@@ -510,6 +549,14 @@ export default function StudentEnrollmentLearnPage() {
       return false;
     }
 
+    if (selectedContent.kind === "quiz" && lockedQuizIds.has(selectedContent.data.id)) {
+      return false;
+    }
+
+    if (selectedContent.kind === "assignment" && lockedAssignmentIds.has(selectedContent.data.id)) {
+      return false;
+    }
+
     return sections.some((section) => {
       if (selectedContent.kind === "lesson") {
         return section.lessons?.some((lesson) => lesson.id === selectedContent.data.id);
@@ -521,14 +568,27 @@ export default function StudentEnrollmentLearnPage() {
 
       return section.assignments?.some((assignment) => assignment.id === selectedContent.data.id);
     });
-  }, [lockedLessonIds, sections, selectedContent]);
+  }, [lockedLessonIds, lockedQuizIds, lockedAssignmentIds, sections, selectedContent]);
 
   const markCompleteMutation = useMutation({
     mutationFn: (lessonId: number) =>
       upsertStudentLessonProgress(enrollmentId, lessonId, {
         completed_at: new Date().toISOString(),
       }),
-    onSuccess: () => {
+    onSuccess: (newProgress) => {
+      queryClient.setQueryData<any[]>(
+        ["student", "enrollment", enrollmentId, "lesson-progress"],
+        (oldData) => {
+          if (!oldData) return [newProgress];
+          const exists = oldData.some((item) => item.lesson_id === newProgress.lesson_id);
+          if (exists) {
+            return oldData.map((item) =>
+              item.lesson_id === newProgress.lesson_id ? newProgress : item,
+            );
+          }
+          return [...oldData, newProgress];
+        },
+      );
       queryClient.invalidateQueries({
         queryKey: ["student", "enrollment", enrollmentId, "lesson-progress"],
       });
@@ -662,10 +722,6 @@ export default function StudentEnrollmentLearnPage() {
   const activeLesson = lessonDetailQuery.data?.lesson ?? selectedLesson;
   const activeLessonCompleted = activeLesson ? completedLessonIds.has(activeLesson.id) : false;
   const embedUrl = activeLesson?.lesson_url ? toEmbeddableUrl(activeLesson.lesson_url) : null;
-  const assignmentsById = useMemo(
-    () => new Map((assignmentsQuery.data ?? []).map((assignment) => [assignment.id, assignment])),
-    [assignmentsQuery.data],
-  );
   const activeAssignment =
     selectedAssignmentId !== null
       ? (assignmentDetailQuery.data ??
@@ -946,20 +1002,12 @@ export default function StudentEnrollmentLearnPage() {
                   <p className="mt-1 text-[11px] text-[var(--muted-foreground)] sm:text-xs">
                     {formatLessonDuration(lesson.duration)}
                   </p>
-                  {isLocked ? (
-                    <p className="mt-1 text-[11px] font-medium text-amber-700 dark:text-amber-300">
-                      Selesaikan lesson sebelumnya dulu.
-                    </p>
-                  ) : null}
+
                 </div>
                 {isCompleted ? (
-                  <span className="inline-flex rounded-full bg-[var(--primary)]/10 px-2 py-0.5 text-[10px] font-semibold text-[var(--primary)] sm:text-xs">
-                    Selesai
-                  </span>
+                  <CheckCircle2 className="size-4 text-emerald-500 shrink-0 mt-1" />
                 ) : isLocked ? (
-                  <span className="inline-flex rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-300 sm:text-xs">
-                    Terkunci
-                  </span>
+                  <Lock className="size-3.5 text-amber-500 shrink-0 mt-1" />
                 ) : null}
               </div>
             </button>
@@ -970,14 +1018,19 @@ export default function StudentEnrollmentLearnPage() {
           const isActive =
             activeSelectedContent?.kind === "quiz" && activeSelectedContent.data.id === quiz.id;
           const isCompleted = passedQuizIds.has(quiz.id);
+          const isLocked = lockedQuizIds.has(quiz.id);
+
           return (
             <button
               key={`quiz-${quiz.id}`}
               type="button"
               onClick={() => selectContent({ kind: "quiz", sectionId: section.id, data: quiz })}
+              disabled={isLocked}
               className={[
                 "w-full rounded-lg border px-2.5 py-2.5 text-left transition sm:rounded-xl sm:px-3 sm:py-3",
-                isActive
+                isLocked
+                  ? "cursor-not-allowed border-amber-500/30 bg-amber-500/10 opacity-75"
+                  : isActive
                   ? "border-[var(--secondary)] bg-[var(--secondary)]/10"
                   : "border-[var(--border)] bg-[var(--muted)]/40 hover:bg-[var(--surface-hover)]",
               ].join(" ")}
@@ -992,16 +1045,15 @@ export default function StudentEnrollmentLearnPage() {
                     Quiz - Durasi: {formatLessonDuration(quiz.duration)}
                   </p>
                 </div>
-                <span
-                  className={[
-                    "inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold sm:text-xs",
-                    isCompleted
-                      ? "bg-[var(--primary)]/10 text-[var(--primary)]"
-                      : "border border-[var(--border)] text-[var(--muted-foreground)]",
-                  ].join(" ")}
-                >
-                  {isCompleted ? "Selesai" : "Quiz"}
-                </span>
+                {isCompleted ? (
+                  <CheckCircle2 className="size-4 text-emerald-500 shrink-0 mt-1" />
+                ) : isLocked ? (
+                  <Lock className="size-3.5 text-amber-500 shrink-0 mt-1" />
+                ) : (
+                  <span className="inline-flex rounded-full border border-[var(--border)] px-2 py-0.5 text-[10px] font-semibold text-[var(--muted-foreground)] sm:text-xs">
+                    Quiz
+                  </span>
+                )}
               </div>
             </button>
           );
@@ -1013,15 +1065,19 @@ export default function StudentEnrollmentLearnPage() {
           const currentAssignment = assignmentsById.get(assignment.id) ?? assignment;
           const latestSubmission = getLatestAssignmentSubmission(currentAssignment);
           const isCompleted = approvedAssignmentIds.has(assignment.id) || isAssignmentApproved(currentAssignment);
+          const isLocked = lockedAssignmentIds.has(assignment.id);
 
           return (
             <button
               key={`assignment-${assignment.id}`}
               type="button"
               onClick={() => selectContent({ kind: "assignment", sectionId: section.id, data: assignment })}
+              disabled={isLocked}
               className={[
                 "w-full rounded-lg border px-2.5 py-2.5 text-left transition sm:rounded-xl sm:px-3 sm:py-3",
-                isActive
+                isLocked
+                  ? "cursor-not-allowed border-amber-500/30 bg-amber-500/10 opacity-75"
+                  : isActive
                   ? "border-[var(--secondary)] bg-[var(--secondary)]/10"
                   : "border-[var(--border)] bg-[var(--muted)]/40 hover:bg-[var(--surface-hover)]",
               ].join(" ")}
@@ -1038,16 +1094,15 @@ export default function StudentEnrollmentLearnPage() {
                   </p>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1">
-                  <span
-                    className={[
-                      "inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold sm:text-xs",
-                      isCompleted
-                        ? "bg-[var(--primary)]/10 text-[var(--primary)]"
-                        : "border border-[var(--border)] text-[var(--muted-foreground)]",
-                    ].join(" ")}
-                  >
-                    {isCompleted ? "Selesai" : "Assignment"}
-                  </span>
+                  {isCompleted ? (
+                    <CheckCircle2 className="size-4 text-emerald-500 shrink-0 mt-1" />
+                  ) : isLocked ? (
+                    <Lock className="size-3.5 text-amber-500 shrink-0 mt-1" />
+                  ) : (
+                    <span className="inline-flex rounded-full border border-[var(--border)] px-2 py-0.5 text-[10px] font-semibold text-[var(--muted-foreground)] sm:text-xs">
+                      Assignment
+                    </span>
+                  )}
                   {latestSubmission && !isCompleted ? (
                     <span className="text-[11px] font-medium text-[var(--muted-foreground)]">
                       {formatAssignmentStatus(latestSubmission.status)}
@@ -1156,16 +1211,6 @@ export default function StudentEnrollmentLearnPage() {
           {curriculumQuery.data.description || "Deskripsi course belum tersedia."}
         </p>
       </div>
-
-      <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3">
-        <h3 className="text-sm font-semibold text-[var(--foreground)]">Konten Aktif</h3>
-        <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-          {activeLesson?.description ||
-            selectedQuiz?.description ||
-            activeAssignment?.description ||
-            "Konten aktif belum memiliki deskripsi tambahan."}
-        </p>
-      </div>
     </section>
   );
 
@@ -1173,9 +1218,6 @@ export default function StudentEnrollmentLearnPage() {
     <section className="space-y-5">
       <header className="px-1 py-1">
         <h1 className="text-2xl font-black tracking-tight text-foreground">{curriculumQuery.data.title}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Pilih section, lalu pilih lesson, quiz, atau assignment. Urutan ditampilkan lesson dulu, lalu quiz, lalu assignment.
-        </p>
       </header>
 
       {activeLearnTab === "course_content" ? (

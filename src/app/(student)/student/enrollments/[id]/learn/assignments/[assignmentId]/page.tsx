@@ -82,6 +82,24 @@ export default function StudentEnrollmentAssignmentPage() {
       setSubmissionText("");
       setAttachmentUrl("");
       setAttachmentFile(null);
+
+      // Optimistically update the assignment detail cache
+      queryClient.setQueryData<any>(
+        ["student", "enrollment", enrollmentId, "assignment", assignmentId, "detail"],
+        (oldData: any) => {
+          if (!oldData) return oldData;
+          const oldSubmissions = oldData.submissions ?? [];
+          const exists = oldSubmissions.some((s: any) => s.id === submission.id);
+          const newSubmissions = exists
+            ? oldSubmissions.map((s: any) => (s.id === submission.id ? submission : s))
+            : [...oldSubmissions, submission];
+          return {
+            ...oldData,
+            submissions: newSubmissions,
+          };
+        },
+      );
+
       queryClient.invalidateQueries({
         queryKey: ["student", "enrollment", enrollmentId, "assignment", assignmentId, "detail"],
       });
