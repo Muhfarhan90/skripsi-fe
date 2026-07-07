@@ -226,6 +226,7 @@ export interface AdminQuiz {
   weight: number | null;
   is_active: boolean;
   is_random: boolean;
+  question_limit: number | null;
   max_attempts: number | null;
   open_at: string | null;
   close_at: string | null;
@@ -695,6 +696,7 @@ export interface QuizPayload {
   weight?: number | null;
   is_active?: boolean;
   is_random?: boolean;
+  question_limit?: number | null;
   max_attempts?: number | null;
   open_at?: string | null;
   close_at?: string | null;

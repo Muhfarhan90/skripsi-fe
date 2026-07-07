@@ -36,6 +36,7 @@ interface QuizFormState {
   close_at: string;
   is_active: boolean;
   is_random: boolean;
+  question_limit: string;
 }
 
 const DEFAULT_FORM: QuizFormState = {
@@ -49,6 +50,7 @@ const DEFAULT_FORM: QuizFormState = {
   close_at: "",
   is_active: true,
   is_random: false,
+  question_limit: "",
 };
 
 function normalizeError(error: unknown): string {
@@ -127,6 +129,7 @@ export function CourseQuizEditorPage({ courseId, sectionId, returnTo }: CourseQu
         close_at: toApiDateTimeOrNull(form.close_at),
         is_active: form.is_active,
         is_random: form.is_random,
+        question_limit: form.question_limit.trim() ? toNonNegativeNumberOrZero(form.question_limit) : null,
       });
     },
     onSuccess: () => {
@@ -246,6 +249,19 @@ export function CourseQuizEditorPage({ courseId, sectionId, returnTo }: CourseQu
                 min={0}
                 value={form.max_attempts}
                 onChange={(event) => setForm((prev) => ({ ...prev, max_attempts: event.target.value }))}
+                className="border-[var(--border)] bg-[var(--card)]"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="quiz-question-limit">Batasan Jumlah Soal</Label>
+              <Input
+                id="quiz-question-limit"
+                type="number"
+                min={0}
+                placeholder="Tampilkan semua soal"
+                value={form.question_limit}
+                onChange={(event) => setForm((prev) => ({ ...prev, question_limit: event.target.value }))}
                 className="border-[var(--border)] bg-[var(--card)]"
               />
             </div>

@@ -126,6 +126,7 @@ interface QuizFormState {
   close_at: string;
   is_active: boolean;
   is_random: boolean;
+  question_limit: string;
 }
 
 interface AssignmentFormState {
@@ -226,6 +227,7 @@ const DEFAULT_QUIZ_FORM: QuizFormState = {
   close_at: "",
   is_active: true,
   is_random: false,
+  question_limit: "",
 };
 
 const DEFAULT_ASSIGNMENT_FORM: AssignmentFormState = {
@@ -1103,6 +1105,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
           close_at: toApiDateTimeOrNull(quizForm.close_at),
           is_active: quizForm.is_active,
           is_random: quizForm.is_random,
+          question_limit: quizForm.question_limit.trim() ? toNonNegativeNumberOrZero(quizForm.question_limit) : null,
         });
       }
 
@@ -1117,6 +1120,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
         close_at: toApiDateTimeOrNull(quizForm.close_at),
         is_active: quizForm.is_active,
         is_random: quizForm.is_random,
+        question_limit: quizForm.question_limit.trim() ? toNonNegativeNumberOrZero(quizForm.question_limit) : null,
       });
     },
     onSuccess: () => {
@@ -2640,6 +2644,19 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
                 min={0}
                 value={quizForm.max_attempts}
                 onChange={(event) => setQuizForm((prev) => ({ ...prev, max_attempts: event.target.value }))}
+                className="border-[var(--border)] bg-[var(--card)]"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="quiz-question-limit">Batasan Jumlah Soal</Label>
+              <Input
+                id="quiz-question-limit"
+                type="number"
+                min={0}
+                placeholder="Tampilkan semua soal"
+                value={quizForm.question_limit}
+                onChange={(event) => setQuizForm((prev) => ({ ...prev, question_limit: event.target.value }))}
                 className="border-[var(--border)] bg-[var(--card)]"
               />
             </div>

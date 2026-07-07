@@ -55,6 +55,7 @@ interface QuizFormState {
   close_at: string;
   is_active: boolean;
   is_random: boolean;
+  question_limit: string;
 }
 
 interface QuestionFormState {
@@ -93,6 +94,7 @@ const DEFAULT_QUIZ_FORM: QuizFormState = {
   close_at: "",
   is_active: true,
   is_random: false,
+  question_limit: "",
 };
 
 const DEFAULT_QUESTION_FORM: QuestionFormState = {
@@ -162,6 +164,7 @@ function mapQuizToForm(quiz: AdminQuiz): QuizFormState {
     close_at: toDateTimeLocalInput(quiz.close_at),
     is_active: quiz.is_active,
     is_random: quiz.is_random,
+    question_limit: quiz.question_limit === null ? "" : String(quiz.question_limit),
   };
 }
 
@@ -268,9 +271,10 @@ export function QuizDetailPage({ courseId, quizId }: QuizDetailPageProps) {
       if (
         isInvalidOptionalNumber(quizForm.duration) ||
         isInvalidOptionalNumber(quizForm.passing_score) ||
-        isInvalidOptionalNumber(quizForm.max_attempts)
+        isInvalidOptionalNumber(quizForm.max_attempts) ||
+        isInvalidOptionalNumber(quizForm.question_limit)
       ) {
-        throw new Error("Durasi, passing score, dan max attempts harus angka >= 0");
+        throw new Error("Durasi, passing score, max attempts, dan batasan jumlah soal harus angka >= 0");
       }
       if (quizForm.open_at && quizForm.close_at && new Date(quizForm.close_at) < new Date(quizForm.open_at)) {
         throw new Error("Waktu tutup quiz harus lebih besar atau sama dengan waktu buka quiz");
@@ -287,6 +291,7 @@ export function QuizDetailPage({ courseId, quizId }: QuizDetailPageProps) {
         close_at: toApiDateTimeOrNull(quizForm.close_at),
         is_active: quizForm.is_active,
         is_random: quizForm.is_random,
+        question_limit: quizForm.question_limit.trim() ? toNonNegativeNumberOrZero(quizForm.question_limit) : null,
       });
     },
     onSuccess: () => {
@@ -1017,6 +1022,7 @@ export function QuizDetailPage({ courseId, quizId }: QuizDetailPageProps) {
             <p>Section: {sectionLabelMap.get(String(quiz.section_id)) ?? "-"}</p>
             <p>Status: {quiz.is_active ? "Aktif" : "Nonaktif"}</p>
             <p>Random: {quiz.is_random ? "Ya" : "Tidak"}</p>
+            <p>Batasan Jumlah Soal: {quiz.question_limit ?? "Tampilkan semua"}</p>
             <p>Quiz Buka: {quiz.open_at ?? "-"}</p>
             <p>Quiz Tutup: {quiz.close_at ?? "-"}</p>
           </CardContent>
@@ -1116,6 +1122,19 @@ export function QuizDetailPage({ courseId, quizId }: QuizDetailPageProps) {
                 min={0}
                 value={quizForm.max_attempts}
                 onChange={(event) => setQuizForm((prev) => ({ ...prev, max_attempts: event.target.value }))}
+                className="border-[var(--border)] bg-[var(--card)]"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="quiz-question-limit">Batasan Jumlah Soal</Label>
+              <Input
+                id="quiz-question-limit"
+                type="number"
+                min={0}
+                placeholder="Tampilkan semua soal"
+                value={quizForm.question_limit}
+                onChange={(event) => setQuizForm((prev) => ({ ...prev, question_limit: event.target.value }))}
                 className="border-[var(--border)] bg-[var(--card)]"
               />
             </div>
