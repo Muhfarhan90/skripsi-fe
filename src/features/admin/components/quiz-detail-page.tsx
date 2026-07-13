@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, Circle, CircleCheck, GripVertical, Loader2, Pencil, Plus, Save, Trash2, X } from "lucide-react";
+import { ChevronDown, Circle, CircleCheck, Download, GripVertical, Loader2, Pencil, Plus, Save, Trash2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import Sortable, { type SortableEvent } from "sortablejs";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmAlertDialog } from "@/components/ui/confirm-alert-dialog";
-import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -27,15 +26,22 @@ import {
   getAdminCourseById,
   getAdminCourseCurriculum,
   getAdminQuizDetail,
+  importAdminQuizQuestionBank,
   reorderAdminQuizQuestions,
+  updateAdminQuiz,
   updateAdminQuestionOption,
-  updateAdminCourseSectionQuiz,
   updateAdminQuizQuestion,
   type AdminOption,
   type AdminQuestion,
   type AdminQuiz,
   type QuestionPayload,
 } from "@/features/admin/api/master-api";
+import {
+  createQuizQuestionBankExportExcelFile,
+  createQuizQuestionBankTemplateExcelFile,
+  parseQuizQuestionBankExcelFile,
+} from "@/features/admin/lib/quiz-question-bank-excel";
+import { downloadBlobFile } from "@/lib/api/browser-files";
 import { cn } from "@/lib/utils/cn";
 
 interface QuizDetailPageProps {
@@ -51,8 +57,6 @@ interface QuizFormState {
   passing_score: string;
   weight: string;
   max_attempts: string;
-  open_at: string;
-  close_at: string;
   is_active: boolean;
   is_random: boolean;
   question_limit: string;
@@ -90,8 +94,6 @@ const DEFAULT_QUIZ_FORM: QuizFormState = {
   passing_score: "",
   weight: "",
   max_attempts: "",
-  open_at: "",
-  close_at: "",
   is_active: true,
   is_random: false,
   question_limit: "",
@@ -130,25 +132,12 @@ function isInvalidOptionalNumber(raw: string): boolean {
   return Number.isNaN(parsed) || parsed < 0;
 }
 
-function toDateTimeLocalInput(value?: string | null): string {
-  if (!value) return "";
-  const normalized = value.includes("T") ? value : value.replace(" ", "T");
-  return normalized.slice(0, 16);
-}
-
-function toApiDateTimeOrNull(value: string): string | null {
-  const normalized = value.trim();
+function parsePositiveIntegerOrNull(raw: string): number | null {
+  const normalized = raw.trim();
   if (!normalized) return null;
-  const date = new Date(normalized);
-  if (Number.isNaN(date.getTime())) return null;
-
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hour = String(date.getHours()).padStart(2, "0");
-  const minute = String(date.getMinutes()).padStart(2, "0");
-
-  return `${year}-${month}-${day} ${hour}:${minute}:00`;
+  const parsed = Number(normalized);
+  if (!Number.isInteger(parsed) || parsed < 1) return null;
+  return parsed;
 }
 
 function mapQuizToForm(quiz: AdminQuiz): QuizFormState {
@@ -160,8 +149,6 @@ function mapQuizToForm(quiz: AdminQuiz): QuizFormState {
     passing_score: quiz.passing_score === null ? "" : String(quiz.passing_score),
     weight: quiz.weight === null ? "" : String(quiz.weight),
     max_attempts: quiz.max_attempts === null ? "" : String(quiz.max_attempts),
-    open_at: toDateTimeLocalInput(quiz.open_at),
-    close_at: toDateTimeLocalInput(quiz.close_at),
     is_active: quiz.is_active,
     is_random: quiz.is_random,
     question_limit: quiz.question_limit === null ? "" : String(quiz.question_limit),
@@ -199,9 +186,11 @@ export function QuizDetailPage({ courseId, quizId }: QuizDetailPageProps) {
   const curriculumReturnTo = `/admin/master-data/courses/${courseId}?step=curriculum`;
   const questionListRef = useRef<HTMLDivElement | null>(null);
   const questionTextRef = useRef<HTMLTextAreaElement | null>(null);
+  const importFileInputRef = useRef<HTMLInputElement | null>(null);
   const [expandedQuestionId, setExpandedQuestionId] = useState<number | null>(null);
 
   const [quizModalOpen, setQuizModalOpen] = useState(false);
+  const [questionBankModalOpen, setQuestionBankModalOpen] = useState(false);
   const [quizForm, setQuizForm] = useState<QuizFormState>(DEFAULT_QUIZ_FORM);
 
   const [questionModalOpen, setQuestionModalOpen] = useState(false);
@@ -211,6 +200,8 @@ export function QuizDetailPage({ courseId, quizId }: QuizDetailPageProps) {
   const [inlineQuestionDrafts, setInlineQuestionDrafts] = useState<Record<number, QuestionFormState>>({});
   const [inlineOptionDrafts, setInlineOptionDrafts] = useState<Record<number, OptionFormState>>({});
   const [newOptionDrafts, setNewOptionDrafts] = useState<Record<number, NewOptionDraft[]>>({});
+  const [questionBankImportMode, setQuestionBankImportMode] = useState<"append" | "replace">("append");
+  const [questionBankImportFile, setQuestionBankImportFile] = useState<File | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
 
   useEffect(() => {
@@ -274,27 +265,29 @@ export function QuizDetailPage({ courseId, quizId }: QuizDetailPageProps) {
         isInvalidOptionalNumber(quizForm.max_attempts) ||
         isInvalidOptionalNumber(quizForm.question_limit)
       ) {
-        throw new Error("Durasi, passing score, max attempts, dan batasan jumlah soal harus angka >= 0");
+        throw new Error("Durasi, passing score, max attempts, dan jumlah soal per attempt harus angka valid");
       }
-      if (quizForm.open_at && quizForm.close_at && new Date(quizForm.close_at) < new Date(quizForm.open_at)) {
-        throw new Error("Waktu tutup quiz harus lebih besar atau sama dengan waktu buka quiz");
+      if (quizForm.question_limit.trim() && parsePositiveIntegerOrNull(quizForm.question_limit) === null) {
+        throw new Error("Jumlah soal per attempt harus bilangan bulat minimal 1");
       }
 
-      return updateAdminCourseSectionQuiz(courseId, Number(quizForm.section_id), quizId, {
+      return updateAdminQuiz(quizId, {
+        course_id: courseId,
+        section_id: Number(quizForm.section_id),
         title: quizForm.title.trim(),
         description: quizForm.description.trim() || null,
         duration: toNonNegativeNumberOrZero(quizForm.duration),
         passing_score: toNonNegativeNumberOrZero(quizForm.passing_score),
         weight: quizForm.weight.trim() ? toNonNegativeNumberOrZero(quizForm.weight) : 100,
         max_attempts: toNonNegativeNumberOrZero(quizForm.max_attempts),
-        open_at: toApiDateTimeOrNull(quizForm.open_at),
-        close_at: toApiDateTimeOrNull(quizForm.close_at),
         is_active: quizForm.is_active,
         is_random: quizForm.is_random,
-        question_limit: quizForm.question_limit.trim() ? toNonNegativeNumberOrZero(quizForm.question_limit) : null,
+        question_limit: parsePositiveIntegerOrNull(quizForm.question_limit),
       });
     },
-    onSuccess: () => {
+    onSuccess: (updatedQuiz) => {
+      queryClient.setQueryData(["admin", "quizzes", "detail", quizId], updatedQuiz);
+      setQuizForm(mapQuizToForm(updatedQuiz));
       refreshQuizDetail();
       toast.success("Quiz berhasil diperbarui");
       setQuizModalOpen(false);
@@ -409,6 +402,35 @@ export function QuizDetailPage({ courseId, quizId }: QuizDetailPageProps) {
       toast.success(message || "Question berhasil dihapus");
       setExpandedQuestionId(null);
       setDeleteTarget(null);
+    },
+    onError: (error) => {
+      toast.error(normalizeError(error));
+    },
+  });
+
+  const importQuestionBankMutation = useMutation({
+    mutationFn: async () => {
+      if (!questionBankImportFile) {
+        throw new Error("Pilih file Excel terlebih dahulu");
+      }
+
+      const questions = await parseQuizQuestionBankExcelFile(questionBankImportFile);
+
+      return importAdminQuizQuestionBank(quizId, {
+        mode: questionBankImportMode,
+        questions,
+      });
+    },
+    onSuccess: (result) => {
+      refreshQuizDetail();
+      setQuestionBankImportFile(null);
+      setQuestionBankModalOpen(false);
+      if (importFileInputRef.current) {
+        importFileInputRef.current.value = "";
+      }
+      toast.success(
+        `${result.imported_questions} question dan ${result.imported_options} option berhasil diimpor (${result.mode}).`,
+      );
     },
     onError: (error) => {
       toast.error(normalizeError(error));
@@ -585,12 +607,26 @@ export function QuizDetailPage({ courseId, quizId }: QuizDetailPageProps) {
     (deleteTarget?.type === "quiz" && deleteQuizMutation.isPending) ||
     (deleteTarget?.type === "question" && deleteQuestionMutation.isPending) ||
     (deleteTarget?.type === "option" && deleteOptionMutation.isPending);
+  const questionBankImportModeLabel = questionBankImportMode === "replace" ? "Replace" : "Append";
 
   return (
     <section className="space-y-5">
       <AdminPageHeader
         title={`Detail Quiz: ${quiz.title}`}
-        description={`Course: ${courseQuery.data.title}. Kelola question dan option secara nested.`}
+        description={`Course: ${courseQuery.data.title}. Kelola question dan option secara nested tanpa mengubah attempt siswa yang sudah tersimpan.`}
+        actions={
+          <div className="flex justify-start lg:justify-end">
+            <Button
+              type="button"
+              variant="default"
+              className="justify-start"
+              onClick={() => setQuestionBankModalOpen(true)}
+            >
+              <Upload className="size-4" />
+              <span>Bank Soal</span>
+            </Button>
+          </div>
+        }
       />
 
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -983,14 +1019,12 @@ export function QuizDetailPage({ courseId, quizId }: QuizDetailPageProps) {
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-3 p-4">
             <div className="rounded-md border border-[var(--border)] bg-[var(--muted)] p-3">
-              <p className="text-[11px] font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">Questions</p>
+              <p className="text-[11px] font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">Bank Soal</p>
               <p className="mt-1 text-2xl font-semibold text-[var(--foreground)]">{questions.length}</p>
             </div>
             <div className="rounded-md border border-[var(--border)] bg-[var(--muted)] p-3">
-              <p className="text-[11px] font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">Total Points</p>
-              <p className="mt-1 text-2xl font-semibold text-[var(--foreground)]">
-                {questions.reduce((total, question) => total + (question.score ?? 0), 0)}
-              </p>
+              <p className="text-[11px] font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">Per Attempt</p>
+              <p className="mt-1 text-2xl font-semibold text-[var(--foreground)]">{quiz.question_limit ?? questions.length}</p>
             </div>
             <div className="rounded-md border border-[var(--border)] bg-[var(--muted)] p-3">
               <p className="text-[11px] font-semibold tracking-wide text-[var(--muted-foreground)] uppercase">Time Limit</p>
@@ -1016,19 +1050,117 @@ export function QuizDetailPage({ courseId, quizId }: QuizDetailPageProps) {
             </div>
           </CardContent>
         </Card>
-
-        <Card className="border border-[var(--border)] bg-[var(--card)] shadow-sm">
-          <CardContent className="space-y-1 p-4 text-sm text-[var(--muted-foreground)]">
-            <p>Section: {sectionLabelMap.get(String(quiz.section_id)) ?? "-"}</p>
-            <p>Status: {quiz.is_active ? "Aktif" : "Nonaktif"}</p>
-            <p>Random: {quiz.is_random ? "Ya" : "Tidak"}</p>
-            <p>Batasan Jumlah Soal: {quiz.question_limit ?? "Tampilkan semua"}</p>
-            <p>Quiz Buka: {quiz.open_at ?? "-"}</p>
-            <p>Quiz Tutup: {quiz.close_at ?? "-"}</p>
-          </CardContent>
-        </Card>
       </aside>
       </div>
+
+      <AdminModal
+        open={questionBankModalOpen}
+        onClose={() => {
+          if (importQuestionBankMutation.isPending) return;
+          setQuestionBankModalOpen(false);
+        }}
+        title="Bank Soal Excel"
+        description="Unduh template, export quiz, atau import bank soal Excel."
+        maxWidthClassName="max-w-2xl"
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="justify-start"
+              onClick={() =>
+                void createQuizQuestionBankTemplateExcelFile()
+                  .then(({ blob, fileName }) => {
+                    downloadBlobFile(blob, fileName);
+                  })
+                  .catch((error) => {
+                    toast.error(normalizeError(error));
+                  })
+              }
+            >
+              <Download className="size-4" />
+              <span>Unduh Template Excel</span>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="justify-start"
+              onClick={() =>
+                void createQuizQuestionBankExportExcelFile(quiz.title, questions)
+                  .then(({ blob, fileName }) => {
+                    downloadBlobFile(blob, fileName);
+                  })
+                  .catch((error) => {
+                    toast.error(normalizeError(error));
+                  })
+              }
+            >
+              <Download className="size-4" />
+              <span>Export Excel Quiz</span>
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 rounded-lg border border-[var(--border)] bg-[var(--muted)] p-4 sm:grid-cols-[140px_minmax(0,1fr)]">
+            <div className="space-y-1.5">
+              <Label htmlFor="question-bank-import-mode">Mode Import</Label>
+              <Select
+                value={questionBankImportMode}
+                onValueChange={(value) =>
+                  setQuestionBankImportMode(value === "replace" ? "replace" : "append")
+                }
+              >
+                <SelectTrigger id="question-bank-import-mode" className="h-10 w-full border-[var(--border)] bg-[var(--card)]">
+                  <SelectValue>{questionBankImportModeLabel}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="append">Append</SelectItem>
+                  <SelectItem value="replace">Replace</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>File Excel</Label>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="justify-start"
+                  onClick={() => importFileInputRef.current?.click()}
+                >
+                  <Upload className="size-4" />
+                  <span>Pilih File Excel</span>
+                </Button>
+                <Button
+                  type="button"
+                  className="bg-[var(--primary)] text-[var(--primary-foreground)] hover:brightness-95"
+                  disabled={importQuestionBankMutation.isPending || !questionBankImportFile}
+                  onClick={() => importQuestionBankMutation.mutate()}
+                >
+                  {importQuestionBankMutation.isPending ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Upload className="size-4" />
+                  )}
+                  <span>Import Excel</span>
+                </Button>
+              </div>
+              <p className="text-sm text-[var(--muted-foreground)]">
+                {questionBankImportFile ? questionBankImportFile.name : "Belum ada file dipilih."}
+              </p>
+              <Input
+                id="question-bank-import-file"
+                ref={importFileInputRef}
+                type="file"
+                accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                onChange={(event) => setQuestionBankImportFile(event.target.files?.[0] ?? null)}
+                className="hidden"
+              />
+            </div>
+          </div>
+        </div>
+      </AdminModal>
 
       <AdminModal
         open={quizModalOpen}
@@ -1127,36 +1259,19 @@ export function QuizDetailPage({ courseId, quizId }: QuizDetailPageProps) {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="quiz-question-limit">Batasan Jumlah Soal</Label>
+              <Label htmlFor="quiz-question-limit">Jumlah Soal per Attempt</Label>
               <Input
                 id="quiz-question-limit"
                 type="number"
-                min={0}
-                placeholder="Tampilkan semua soal"
+                min={1}
+                placeholder="Kosongkan untuk tampilkan semua soal"
                 value={quizForm.question_limit}
                 onChange={(event) => setQuizForm((prev) => ({ ...prev, question_limit: event.target.value }))}
                 className="border-[var(--border)] bg-[var(--card)]"
               />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="quiz-open-at">Quiz Buka (Tanggal & Jam)</Label>
-              <DateTimePicker
-                value={quizForm.open_at}
-                onChange={(value) => setQuizForm((prev) => ({ ...prev, open_at: value }))}
-                placeholder="Pilih waktu buka quiz"
-                className="border-[var(--border)] bg-[var(--card)]"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="quiz-close-at">Quiz Tutup (Tanggal & Jam)</Label>
-              <DateTimePicker
-                value={quizForm.close_at}
-                onChange={(value) => setQuizForm((prev) => ({ ...prev, close_at: value }))}
-                placeholder="Pilih waktu tutup quiz"
-                className="border-[var(--border)] bg-[var(--card)]"
-              />
+              <p className="text-xs text-[var(--muted-foreground)]">
+                Kosongkan jika semua soal aktif dalam quiz ini harus ditampilkan.
+              </p>
             </div>
           </div>
 
@@ -1177,6 +1292,14 @@ export function QuizDetailPage({ courseId, quizId }: QuizDetailPageProps) {
               />
               <Label htmlFor="quiz-is-random" className="text-sm text-[var(--foreground)]">Soal diacak</Label>
             </div>
+          </div>
+
+          <div className="rounded-md border border-[var(--border)] bg-[var(--muted)] px-3 py-2 text-sm text-[var(--muted-foreground)]">
+            {quizForm.question_limit.trim()
+              ? quizForm.is_random
+                ? `Setiap attempt akan mengambil ${quizForm.question_limit} soal acak dari bank soal quiz.`
+                : `Setiap attempt akan menampilkan ${quizForm.question_limit} soal pertama sesuai urutan question.`
+              : "Semua question aktif akan dipakai sebagai bank soal dan ditampilkan penuh pada setiap attempt."}
           </div>
 
           <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--border)] pt-3">

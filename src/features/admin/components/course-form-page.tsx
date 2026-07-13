@@ -44,7 +44,7 @@ import {
   upsertAdminCourseCurriculum,
   updateAdminCourse,
   updateAdminCourseAssignment,
-  updateAdminCourseSectionQuiz,
+  updateAdminQuiz,
   type AdminAssignment,
   type AdminCourseReview,
   type AdminQuiz,
@@ -64,7 +64,6 @@ import { SkillMultiSelect } from "@/features/admin/components/skill-multi-select
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmAlertDialog } from "@/components/ui/confirm-alert-dialog";
-import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -122,8 +121,6 @@ interface QuizFormState {
   passing_score: string;
   weight: string;
   max_attempts: string;
-  open_at: string;
-  close_at: string;
   is_active: boolean;
   is_random: boolean;
   question_limit: string;
@@ -134,7 +131,6 @@ interface AssignmentFormState {
   title: string;
   description: string;
   instructions: string;
-  due_at: string;
   is_required_for_certificate: boolean;
   allow_resubmission: boolean;
   max_attempts: string;
@@ -181,7 +177,7 @@ const SECTION_CONTENT_OPTIONS = [
   {
     type: "quiz",
     label: "Quiz",
-    description: "Buat evaluasi singkat dengan durasi dan passing score.",
+    description: "Buat evaluasi singkat dengan durasi, passing score, dan bank soal.",
     icon: CircleHelp,
     iconClassName: "bg-amber-100 text-amber-700 ring-amber-200",
     cardClassName: "border-amber-200/80 bg-amber-50/90 hover:bg-amber-100/90",
@@ -189,7 +185,7 @@ const SECTION_CONTENT_OPTIONS = [
   {
     type: "assignment",
     label: "Assignment",
-    description: "Tambahkan tugas dengan due date dan aturan submit.",
+    description: "Tambahkan tugas dengan aturan submit dan review instruktur.",
     icon: FileText,
     iconClassName: "bg-emerald-100 text-emerald-700 ring-emerald-200",
     cardClassName: "border-emerald-200/80 bg-emerald-50/90 hover:bg-emerald-100/90",
@@ -223,8 +219,6 @@ const DEFAULT_QUIZ_FORM: QuizFormState = {
   passing_score: "",
   weight: "100",
   max_attempts: "",
-  open_at: "",
-  close_at: "",
   is_active: true,
   is_random: false,
   question_limit: "",
@@ -235,7 +229,6 @@ const DEFAULT_ASSIGNMENT_FORM: AssignmentFormState = {
   title: "",
   description: "",
   instructions: "",
-  due_at: "",
   is_required_for_certificate: true,
   allow_resubmission: true,
   max_attempts: "",
@@ -401,38 +394,6 @@ function isInvalidOptionalNumber(value: string): boolean {
   return Number.isNaN(parsed) || parsed < 0;
 }
 
-function toApiDateTimeOrNull(value: string): string | null {
-  const normalized = value.trim();
-  if (!normalized) return null;
-  const date = new Date(normalized);
-  if (Number.isNaN(date.getTime())) return null;
-
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hour = String(date.getHours()).padStart(2, "0");
-  const minute = String(date.getMinutes()).padStart(2, "0");
-
-  return `${year}-${month}-${day} ${hour}:${minute}:00`;
-}
-
-function toDateTimeLocalInput(value?: string | null): string {
-  if (!value) return "";
-  const normalized = value.trim().replace(" ", "T");
-  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(normalized)) {
-    return normalized.slice(0, 16);
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hour = String(date.getHours()).padStart(2, "0");
-  const minute = String(date.getMinutes()).padStart(2, "0");
-  return `${year}-${month}-${day}T${hour}:${minute}`;
-}
-
 function parsePositiveIntegerOrNull(raw: string): number | null {
   const normalized = raw.trim();
   if (!normalized) return null;
@@ -491,16 +452,14 @@ function normalizeError(error: unknown): string {
   return "Terjadi kesalahan tak terduga";
 }
 
-function formatQuizWindowLabel(openAt?: string | null, closeAt?: string | null): string {
-  if (!openAt && !closeAt) return "Window: selalu terbuka";
-  if (openAt && !closeAt) return `Buka: ${openAt}`;
-  if (!openAt && closeAt) return `Tutup: ${closeAt}`;
-  return `Buka: ${openAt} | Tutup: ${closeAt}`;
-}
+function formatQuizQuestionSelectionLabel(questionLimit?: number | null, isRandom?: boolean): string {
+  if (!questionLimit) {
+    return "Bank soal: semua question aktif ditampilkan";
+  }
 
-function formatAssignmentDueLabel(dueAt?: string | null): string {
-  if (!dueAt) return "Tanpa deadline";
-  return `Deadline: ${dueAt}`;
+  return isRandom
+    ? `Bank soal: ${questionLimit} soal acak per attempt`
+    : `Bank soal: ${questionLimit} soal pertama per attempt`;
 }
 
 function getSectionDisplayLabel(section: Pick<SectionFormState, "title">, fallbackIndex?: number): string {
@@ -1088,24 +1047,23 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
       ) {
         throw new Error("Durasi, passing score, dan max attempts harus angka >= 0");
       }
-
-      if (quizForm.open_at && quizForm.close_at && new Date(quizForm.close_at) < new Date(quizForm.open_at)) {
-        throw new Error("Waktu tutup quiz harus lebih besar atau sama dengan waktu buka quiz");
+      if (quizForm.question_limit.trim() && parsePositiveIntegerOrNull(quizForm.question_limit) === null) {
+        throw new Error("Jumlah soal per attempt harus bilangan bulat minimal 1");
       }
 
       if (editingQuizId) {
-        return updateAdminCourseSectionQuiz(validCourseId, Number(quizForm.section_id), editingQuizId, {
+        return updateAdminQuiz(editingQuizId, {
+          course_id: validCourseId,
+          section_id: Number(quizForm.section_id),
           title: quizForm.title.trim(),
           description: quizForm.description.trim() || null,
           duration: toNonNegativeNumberOrZero(quizForm.duration),
           passing_score: toNonNegativeNumberOrZero(quizForm.passing_score),
           weight: quizForm.weight.trim() ? toNonNegativeNumberOrZero(quizForm.weight) : 100,
           max_attempts: toNonNegativeNumberOrZero(quizForm.max_attempts),
-          open_at: toApiDateTimeOrNull(quizForm.open_at),
-          close_at: toApiDateTimeOrNull(quizForm.close_at),
           is_active: quizForm.is_active,
           is_random: quizForm.is_random,
-          question_limit: quizForm.question_limit.trim() ? toNonNegativeNumberOrZero(quizForm.question_limit) : null,
+          question_limit: parsePositiveIntegerOrNull(quizForm.question_limit),
         });
       }
 
@@ -1116,11 +1074,9 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
         passing_score: toNonNegativeNumberOrZero(quizForm.passing_score),
         weight: quizForm.weight.trim() ? toNonNegativeNumberOrZero(quizForm.weight) : 100,
         max_attempts: toNonNegativeNumberOrZero(quizForm.max_attempts),
-        open_at: toApiDateTimeOrNull(quizForm.open_at),
-        close_at: toApiDateTimeOrNull(quizForm.close_at),
         is_active: quizForm.is_active,
         is_random: quizForm.is_random,
-        question_limit: quizForm.question_limit.trim() ? toNonNegativeNumberOrZero(quizForm.question_limit) : null,
+        question_limit: parsePositiveIntegerOrNull(quizForm.question_limit),
       });
     },
     onSuccess: () => {
@@ -1188,7 +1144,6 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
         title: assignmentForm.title.trim(),
         description: assignmentForm.description.trim() || null,
         instructions: assignmentForm.instructions.trim() || null,
-        due_at: toApiDateTimeOrNull(assignmentForm.due_at),
         is_required_for_certificate: assignmentForm.is_required_for_certificate,
         allow_resubmission: assignmentForm.allow_resubmission,
         max_attempts: parsePositiveIntegerOrNull(assignmentForm.max_attempts),
@@ -1358,7 +1313,6 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
       title: assignment.title ?? "",
       description: assignment.description ?? "",
       instructions: assignment.instructions ?? "",
-      due_at: toDateTimeLocalInput(assignment.due_at),
       is_required_for_certificate: Boolean(assignment.is_required_for_certificate),
       allow_resubmission: Boolean(assignment.allow_resubmission),
       max_attempts: assignment.max_attempts ? String(assignment.max_attempts) : "",
@@ -2276,7 +2230,7 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
                                   Passing {quiz.passing_score ?? "-"} | Durasi {quiz.duration ?? "-"} menit
                                 </p>
                                 <p className="text-xs text-[var(--muted-foreground)]">
-                                  {formatQuizWindowLabel(quiz.open_at, quiz.close_at)}
+                                  {formatQuizQuestionSelectionLabel(quiz.question_limit, quiz.is_random)}
                                 </p>
                               </div>
                               <div className="flex items-center gap-2">
@@ -2335,9 +2289,6 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
                                   {assignment.is_required_for_certificate ? "Wajib Sertifikat" : "Opsional"} |{" "}
                                   {assignment.allow_resubmission ? "Boleh resubmit" : "Tidak boleh resubmit"} | Maks{" "}
                                   {assignment.max_attempts ?? "-"}x
-                                </p>
-                                <p className="text-xs text-[var(--muted-foreground)]">
-                                  {formatAssignmentDueLabel(assignment.due_at)}
                                 </p>
                               </div>
                               <div className="flex items-center gap-2">
@@ -2649,36 +2600,19 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="quiz-question-limit">Batasan Jumlah Soal</Label>
+              <Label htmlFor="quiz-question-limit">Jumlah Soal per Attempt</Label>
               <Input
                 id="quiz-question-limit"
                 type="number"
-                min={0}
-                placeholder="Tampilkan semua soal"
+                min={1}
+                placeholder="Kosongkan untuk tampilkan semua soal"
                 value={quizForm.question_limit}
                 onChange={(event) => setQuizForm((prev) => ({ ...prev, question_limit: event.target.value }))}
                 className="border-[var(--border)] bg-[var(--card)]"
               />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="quiz-open-at">Quiz Buka (Tanggal & Jam)</Label>
-              <DateTimePicker
-                value={quizForm.open_at}
-                onChange={(value) => setQuizForm((prev) => ({ ...prev, open_at: value }))}
-                placeholder="Pilih waktu buka quiz"
-                className="border-[var(--border)] bg-[var(--card)]"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="quiz-close-at">Quiz Tutup (Tanggal & Jam)</Label>
-              <DateTimePicker
-                value={quizForm.close_at}
-                onChange={(value) => setQuizForm((prev) => ({ ...prev, close_at: value }))}
-                placeholder="Pilih waktu tutup quiz"
-                className="border-[var(--border)] bg-[var(--card)]"
-              />
+              <p className="text-xs text-[var(--muted-foreground)]">
+                Kosongkan jika semua question aktif dalam quiz ini harus tampil.
+              </p>
             </div>
           </div>
 
@@ -2704,6 +2638,14 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
                 onCheckedChange={(checked) => setQuizForm((prev) => ({ ...prev, is_random: checked }))}
               />
             </div>
+          </div>
+
+          <div className="rounded-md border border-[var(--border)] bg-[var(--muted)] px-3 py-2 text-sm text-[var(--muted-foreground)]">
+            {quizForm.question_limit.trim()
+              ? quizForm.is_random
+                ? `Setiap attempt akan mengambil ${quizForm.question_limit} soal acak dari bank soal quiz.`
+                : `Setiap attempt akan menampilkan ${quizForm.question_limit} soal pertama sesuai urutan question.`
+              : "Semua question aktif akan dipakai sebagai bank soal dan ditampilkan penuh pada setiap attempt."}
           </div>
 
           <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--border)] pt-3">
@@ -2771,16 +2713,6 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="assignment-due-at">Deadline (Tanggal & Jam)</Label>
-              <DateTimePicker
-                value={assignmentForm.due_at}
-                onChange={(value) => setAssignmentForm((prev) => ({ ...prev, due_at: value }))}
-                placeholder="Pilih deadline assignment"
-                className="border-[var(--border)] bg-[var(--card)]"
-              />
-            </div>
-
-            <div className="space-y-1.5">
               <Label htmlFor="assignment-max-attempts">Max Attempts</Label>
               <Input
                 id="assignment-max-attempts"
@@ -2819,6 +2751,10 @@ export function AdminCourseFormPage({ mode, courseId }: AdminCourseFormPageProps
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="rounded-md border border-[var(--border)] bg-[var(--muted)] px-3 py-2 text-sm text-[var(--muted-foreground)]">
+            Assignment self-paced ini tidak memakai deadline. Kelulusan ditentukan dari status review submission.
           </div>
 
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">

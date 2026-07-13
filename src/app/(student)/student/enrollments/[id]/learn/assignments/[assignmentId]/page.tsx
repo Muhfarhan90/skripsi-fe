@@ -21,9 +21,18 @@ import {
 } from "@/features/student/lib/assignment";
 import { formatUtcDateTimeToJakarta } from "@/features/student/lib/date-time";
 import { resolvePublicFileUrl } from "@/lib/file-url";
+import type { StoreAssignment, StoreAssignmentSubmission } from "@/types/store";
 
 function getAttachmentHref(value: string | null | undefined): string | null {
   return resolvePublicFileUrl(value) ?? value?.trim() ?? null;
+}
+
+function getAssignmentCertificateLabel(assignment: StoreAssignment): string {
+  if (assignment.counts_toward_certificate === false) {
+    return "Tidak dihitung";
+  }
+
+  return assignment.is_required_for_certificate ? "Wajib" : "Opsional";
 }
 
 export default function StudentEnrollmentAssignmentPage() {
@@ -84,14 +93,14 @@ export default function StudentEnrollmentAssignmentPage() {
       setAttachmentFile(null);
 
       // Optimistically update the assignment detail cache
-      queryClient.setQueryData<any>(
+      queryClient.setQueryData<StoreAssignment | undefined>(
         ["student", "enrollment", enrollmentId, "assignment", assignmentId, "detail"],
-        (oldData: any) => {
+        (oldData) => {
           if (!oldData) return oldData;
           const oldSubmissions = oldData.submissions ?? [];
-          const exists = oldSubmissions.some((s: any) => s.id === submission.id);
+          const exists = oldSubmissions.some((item) => item.id === submission.id);
           const newSubmissions = exists
-            ? oldSubmissions.map((s: any) => (s.id === submission.id ? submission : s))
+            ? oldSubmissions.map((item): StoreAssignmentSubmission => (item.id === submission.id ? submission : item))
             : [...oldSubmissions, submission];
           return {
             ...oldData,
@@ -180,10 +189,27 @@ export default function StudentEnrollmentAssignmentPage() {
         <p className="text-xs font-semibold tracking-[0.08em] text-[var(--muted-foreground)] uppercase">
           Student Assignment
         </p>
-        <h1 className="mt-2 text-3xl font-semibold text-[var(--foreground)]">{assignment.title}</h1>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <h1 className="text-3xl font-semibold text-[var(--foreground)]">{assignment.title}</h1>
+          {assignment.is_supplemental ? (
+            <span className="inline-flex rounded-full border border-[var(--border)] px-2 py-0.5 text-xs font-semibold text-[var(--muted-foreground)]">
+              Opsional
+            </span>
+          ) : null}
+          {assignment.is_new && !selectedSubmission ? (
+            <span className="inline-flex rounded-full bg-sky-500/10 px-2 py-0.5 text-xs font-semibold text-sky-700">
+              Baru
+            </span>
+          ) : null}
+        </div>
         <p className="mt-3 max-w-3xl text-sm leading-relaxed text-[var(--muted-foreground)]">
           {assignment.description || "Assignment ini belum memiliki deskripsi."}
         </p>
+        {assignment.counts_toward_progress === false ? (
+          <p className="mt-3 text-xs text-[var(--muted-foreground)]">
+            Assignment ini bersifat tambahan dan tidak dihitung ke progress atau sertifikat.
+          </p>
+        ) : null}
       </header>
 
       <div className="grid gap-5 xl:grid-cols-[340px_1fr]">
@@ -193,9 +219,6 @@ export default function StudentEnrollmentAssignmentPage() {
               Ringkasan Assignment
             </p>
             <div className="mt-3 space-y-2 text-sm text-[var(--muted-foreground)]">
-              <p>
-                Deadline: <span className="font-medium text-[var(--foreground)]">{formatUtcDateTimeToJakarta(assignment.due_at)}</span>
-              </p>
               <p>
                 Max attempts: <span className="font-medium text-[var(--foreground)]">{assignment.max_attempts ?? "Tidak dibatasi"}</span>
               </p>
@@ -209,7 +232,7 @@ export default function StudentEnrollmentAssignmentPage() {
                 Resubmission: <span className="font-medium text-[var(--foreground)]">{assignment.allow_resubmission ? "Diizinkan" : "Tidak"}</span>
               </p>
               <p>
-                Sertifikat: <span className="font-medium text-[var(--foreground)]">{assignment.is_required_for_certificate ? "Wajib" : "Opsional"}</span>
+                Sertifikat: <span className="font-medium text-[var(--foreground)]">{getAssignmentCertificateLabel(assignment)}</span>
               </p>
               {assignment.section?.title ? (
                 <p>

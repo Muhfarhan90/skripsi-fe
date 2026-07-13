@@ -66,12 +66,16 @@ export async function downloadAuthorizedFile(
 ): Promise<void> {
   const response = await fetchAuthorizedResource(endpoint);
   const blob = await response.blob();
-  const objectUrl = window.URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
   const fileName =
     extractFilenameFromDisposition(response.headers.get("content-disposition")) ??
     fallbackFileName;
 
+  downloadBlobFile(blob, fileName);
+}
+
+export function downloadBlobFile(blob: Blob, fileName: string): void {
+  const objectUrl = window.URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
   anchor.href = objectUrl;
   anchor.download = fileName;
   anchor.style.display = "none";

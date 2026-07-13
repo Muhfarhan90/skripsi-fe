@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronRight } from "lucide-react";
@@ -8,9 +9,10 @@ import { getAdminBreadcrumbs } from "@/features/admin/data/navigation";
 interface AdminPageHeaderProps {
   title: string;
   description: string;
+  actions?: ReactNode;
 }
 
-export function AdminPageHeader({ title, description }: AdminPageHeaderProps) {
+export function AdminPageHeader({ title, description, actions }: AdminPageHeaderProps) {
   const pathname = usePathname();
   const breadcrumbs = getAdminBreadcrumbs(pathname);
 
@@ -30,8 +32,13 @@ export function AdminPageHeader({ title, description }: AdminPageHeaderProps) {
           </span>
         ))}
       </div>
-      <h2 className="mt-2 text-xl font-semibold text-[var(--foreground)]">{title}</h2>
-      <p className="mt-1 max-w-3xl text-sm text-[var(--muted-foreground)]">{description}</p>
+      <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <h2 className="text-xl font-semibold text-[var(--foreground)]">{title}</h2>
+          <p className="mt-1 max-w-3xl text-sm text-[var(--muted-foreground)]">{description}</p>
+        </div>
+        {actions ? <div className="w-full lg:max-w-[440px]">{actions}</div> : null}
+      </div>
     </header>
   );
 }

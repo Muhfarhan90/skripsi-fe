@@ -28,6 +28,7 @@ import {
 } from "@/features/student/lib/quiz";
 import { formatUtcDateTimeToJakarta, parseUtcDateTime } from "@/features/student/lib/date-time";
 import type {
+  StoreEnrollmentProgressSummary,
   StoreQuizAnswer,
   StoreQuizAttempt,
   StoreQuizDetail,
@@ -131,18 +132,6 @@ function getQuizAttemptLockReason(quiz: StoreQuizDetail | undefined): string | n
 
   if (!quiz.is_active) {
     return "Quiz sedang nonaktif, jadi attempt baru atau submit tidak tersedia.";
-  }
-
-  const now = Date.now();
-  const openAt = parseUtcDateTime(quiz.open_at)?.getTime() ?? null;
-  const closeAt = parseUtcDateTime(quiz.close_at)?.getTime() ?? null;
-
-  if (openAt && openAt > now) {
-    return `Quiz baru bisa dikerjakan mulai ${formatDateTime(quiz.open_at)}.`;
-  }
-
-  if (closeAt && closeAt < now) {
-    return `Quiz sudah ditutup sejak ${formatDateTime(quiz.close_at)}.`;
   }
 
   return null;
@@ -348,6 +337,9 @@ export default function StudentEnrollmentQuizPage() {
     onSuccess: (attempt) => {
       queryClient.setQueryData<StoreQuizAttempt>(getAttemptQueryKey(attempt.id), attempt);
       queryClient.invalidateQueries({ queryKey: attemptsQueryKey });
+      queryClient.invalidateQueries({
+        queryKey: ["student", "enrollment", enrollmentId, "curriculum"],
+      });
 
       // Optimistically update summary progress and passed quiz IDs on the learn page
       const isPassed = quiz && quiz.passing_score !== null
@@ -355,9 +347,9 @@ export default function StudentEnrollmentQuizPage() {
         : true;
 
       if (isPassed) {
-        queryClient.setQueryData<any>(
+        queryClient.setQueryData<StoreEnrollmentProgressSummary | undefined>(
           ["student", "enrollment", enrollmentId, "summary"],
-          (oldData: any) => {
+          (oldData) => {
             if (!oldData) return oldData;
             const passedQuizIds = oldData.passed_quiz_ids ?? [];
             if (!passedQuizIds.includes(quizId)) {
@@ -408,9 +400,6 @@ export default function StudentEnrollmentQuizPage() {
               Soal {index + 1}
             </p>
             <h2 className="mt-2 text-xl font-semibold text-[var(--foreground)]">{question.question_text}</h2>
-            <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-              Tipe: {formatQuestionType(question.type)} | Bobot: {question.score}
-            </p>
           </div>
         </div>
 
@@ -510,10 +499,27 @@ export default function StudentEnrollmentQuizPage() {
         <p className="text-xs font-semibold tracking-[0.08em] text-[var(--muted-foreground)] uppercase">
           Student Quiz
         </p>
-        <h1 className="mt-2 text-3xl font-semibold text-[var(--foreground)]">{quiz.title}</h1>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <h1 className="text-3xl font-semibold text-[var(--foreground)]">{quiz.title}</h1>
+          {quiz.is_supplemental ? (
+            <span className="inline-flex rounded-full border border-[var(--border)] px-2 py-0.5 text-xs font-semibold text-[var(--muted-foreground)]">
+              Opsional
+            </span>
+          ) : null}
+          {quiz.is_new && !isQuizPassed ? (
+            <span className="inline-flex rounded-full bg-sky-500/10 px-2 py-0.5 text-xs font-semibold text-sky-700">
+              Baru
+            </span>
+          ) : null}
+        </div>
         <p className="mt-3 max-w-3xl text-sm leading-relaxed text-[var(--muted-foreground)]">
           {quiz.description || "Quiz ini belum memiliki deskripsi."}
         </p>
+        {quiz.counts_toward_progress === false ? (
+          <p className="mt-3 text-xs text-[var(--muted-foreground)]">
+            Quiz ini bersifat tambahan dan tidak dihitung ke progress atau sertifikat.
+          </p>
+        ) : null}
       </header>
 
       {!quiz.is_supported ? (

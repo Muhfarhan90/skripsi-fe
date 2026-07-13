@@ -1425,8 +1425,8 @@ export function CourseOfferingFormPage({ mode, offeringId, lockedAcademicPeriodI
                                   <StatusBadge value={assignment.status ? toStatusLabel(assignment.status) : "-"} />
                                 </div>
                                 <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-                                  Deadline: {formatDateTime(assignment.due_at)} | Max attempt:{" "}
-                                  {assignment.max_attempts ?? "-"}
+                                  Max attempt: {assignment.max_attempts ?? "-"} |{" "}
+                                  {assignment.is_required_for_certificate ? "Wajib sertifikat" : "Opsional"}
                                 </p>
                               </div>
                             ))}

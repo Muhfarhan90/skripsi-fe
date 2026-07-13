@@ -96,6 +96,7 @@ export async function apiRequest<T>(
 
   const response = await fetch(url, {
     ...rest,
+    cache: rest.cache ?? "no-store",
     body,
     headers: buildRequestHeaders(headers, token, body),
   });
@@ -136,6 +137,7 @@ export async function apiPaginatedRequest<T>(
 
   const response = await fetch(url, {
     ...rest,
+    cache: rest.cache ?? "no-store",
     body,
     headers: buildRequestHeaders(headers, token, body),
   });
@@ -168,6 +170,7 @@ export async function apiMessageOnly(
 
   const response = await fetch(url, {
     ...rest,
+    cache: rest.cache ?? "no-store",
     body,
     headers: buildRequestHeaders(headers, token, body),
   });

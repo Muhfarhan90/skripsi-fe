@@ -228,8 +228,6 @@ export interface AdminQuiz {
   is_random: boolean;
   question_limit: number | null;
   max_attempts: number | null;
-  open_at: string | null;
-  close_at: string | null;
   questions?: AdminQuestion[];
   created_at: string | null;
   updated_at: string | null;
@@ -243,7 +241,6 @@ export interface AdminAssignment {
   title: string | null;
   description: string | null;
   instructions: string | null;
-  due_at: string | null;
   is_required_for_certificate: boolean;
   allow_resubmission: boolean;
   max_attempts: number | null;
@@ -327,6 +324,24 @@ export interface AdminOption {
   is_correct: boolean;
   created_at: string | null;
   updated_at: string | null;
+}
+
+export interface AdminQuizQuestionBankImportResult {
+  imported_questions: number;
+  imported_options: number;
+  mode: "append" | "replace" | string;
+}
+
+export interface AdminQuizQuestionBankImportOptionPayload {
+  option_text: string;
+  is_correct: boolean;
+}
+
+export interface AdminQuizQuestionBankImportQuestionPayload {
+  question_text: string;
+  type: "multiple_choice" | "true_false";
+  is_active?: boolean;
+  options: AdminQuizQuestionBankImportOptionPayload[];
 }
 
 export interface AdminVoucher {
@@ -698,8 +713,6 @@ export interface QuizPayload {
   is_random?: boolean;
   question_limit?: number | null;
   max_attempts?: number | null;
-  open_at?: string | null;
-  close_at?: string | null;
 }
 
 export interface AssignmentPayload {
@@ -707,7 +720,6 @@ export interface AssignmentPayload {
   title: string;
   description?: string | null;
   instructions?: string | null;
-  due_at?: string | null;
   is_required_for_certificate?: boolean;
   allow_resubmission?: boolean;
   max_attempts?: number | null;
@@ -1666,6 +1678,19 @@ export function getAdminCourseAssignments(courseId: number) {
 export function getAdminQuizDetail(quizId: number) {
   return apiRequest<AdminQuiz>(`/api/admin/quizzes/${quizId}`, {
     method: "GET",
+  });
+}
+
+export function importAdminQuizQuestionBank(
+  quizId: number,
+  payload: {
+    mode?: "append" | "replace";
+    questions: AdminQuizQuestionBankImportQuestionPayload[];
+  },
+) {
+  return apiRequest<AdminQuizQuestionBankImportResult>(`/api/admin/quizzes/${quizId}/question-bank/import`, {
+    method: "POST",
+    body: JSON.stringify(normalizePayload(payload)),
   });
 }
 

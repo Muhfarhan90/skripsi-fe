@@ -13,7 +13,6 @@ import {
 import { ApiError } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -32,8 +31,6 @@ interface QuizFormState {
   passing_score: string;
   weight: string;
   max_attempts: string;
-  open_at: string;
-  close_at: string;
   is_active: boolean;
   is_random: boolean;
   question_limit: string;
@@ -46,8 +43,6 @@ const DEFAULT_FORM: QuizFormState = {
   passing_score: "",
   weight: "100",
   max_attempts: "",
-  open_at: "",
-  close_at: "",
   is_active: true,
   is_random: false,
   question_limit: "",
@@ -72,19 +67,12 @@ function isInvalidOptionalNumber(value: string): boolean {
   return Number.isNaN(parsed) || parsed < 0;
 }
 
-function toApiDateTimeOrNull(value: string): string | null {
-  const normalized = value.trim();
+function parsePositiveIntegerOrNull(raw: string): number | null {
+  const normalized = raw.trim();
   if (!normalized) return null;
-  const date = new Date(normalized);
-  if (Number.isNaN(date.getTime())) return null;
-
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hour = String(date.getHours()).padStart(2, "0");
-  const minute = String(date.getMinutes()).padStart(2, "0");
-
-  return `${year}-${month}-${day} ${hour}:${minute}:00`;
+  const parsed = Number(normalized);
+  if (!Number.isInteger(parsed) || parsed < 1) return null;
+  return parsed;
 }
 
 export function CourseQuizEditorPage({ courseId, sectionId, returnTo }: CourseQuizEditorPageProps) {
@@ -114,8 +102,8 @@ export function CourseQuizEditorPage({ courseId, sectionId, returnTo }: CourseQu
       ) {
         throw new Error("Durasi, passing score, dan max attempts harus angka >= 0");
       }
-      if (form.open_at && form.close_at && new Date(form.close_at) < new Date(form.open_at)) {
-        throw new Error("Waktu tutup quiz harus lebih besar atau sama dengan waktu buka quiz");
+      if (form.question_limit.trim() && parsePositiveIntegerOrNull(form.question_limit) === null) {
+        throw new Error("Jumlah soal per attempt harus bilangan bulat minimal 1");
       }
 
       return createAdminCourseSectionQuiz(courseId, sectionId, {
@@ -125,11 +113,9 @@ export function CourseQuizEditorPage({ courseId, sectionId, returnTo }: CourseQu
         passing_score: toNonNegativeNumberOrZero(form.passing_score),
         weight: form.weight.trim() ? toNonNegativeNumberOrZero(form.weight) : 100,
         max_attempts: toNonNegativeNumberOrZero(form.max_attempts),
-        open_at: toApiDateTimeOrNull(form.open_at),
-        close_at: toApiDateTimeOrNull(form.close_at),
         is_active: form.is_active,
         is_random: form.is_random,
-        question_limit: form.question_limit.trim() ? toNonNegativeNumberOrZero(form.question_limit) : null,
+        question_limit: parsePositiveIntegerOrNull(form.question_limit),
       });
     },
     onSuccess: () => {
@@ -254,36 +240,19 @@ export function CourseQuizEditorPage({ courseId, sectionId, returnTo }: CourseQu
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="quiz-question-limit">Batasan Jumlah Soal</Label>
+              <Label htmlFor="quiz-question-limit">Jumlah Soal per Attempt</Label>
               <Input
                 id="quiz-question-limit"
                 type="number"
-                min={0}
-                placeholder="Tampilkan semua soal"
+                min={1}
+                placeholder="Kosongkan untuk tampilkan semua soal"
                 value={form.question_limit}
                 onChange={(event) => setForm((prev) => ({ ...prev, question_limit: event.target.value }))}
                 className="border-[var(--border)] bg-[var(--card)]"
               />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="quiz-open-at">Quiz Buka (Tanggal & Jam)</Label>
-              <DateTimePicker
-                value={form.open_at}
-                onChange={(value) => setForm((prev) => ({ ...prev, open_at: value }))}
-                placeholder="Pilih waktu buka quiz"
-                className="border-[var(--border)] bg-[var(--card)]"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="quiz-close-at">Quiz Tutup (Tanggal & Jam)</Label>
-              <DateTimePicker
-                value={form.close_at}
-                onChange={(value) => setForm((prev) => ({ ...prev, close_at: value }))}
-                placeholder="Pilih waktu tutup quiz"
-                className="border-[var(--border)] bg-[var(--card)]"
-              />
+              <p className="text-xs text-[var(--muted-foreground)]">
+                Kosongkan jika semua soal dalam bank quiz harus tampil.
+              </p>
             </div>
           </div>
 
@@ -309,6 +278,14 @@ export function CourseQuizEditorPage({ courseId, sectionId, returnTo }: CourseQu
                 onCheckedChange={(checked) => setForm((prev) => ({ ...prev, is_random: checked }))}
               />
             </div>
+          </div>
+
+          <div className="rounded-md border border-[var(--border)] bg-[var(--muted)] px-3 py-2 text-sm text-[var(--muted-foreground)]">
+            {form.question_limit.trim()
+              ? form.is_random
+                ? `Setiap attempt akan mengambil ${form.question_limit} soal acak dari bank soal quiz.`
+                : `Setiap attempt akan menampilkan ${form.question_limit} soal pertama sesuai urutan question.`
+              : "Semua question aktif di quiz ini akan dipakai sebagai bank soal dan ditampilkan penuh."}
           </div>
 
           <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--border)] pt-3">

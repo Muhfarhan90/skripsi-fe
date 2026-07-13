@@ -49,6 +49,27 @@ export interface StoreCourseOfferingSummary {
 export interface StoreCompletionSnapshot {
   course_id?: number | null;
   course_offering_id?: number | null;
+  course?: {
+    id?: number | null;
+    title?: string | null;
+    slug?: string | null;
+    description?: string | null;
+    category_id?: number | null;
+    category_name?: string | null;
+    instructor_id?: number | null;
+    instructor_name?: string | null;
+    thumbnail?: string | null;
+    requirements?: string | null;
+    outcomes?: string | null;
+    status?: string | null;
+    skills?: StoreCourseSkill[];
+  } | null;
+  sections?: StoreCurriculumSection[];
+  ordered_items?: Array<{
+    type: "lesson" | "quiz" | "assignment" | string;
+    id: number;
+    section_id?: number | null;
+  }>;
   lesson_ids?: number[];
   quiz_ids?: number[];
   assignment_ids?: number[];
@@ -234,7 +255,22 @@ export interface StoreEnrollmentProgressSummary {
   assignment_requirement?: StoreAssignmentRequirementSummary;
 }
 
-export interface StoreLesson {
+export interface StoreLearningItemMeta {
+  is_supplemental?: boolean;
+  counts_toward_progress?: boolean;
+  counts_toward_certificate?: boolean;
+  source?: "live" | "snapshot" | "snapshot_fallback" | string | null;
+  is_locked?: boolean;
+  is_new?: boolean;
+  is_completed?: boolean;
+}
+
+export interface StoreCurriculumSectionMeta {
+  is_supplemental?: boolean;
+  source?: "live" | "snapshot" | "snapshot_fallback" | string | null;
+}
+
+export interface StoreLesson extends StoreLearningItemMeta {
   id: number;
   section_id: number;
   title: string;
@@ -249,7 +285,7 @@ export interface StoreLesson {
   updated_at: string;
 }
 
-export interface StoreQuiz {
+export interface StoreQuiz extends StoreLearningItemMeta {
   id: number;
   course_id: number;
   section_id: number;
@@ -260,9 +296,8 @@ export interface StoreQuiz {
   weight: number | null;
   is_active: boolean;
   is_random: boolean;
+  question_limit: number | null;
   max_attempts: number | null;
-  open_at: string | null;
-  close_at: string | null;
   questions?: StoreQuizQuestion[];
   is_supported?: boolean;
   unsupported_question_types?: string[];
@@ -342,7 +377,7 @@ export interface StoreAssignmentSubmission {
   updated_at: string;
 }
 
-export interface StoreAssignment {
+export interface StoreAssignment extends StoreLearningItemMeta {
   id: number;
   course_id: number;
   section_id: number | null;
@@ -350,7 +385,6 @@ export interface StoreAssignment {
   title: string;
   description: string | null;
   instructions: string | null;
-  due_at: string | null;
   is_required_for_certificate: boolean;
   allow_resubmission: boolean;
   max_attempts: number | null;
@@ -368,7 +402,7 @@ export interface StoreAssignmentRequirementSummary {
   is_satisfied: boolean;
 }
 
-export interface StoreCurriculumSection {
+export interface StoreCurriculumSection extends StoreCurriculumSectionMeta {
   id: number;
   course_id: number;
   title: string;

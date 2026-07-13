@@ -65,6 +65,7 @@ import type {
   StoreAssignment,
   StoreCurriculumSection,
   StoreLesson,
+  StoreLessonProgress,
   StoreQuiz,
   StoreQuizAttempt,
 } from "@/types/store";
@@ -186,6 +187,18 @@ function getOrderedLearningContents(sections: StoreCurriculumSection[]): Selecte
   ]);
 }
 
+function isLearningContentLocked(content: SelectedContent | null): boolean {
+  return Boolean(content?.data.is_locked);
+}
+
+function getAssignmentCertificateLabel(assignment: StoreAssignment): string {
+  if (assignment.counts_toward_certificate === false) {
+    return "Tidak dihitung";
+  }
+
+  return assignment.is_required_for_certificate ? "Wajib" : "Opsional";
+}
+
 interface LessonMaterialFrameProps {
   title: string;
   src: string;
@@ -293,18 +306,6 @@ function canStartQuizFromLearn(
   isPassed: boolean,
 ): boolean {
   if (!quiz || !quiz.is_active || isPassed || getActiveQuizAttempt(attempts)) {
-    return false;
-  }
-
-  const now = Date.now();
-  const openAt = parseUtcDateTime(quiz.open_at)?.getTime() ?? null;
-  const closeAt = parseUtcDateTime(quiz.close_at)?.getTime() ?? null;
-
-  if (openAt && openAt > now) {
-    return false;
-  }
-
-  if (closeAt && closeAt < now) {
     return false;
   }
 
@@ -417,60 +418,10 @@ export default function StudentEnrollmentLearnPage() {
     [summaryQuery.data?.approved_assignment_ids],
   );
 
-  const orderedLessons = useMemo(
-    () =>
-      sections.flatMap((section) =>
-        (section.lessons ?? []).map((lesson) => ({
-          sectionId: section.id,
-          lesson,
-        })),
-      ),
-    [sections],
-  );
   const orderedLearningContents = useMemo(
     () => getOrderedLearningContents(sections),
     [sections],
   );
-
-  const { lockedLessonIds, lockedQuizIds, lockedAssignmentIds } = useMemo(() => {
-    const lessonIds = new Set<number>();
-    const quizIds = new Set<number>();
-    const assignmentIds = new Set<number>();
-
-    let previousItemCompleted = true;
-
-    for (const item of orderedLearningContents) {
-      if (!previousItemCompleted) {
-        if (item.kind === "lesson") {
-          lessonIds.add(item.data.id);
-        } else if (item.kind === "quiz") {
-          quizIds.add(item.data.id);
-        } else if (item.kind === "assignment") {
-          assignmentIds.add(item.data.id);
-        }
-      }
-
-      let currentItemCompleted = false;
-      if (item.kind === "lesson") {
-        currentItemCompleted = completedLessonIds.has(item.data.id);
-      } else if (item.kind === "quiz") {
-        currentItemCompleted = passedQuizIds.has(item.data.id);
-      } else if (item.kind === "assignment") {
-        const currentAssignment = assignmentsById.get(item.data.id) ?? item.data;
-        currentItemCompleted = approvedAssignmentIds.has(item.data.id) || isAssignmentApproved(currentAssignment);
-      }
-
-      if (!currentItemCompleted) {
-        previousItemCompleted = false;
-      }
-    }
-
-    return {
-      lockedLessonIds: lessonIds,
-      lockedQuizIds: quizIds,
-      lockedAssignmentIds: assignmentIds,
-    };
-  }, [completedLessonIds, passedQuizIds, approvedAssignmentIds, orderedLearningContents, assignmentsById]);
 
   const requestedSelectedContent = useMemo(() => {
     const content = findRequestedContent(
@@ -480,26 +431,11 @@ export default function StudentEnrollmentLearnPage() {
       hasRequestedAssignmentId ? requestedAssignmentId : null,
     );
 
-    if (content?.kind === "lesson" && lockedLessonIds.has(content.data.id)) {
-      return null;
-    }
-
-    if (content?.kind === "quiz" && lockedQuizIds.has(content.data.id)) {
-      return null;
-    }
-
-    if (content?.kind === "assignment" && lockedAssignmentIds.has(content.data.id)) {
-      return null;
-    }
-
-    return content;
+    return content && !isLearningContentLocked(content) ? content : null;
   }, [
     hasRequestedAssignmentId,
     hasRequestedLessonId,
     hasRequestedQuizId,
-    lockedLessonIds,
-    lockedQuizIds,
-    lockedAssignmentIds,
     requestedAssignmentId,
     requestedLessonId,
     requestedQuizId,
@@ -511,49 +447,11 @@ export default function StudentEnrollmentLearnPage() {
       return requestedSelectedContent;
     }
 
-    if (!sections.length) {
-      return null;
-    }
-
-    const firstUnlockedLesson = orderedLessons.find(
-      (item) => !lockedLessonIds.has(item.lesson.id),
-    );
-    if (firstUnlockedLesson) {
-      return {
-        kind: "lesson",
-        sectionId: firstUnlockedLesson.sectionId,
-        data: firstUnlockedLesson.lesson,
-      };
-    }
-
-    const firstSection = sections[0];
-    const firstQuiz = firstSection.quizzes?.[0];
-    if (firstQuiz) {
-      return { kind: "quiz", sectionId: firstSection.id, data: firstQuiz };
-    }
-
-    const firstAssignment = firstSection.assignments?.[0];
-    if (firstAssignment) {
-      return { kind: "assignment", sectionId: firstSection.id, data: firstAssignment };
-    }
-
-    return null;
-  }, [lockedLessonIds, orderedLessons, requestedSelectedContent, sections]);
+    return orderedLearningContents.find((item) => !Boolean(item.data.is_locked)) ?? null;
+  }, [orderedLearningContents, requestedSelectedContent]);
 
   const hasSelectedContentInSections = useMemo(() => {
-    if (!selectedContent) {
-      return false;
-    }
-
-    if (selectedContent.kind === "lesson" && lockedLessonIds.has(selectedContent.data.id)) {
-      return false;
-    }
-
-    if (selectedContent.kind === "quiz" && lockedQuizIds.has(selectedContent.data.id)) {
-      return false;
-    }
-
-    if (selectedContent.kind === "assignment" && lockedAssignmentIds.has(selectedContent.data.id)) {
+    if (!selectedContent || isLearningContentLocked(selectedContent)) {
       return false;
     }
 
@@ -568,7 +466,7 @@ export default function StudentEnrollmentLearnPage() {
 
       return section.assignments?.some((assignment) => assignment.id === selectedContent.data.id);
     });
-  }, [lockedLessonIds, lockedQuizIds, lockedAssignmentIds, sections, selectedContent]);
+  }, [sections, selectedContent]);
 
   const markCompleteMutation = useMutation({
     mutationFn: (lessonId: number) =>
@@ -576,7 +474,7 @@ export default function StudentEnrollmentLearnPage() {
         completed_at: new Date().toISOString(),
       }),
     onSuccess: (newProgress) => {
-      queryClient.setQueryData<any[]>(
+      queryClient.setQueryData<StoreLessonProgress[] | undefined>(
         ["student", "enrollment", enrollmentId, "lesson-progress"],
         (oldData) => {
           if (!oldData) return [newProgress];
@@ -613,9 +511,41 @@ export default function StudentEnrollmentLearnPage() {
     },
   });
 
+  const trackLessonAccessMutation = useMutation({
+    mutationFn: (lessonId: number) =>
+      upsertStudentLessonProgress(enrollmentId, lessonId, {
+        progress_seconds: 0,
+      }),
+    onSuccess: (newProgress) => {
+      queryClient.setQueryData<StoreLessonProgress[] | undefined>(
+        ["student", "enrollment", enrollmentId, "lesson-progress"],
+        (oldData) => {
+          if (!oldData) {
+            return [newProgress];
+          }
+
+          const exists = oldData.some((item) => item.lesson_id === newProgress.lesson_id);
+          if (exists) {
+            return oldData.map((item) =>
+              item.lesson_id === newProgress.lesson_id ? newProgress : item,
+            );
+          }
+
+          return [...oldData, newProgress];
+        },
+      );
+      queryClient.invalidateQueries({
+        queryKey: ["student", "enrollment", enrollmentId, "curriculum"],
+      });
+    },
+  });
+
   const startQuizMutation = useMutation({
     mutationFn: (quizId: number) => startStudentQuizAttempt(enrollmentId, quizId),
     onSuccess: (attempt) => {
+      queryClient.invalidateQueries({
+        queryKey: ["student", "enrollment", enrollmentId, "curriculum"],
+      });
       queryClient.invalidateQueries({
         queryKey: ["student", "enrollment", enrollmentId, "quiz", attempt.quiz_id, "attempts"],
       });
@@ -673,7 +603,9 @@ export default function StudentEnrollmentLearnPage() {
       return null;
     }
 
-    return orderedLearningContents[currentIndex + 1] ?? null;
+    return orderedLearningContents
+      .slice(currentIndex + 1)
+      .find((item) => !Boolean(item.data.is_locked)) ?? null;
   }, [activeSelectedContent, orderedLearningContents]);
   const effectiveExpandedSectionIds = useMemo(() => {
     const availableIds = new Set(sections.map((section) => section.id));
@@ -720,7 +652,9 @@ export default function StudentEnrollmentLearnPage() {
     enabled: Number.isFinite(enrollmentId) && enrollmentId > 0 && Boolean(selectedAssignmentId),
   });
   const activeLesson = lessonDetailQuery.data?.lesson ?? selectedLesson;
-  const activeLessonCompleted = activeLesson ? completedLessonIds.has(activeLesson.id) : false;
+  const activeLessonCompleted = activeLesson
+    ? Boolean(activeLesson.is_completed) || completedLessonIds.has(activeLesson.id)
+    : false;
   const embedUrl = activeLesson?.lesson_url ? toEmbeddableUrl(activeLesson.lesson_url) : null;
   const activeAssignment =
     selectedAssignmentId !== null
@@ -743,13 +677,17 @@ export default function StudentEnrollmentLearnPage() {
         : "Mulai Assignment"
       : null;
   const isActiveAssignmentApproved = activeAssignment
-    ? approvedAssignmentIds.has(activeAssignment.id) || isAssignmentApproved(activeAssignment)
+    ? Boolean(activeAssignment.is_completed) ||
+      approvedAssignmentIds.has(activeAssignment.id) ||
+      isAssignmentApproved(activeAssignment)
     : false;
   const quizAttempts = quizAttemptsQuery.data ?? [];
   const activeQuizAttempt = getActiveQuizAttempt(quizAttempts);
   const latestQuizAttempt = getLatestQuizAttempt(quizAttempts);
   const isSelectedQuizPassed = selectedQuiz
-    ? passedQuizIds.has(selectedQuiz.id) || hasPassedQuizAttempt(quizAttempts, selectedQuiz.passing_score)
+    ? Boolean(selectedQuiz.is_completed) ||
+      passedQuizIds.has(selectedQuiz.id) ||
+      hasPassedQuizAttempt(quizAttempts, selectedQuiz.passing_score)
     : false;
   const cooldownDeadline = getQuizCooldownDeadline(latestQuizAttempt);
   const cooldownDeadlineMs = cooldownDeadline?.getTime() ?? null;
@@ -846,6 +784,27 @@ export default function StudentEnrollmentLearnPage() {
       window.clearInterval(timerId);
     };
   }, [isCooldownActive]);
+
+  useEffect(() => {
+    if (!selectedLessonId || !activeLesson || lessonDetailQuery.isLoading || lessonDetailQuery.isError) {
+      return;
+    }
+
+    const hasTrackedAccess = (progressQuery.data ?? []).some((item) => item.lesson_id === selectedLessonId);
+    if (hasTrackedAccess || activeLessonCompleted || trackLessonAccessMutation.isPending) {
+      return;
+    }
+
+    trackLessonAccessMutation.mutate(selectedLessonId);
+  }, [
+    activeLesson,
+    activeLessonCompleted,
+    lessonDetailQuery.isError,
+    lessonDetailQuery.isLoading,
+    progressQuery.data,
+    selectedLessonId,
+    trackLessonAccessMutation,
+  ]);
 
   useEffect(() => {
     if (!isMobileCourseContentDrawerOpen) {
@@ -975,8 +934,10 @@ export default function StudentEnrollmentLearnPage() {
         {lessonsInSection.map((lesson) => {
           const isActive =
             activeSelectedContent?.kind === "lesson" && activeSelectedContent.data.id === lesson.id;
-          const isCompleted = completedLessonIds.has(lesson.id);
-          const isLocked = lockedLessonIds.has(lesson.id);
+          const isCompleted = Boolean(lesson.is_completed) || completedLessonIds.has(lesson.id);
+          const isLocked = Boolean(lesson.is_locked);
+          const isNew = Boolean(lesson.is_new) && !isCompleted;
+          const isSupplemental = Boolean(lesson.is_supplemental);
 
           return (
             <button
@@ -1004,11 +965,27 @@ export default function StudentEnrollmentLearnPage() {
                   </p>
 
                 </div>
-                {isCompleted ? (
-                  <CheckCircle2 className="size-4 text-emerald-500 shrink-0 mt-1" />
-                ) : isLocked ? (
-                  <Lock className="size-3.5 text-amber-500 shrink-0 mt-1" />
-                ) : null}
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  {isCompleted ? (
+                    <CheckCircle2 className="mt-1 size-4 shrink-0 text-emerald-500" />
+                  ) : isLocked ? (
+                    <Lock className="mt-1 size-3.5 shrink-0 text-amber-500" />
+                  ) : null}
+                  {isNew || isSupplemental ? (
+                    <div className="flex flex-wrap justify-end gap-1">
+                      {isNew ? (
+                        <span className="inline-flex rounded-full bg-sky-500/10 px-2 py-0.5 text-[10px] font-semibold text-sky-700 sm:text-xs">
+                          Baru
+                        </span>
+                      ) : null}
+                      {isSupplemental ? (
+                        <span className="inline-flex rounded-full border border-[var(--border)] px-2 py-0.5 text-[10px] font-semibold text-[var(--muted-foreground)] sm:text-xs">
+                          Opsional
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
               </div>
             </button>
           );
@@ -1017,8 +994,10 @@ export default function StudentEnrollmentLearnPage() {
         {quizzesInSection.map((quiz) => {
           const isActive =
             activeSelectedContent?.kind === "quiz" && activeSelectedContent.data.id === quiz.id;
-          const isCompleted = passedQuizIds.has(quiz.id);
-          const isLocked = lockedQuizIds.has(quiz.id);
+          const isCompleted = Boolean(quiz.is_completed) || passedQuizIds.has(quiz.id);
+          const isLocked = Boolean(quiz.is_locked);
+          const isNew = Boolean(quiz.is_new) && !isCompleted;
+          const isSupplemental = Boolean(quiz.is_supplemental);
 
           return (
             <button
@@ -1045,15 +1024,29 @@ export default function StudentEnrollmentLearnPage() {
                     Quiz - Durasi: {formatLessonDuration(quiz.duration)}
                   </p>
                 </div>
-                {isCompleted ? (
-                  <CheckCircle2 className="size-4 text-emerald-500 shrink-0 mt-1" />
-                ) : isLocked ? (
-                  <Lock className="size-3.5 text-amber-500 shrink-0 mt-1" />
-                ) : (
-                  <span className="inline-flex rounded-full border border-[var(--border)] px-2 py-0.5 text-[10px] font-semibold text-[var(--muted-foreground)] sm:text-xs">
-                    Quiz
-                  </span>
-                )}
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  {isCompleted ? (
+                    <CheckCircle2 className="mt-1 size-4 shrink-0 text-emerald-500" />
+                  ) : isLocked ? (
+                    <Lock className="mt-1 size-3.5 shrink-0 text-amber-500" />
+                  ) : null}
+                  <div className="flex flex-wrap justify-end gap-1">
+                    {isNew ? (
+                      <span className="inline-flex rounded-full bg-sky-500/10 px-2 py-0.5 text-[10px] font-semibold text-sky-700 sm:text-xs">
+                        Baru
+                      </span>
+                    ) : null}
+                    {isSupplemental ? (
+                      <span className="inline-flex rounded-full border border-[var(--border)] px-2 py-0.5 text-[10px] font-semibold text-[var(--muted-foreground)] sm:text-xs">
+                        Opsional
+                      </span>
+                    ) : !isCompleted && !isLocked ? (
+                      <span className="inline-flex rounded-full border border-[var(--border)] px-2 py-0.5 text-[10px] font-semibold text-[var(--muted-foreground)] sm:text-xs">
+                        Quiz
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
               </div>
             </button>
           );
@@ -1064,8 +1057,13 @@ export default function StudentEnrollmentLearnPage() {
             activeSelectedContent?.kind === "assignment" && activeSelectedContent.data.id === assignment.id;
           const currentAssignment = assignmentsById.get(assignment.id) ?? assignment;
           const latestSubmission = getLatestAssignmentSubmission(currentAssignment);
-          const isCompleted = approvedAssignmentIds.has(assignment.id) || isAssignmentApproved(currentAssignment);
-          const isLocked = lockedAssignmentIds.has(assignment.id);
+          const isCompleted =
+            Boolean(currentAssignment.is_completed) ||
+            approvedAssignmentIds.has(assignment.id) ||
+            isAssignmentApproved(currentAssignment);
+          const isLocked = Boolean(assignment.is_locked);
+          const isNew = Boolean(currentAssignment.is_new) && !isCompleted;
+          const isSupplemental = Boolean(currentAssignment.is_supplemental);
 
           return (
             <button
@@ -1090,7 +1088,6 @@ export default function StudentEnrollmentLearnPage() {
                   </p>
                   <p className="mt-1 text-[11px] text-[var(--muted-foreground)] sm:text-xs">
                     Assignment
-                    {assignment.due_at ? ` - Deadline: ${formatUtcDateTimeToJakarta(assignment.due_at)}` : ""}
                   </p>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1">
@@ -1099,9 +1096,23 @@ export default function StudentEnrollmentLearnPage() {
                   ) : isLocked ? (
                     <Lock className="size-3.5 text-amber-500 shrink-0 mt-1" />
                   ) : (
-                    <span className="inline-flex rounded-full border border-[var(--border)] px-2 py-0.5 text-[10px] font-semibold text-[var(--muted-foreground)] sm:text-xs">
-                      Assignment
-                    </span>
+                    <div className="flex flex-wrap justify-end gap-1">
+                      {isNew ? (
+                        <span className="inline-flex rounded-full bg-sky-500/10 px-2 py-0.5 text-[10px] font-semibold text-sky-700 sm:text-xs">
+                          Baru
+                        </span>
+                      ) : null}
+                      {isSupplemental ? (
+                        <span className="inline-flex rounded-full border border-[var(--border)] px-2 py-0.5 text-[10px] font-semibold text-[var(--muted-foreground)] sm:text-xs">
+                          Opsional
+                        </span>
+                      ) : null}
+                      {!isNew && !isSupplemental ? (
+                        <span className="inline-flex rounded-full border border-[var(--border)] px-2 py-0.5 text-[10px] font-semibold text-[var(--muted-foreground)] sm:text-xs">
+                          Assignment
+                        </span>
+                      ) : null}
+                    </div>
                   )}
                   {latestSubmission && !isCompleted ? (
                     <span className="text-[11px] font-medium text-[var(--muted-foreground)]">
@@ -1390,11 +1401,28 @@ export default function StudentEnrollmentLearnPage() {
             ) : activeLesson ? (
               <div className="space-y-4">
               <div>
-                <h2 className="text-xl font-semibold text-[var(--foreground)] sm:text-2xl">{activeLesson.title}</h2>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-xl font-semibold text-[var(--foreground)] sm:text-2xl">{activeLesson.title}</h2>
+                  {activeLesson.is_supplemental ? (
+                    <span className="inline-flex rounded-full border border-[var(--border)] px-2 py-0.5 text-xs font-semibold text-[var(--muted-foreground)]">
+                      Opsional
+                    </span>
+                  ) : null}
+                  {activeLesson.is_new && !activeLessonCompleted ? (
+                    <span className="inline-flex rounded-full bg-sky-500/10 px-2 py-0.5 text-xs font-semibold text-sky-700">
+                      Baru
+                    </span>
+                  ) : null}
+                </div>
                 <p className="text-xs text-[var(--muted-foreground)] sm:text-sm">Durasi: {formatLessonDuration(activeLesson.duration)}</p>
                 {lessonDetailQuery.data?.section ? (
                   <p className="mt-1 text-xs text-[var(--muted-foreground)]">
                     Section: {lessonDetailQuery.data.section.title}
+                  </p>
+                ) : null}
+                {activeLesson.counts_toward_progress === false ? (
+                  <p className="mt-2 text-xs text-[var(--muted-foreground)]">
+                    Materi ini bersifat tambahan dan tidak dihitung ke progress atau sertifikat.
                   </p>
                 ) : null}
               </div>
@@ -1441,10 +1469,27 @@ export default function StudentEnrollmentLearnPage() {
             ) : selectedQuiz ? (
               <div className="space-y-4">
               <div>
-                <h2 className="text-xl font-semibold text-[var(--foreground)] sm:text-2xl">{selectedQuiz.title}</h2>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-xl font-semibold text-[var(--foreground)] sm:text-2xl">{selectedQuiz.title}</h2>
+                  {selectedQuiz.is_supplemental ? (
+                    <span className="inline-flex rounded-full border border-[var(--border)] px-2 py-0.5 text-xs font-semibold text-[var(--muted-foreground)]">
+                      Opsional
+                    </span>
+                  ) : null}
+                  {selectedQuiz.is_new && !isSelectedQuizPassed ? (
+                    <span className="inline-flex rounded-full bg-sky-500/10 px-2 py-0.5 text-xs font-semibold text-sky-700">
+                      Baru
+                    </span>
+                  ) : null}
+                </div>
                 <p className="mt-1 text-xs text-[var(--muted-foreground)] sm:text-sm">
                   Quiz - Durasi: {formatQuizDuration(selectedQuiz.duration)}
                 </p>
+                {selectedQuiz.counts_toward_progress === false ? (
+                  <p className="mt-2 text-xs text-[var(--muted-foreground)]">
+                    Quiz ini bersifat tambahan dan tidak dihitung ke progress atau sertifikat.
+                  </p>
+                ) : null}
               </div>
 
               <div className="rounded-md border border-[var(--border)] bg-[var(--muted)] p-4 text-sm text-[var(--foreground)]">
@@ -1456,6 +1501,14 @@ export default function StudentEnrollmentLearnPage() {
                   <p>Passing score: {selectedQuiz.passing_score ?? "-"}</p>
                   <p>Max attempts: {selectedQuiz.max_attempts ?? "-"}</p>
                   <p>Status: {selectedQuiz.is_active ? "Aktif" : "Nonaktif"}</p>
+                  <p>
+                    Bank soal:{" "}
+                    {selectedQuiz.question_limit
+                      ? selectedQuiz.is_random
+                        ? `${selectedQuiz.question_limit} soal acak per attempt`
+                        : `${selectedQuiz.question_limit} soal pertama per attempt`
+                      : "Semua soal aktif ditampilkan"}
+                  </p>
                 </div>
               </div>
 
@@ -1554,13 +1607,25 @@ export default function StudentEnrollmentLearnPage() {
             ) : activeAssignment ? (
               <div className="space-y-4">
               <div>
-                <h2 className="text-xl font-semibold text-[var(--foreground)] sm:text-2xl">{activeAssignment.title}</h2>
-                <p className="mt-1 text-xs text-[var(--muted-foreground)] sm:text-sm">
-                  Assignment
-                  {activeAssignment.due_at
-                    ? ` - Deadline: ${formatUtcDateTimeToJakarta(activeAssignment.due_at)}`
-                    : ""}
-                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-xl font-semibold text-[var(--foreground)] sm:text-2xl">{activeAssignment.title}</h2>
+                  {activeAssignment.is_supplemental ? (
+                    <span className="inline-flex rounded-full border border-[var(--border)] px-2 py-0.5 text-xs font-semibold text-[var(--muted-foreground)]">
+                      Opsional
+                    </span>
+                  ) : null}
+                  {activeAssignment.is_new && !isActiveAssignmentApproved ? (
+                    <span className="inline-flex rounded-full bg-sky-500/10 px-2 py-0.5 text-xs font-semibold text-sky-700">
+                      Baru
+                    </span>
+                  ) : null}
+                </div>
+                <p className="mt-1 text-xs text-[var(--muted-foreground)] sm:text-sm">Assignment</p>
+                {activeAssignment.counts_toward_progress === false ? (
+                  <p className="mt-2 text-xs text-[var(--muted-foreground)]">
+                    Assignment ini bersifat tambahan dan tidak dihitung ke progress atau sertifikat.
+                  </p>
+                ) : null}
               </div>
 
               <div className="rounded-md border border-[var(--border)] bg-[var(--muted)] p-4 text-sm text-[var(--foreground)]">
@@ -1571,7 +1636,7 @@ export default function StudentEnrollmentLearnPage() {
                 <div className="mt-3 grid grid-cols-1 gap-2 text-xs text-[var(--muted-foreground)] sm:grid-cols-2 xl:grid-cols-4">
                   <p>Max attempts: {activeAssignment.max_attempts ?? "Tidak dibatasi"}</p>
                   <p>Resubmission: {activeAssignment.allow_resubmission ? "Diizinkan" : "Tidak"}</p>
-                  <p>Sertifikat: {activeAssignment.is_required_for_certificate ? "Wajib" : "Opsional"}</p>
+                  <p>Sertifikat: {getAssignmentCertificateLabel(activeAssignment)}</p>
                   <p>
                     Attempts tersisa:{" "}
                     {remainingAssignmentAttempts === null ? "Tidak dibatasi" : remainingAssignmentAttempts}
